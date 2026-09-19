@@ -1,10 +1,5 @@
 # JARVIS — Complete Roadmap
 
-> Permanent plan. Do not delete. Update after each batch.
-> User: Youssef. Language: Egyptian Arabic for chat, English for code.
-
----
-
 ## Current Status
 
 | Item | Status |
@@ -20,9 +15,7 @@
 
 ---
 
-## The 8 Phases
-
-### Phase 0 — Bridge (Foundation)
+## Phase 0 — Bridge
 
 Goal: JARVIS talks to OpenHands.
 
@@ -31,7 +24,9 @@ Goal: JARVIS talks to OpenHands.
 | 0.1 | scripts/openhands_runner.py (SDK) | 10 min |
 | 0.2 | skills/openhands_bridge.py (new) | 5 min |
 
-### Phase 1 — Foundation (4 batches)
+---
+
+## Phase 1 — Foundation (4 batches)
 
 | # | Batch | Contents | Time |
 |---|---|---|---|
@@ -40,14 +35,18 @@ Goal: JARVIS talks to OpenHands.
 | 1.3 | UI Polish | Gradient shadows + toasts + swatches + shimmer | 20 min |
 | 1.4 | Code Mode UI | Toggle + audit viewer + badge | 20 min |
 
-### Phase 2 — System (2 batches)
+---
+
+## Phase 2 — System (2 batches)
 
 | # | Batch | Contents | Time |
 |---|---|---|---|
 | 2.1 | System Integration | Hotkey (Ctrl+Alt+J) + Tray + Auto-start | 30 min |
 | 2.2 | Wake Word | "Jarvis" opens mic automatically | 40 min |
 
-### Phase 3 — Intelligence (4 batches)
+---
+
+## Phase 3 — Intelligence (4 batches)
 
 | # | Batch | Contents | Time |
 |---|---|---|---|
@@ -56,7 +55,9 @@ Goal: JARVIS talks to OpenHands.
 | 3.3 | Proactive | Morning briefing + context + suggestions | 30 min |
 | 3.4 | Self-Awareness | Knows limits + /diag | 15 min |
 
-### Phase 4 — Extras (5 batches)
+---
+
+## Phase 4 — Extras (5 batches)
 
 | # | Batch | Contents | Time |
 |---|---|---|---|
@@ -66,7 +67,9 @@ Goal: JARVIS talks to OpenHands.
 | 4.4 | Personal Context | Contacts + Projects + Voice macros | 25 min |
 | 4.5 | Reflection | Journal + Weekly + Mood | 25 min |
 
-### Phase 5 — Batch 5 (22 features)
+---
+
+## Phase 5 — Batch 5 (22 features)
 
 Voice: VAD + Interruption
 Tools: Command history + Fuzzy + Clipboard-to-file + Text reader + URL detect + Aliases + Macros
@@ -74,19 +77,38 @@ Windows: App focus + Window control
 UI: Sound library + System widget + Weather + Notes + Network + Dark sync
 Maintenance: Log rotation + Auto-backup + Undo/Redo + Session replay + Export
 
-### Phase 6 — Batches 6-12 (49 features)
+Total: 4 hours.
 
-| Batch | Group | Time |
-|---|---|---|
-| 6 | Technical (Password + UUID + Hash + Base64 + QR + JSON + Color + Case + Slug + Sort + Dedupe + Expander + Timezone + Days-until + IP + DNS + Process + Kill + Disk + Random + Port) | 3h |
-| 7 | Images/Files (OCR + Resize + Convert + PDF merge/split + CSV + Markdown) | 1.5h |
-| 8 | Network (Port scan + Speed test + WiFi + IP geo) | 1h |
-| 9 | Media (Screen record + Video-to-audio + Audio trim + GIF) | 1.5h |
-| 10 | Health (Posture + Eye + Stand + Water + Breathing) | 1h |
-| 11 | Finance (Expense + Budget + Currency watch) | 1h |
-| 12 | Personal (Reading + Watch + Recipe + Packing + Trip) | 1.5h |
+---
 
-### Phase 7 — Self-Install (4 files)
+## Phase 6 — Batches 6-12 (49 features)
+
+Batch 6 — Technical (3h):
+Password + UUID + Hash + Base64 + QR + JSON + Color + Case + Slug +
+Sort + Dedupe + Expander + Timezone + Days-until + IP + DNS + Process +
+Kill + Disk + Random + Port
+
+Batch 7 — Images/Files (1.5h):
+OCR + Resize + Convert + PDF merge/split + CSV + Markdown
+
+Batch 8 — Network (1h):
+Port scan + Speed test + WiFi + IP geo
+
+Batch 9 — Media (1.5h):
+Screen record + Video-to-audio + Audio trim + GIF
+
+Batch 10 — Health (1h):
+Posture + Eye + Stand + Water + Breathing
+
+Batch 11 — Finance (1h):
+Expense + Budget + Currency watch
+
+Batch 12 — Personal (1.5h):
+Reading + Watch + Recipe + Packing + Trip
+
+---
+
+## Phase 7 — Self-Install (4 files)
 
 | # | File | Purpose |
 |---|---|---|
@@ -95,7 +117,9 @@ Maintenance: Log rotation + Auto-backup + Undo/Redo + Session replay + Export
 | 7.3 | run.py (updated) | Self-install + launch |
 | 7.4 | setup_check.py | Verify + auto-fix |
 
-### Phase 8 — GitHub (after 100% complete)
+---
+
+## Phase 8 — GitHub
 
 Before upload:
 - .gitignore cleanup (15 min)
@@ -138,32 +162,24 @@ Spread across 3 weeks = about 1.5 hours per day.
 
 ## Execution Order
 
-### Week 1 (6 hours)
+Week 1 (6 hours):
 - Bridge
 - Phase 1 complete
 - Phase 2 complete
 - Phase 3 complete
 - Half of Phase 4
 
-Result: JARVIS 80% complete.
-
-### Week 2 (7 hours)
+Week 2 (7 hours):
 - Rest of Phase 4
 - Batch 5
 
-Result: JARVIS + 100 features.
-
-### Week 3 (7 hours)
+Week 3 (7 hours):
 - Batches 6-12
 - Self-Install
 
-Result: JARVIS complete.
-
-### Week 4 (5.5 hours)
+Week 4 (5.5 hours):
 - GitHub prep
 - Upload
-
-Result: JARVIS on GitHub as v1.0.0.
 
 ---
 
@@ -181,15 +197,14 @@ Result: JARVIS on GitHub as v1.0.0.
 9. Errors live in logs/jarvis.log — file and line always shown.
 10. User language: Egyptian Arabic for chat, English for code.
 11. No guessing. Verify every API, every library, every path.
-12. User reads every prompt carefully. No stubs, no placeholders,
-    no "coming soon" comments.
+12. User reads every prompt carefully. No stubs, no placeholders.
 
 ---
 
 ## Version History
 
 - v5.0 (current) — 82 skills, OpenHands server running, bridge broken
-- v5.1 (target) — Bridge fixed
+- v5.1 — Bridge fixed
 - v5.5 — Phase 1-2 done
 - v6.0 — Phase 3-4 done
 - v7.0 — All batches done
