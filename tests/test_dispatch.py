@@ -8,7 +8,7 @@ class DispatchTest(unittest.TestCase):
     def test_expected_skills_registered(self):
         names = {s.name for s in all_skills()}
         for want in ("launch_app", "web_open", "watch_folder",
-                     "read_screen", "win_click", "win_type",
+                     "screen_ocr", "win_click", "win_type",
                      "computer_task", "timer"):
             self.assertIn(want, names, want)
 

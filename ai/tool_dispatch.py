@@ -88,8 +88,8 @@ def execute_tool(name: str, args: dict) -> str:
             ctx_tracker.log_event("app", f"launched {args.get('name','')}")
             return r
         if name == "read_screen":
-            from skills.screen_ocr import read_screen as _rs
-            return _rs()
+            from skills import dispatch as _dispatch
+            return _dispatch("read text from screen") or "[screen_ocr failed]"
         if name == "win_click":
             from skills.win_target import win_click as _wc
             return _wc(args.get("window", ""), args.get("control", ""))

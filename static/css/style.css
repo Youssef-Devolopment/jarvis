@@ -452,3 +452,70 @@ button:focus-visible,input:focus-visible{outline:1px solid var(--theme-accent);o
 .code-toggle-label{
   font-weight:600;
 }
+
+/* Horizontal scroll for tab bar */
+.modal-tabs{
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-accent) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+.modal-tabs::-webkit-scrollbar{ height: 3px }
+.modal-tabs::-webkit-scrollbar-thumb{ background: var(--theme-accent); border-radius: 3px }
+.modal-tabs::-webkit-scrollbar-track{ background: transparent }
+.modal-tabs .tab{ flex-shrink: 0 }
+
+/* Section headers inside panels */
+.panel-section{
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-section-title{
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--theme-accent);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+/* Info badge (for status pills inside panels) */
+.info-badge{
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  background: rgba(179,0,255,0.1);
+  border: 1px solid var(--theme-accent);
+  color: var(--theme-accent);
+  margin-left: 6px;
+}
+.info-badge.dim{
+  background: rgba(255,255,255,0.04);
+  border-color: var(--border);
+  color: var(--dim);
+}
+.info-badge.warn{
+  background: rgba(255,184,77,0.1);
+  border-color: #ffb84d;
+  color: #ffb84d;
+}
+
+/* Mini code block */
+.mini-code{
+  font-family: var(--mono);
+  font-size: 9px;
+  background: rgba(0,0,0,0.4);
+  padding: 8px;
+  border-radius: 3px;
+  color: var(--text);
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+  margin-top: 6px;
+}

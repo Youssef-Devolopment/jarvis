@@ -785,7 +785,9 @@ function loadTab(name){
   var endpoints={model:'/api/models',voice:'/api/voices',mood:'/api/info',
     personality:'/api/personality',skills:'/api/skills',tools:'/api/tools',
     mcp:'/api/mcp',appearance:'/api/prefs',audio:'/api/prefs',
-    general:'/api/prefs',about:'/api/info'};
+    general:'/api/prefs',about:'/api/info',council:'/api/council/levels',
+    capture:'/api/contacts',workspace:'/api/layouts',
+    clipboard:'/api/clipboard/recent',dream:'/api/dream/status'};
   fetch(endpoints[name]||'/api/info')
     .then(function(r){return r.json();})
     .then(function(data){inner.innerHTML=renderTab(name,data);})
@@ -907,7 +909,339 @@ function prefToggle(key,on,label,sub){
       '<div class="set-row"><div class="label">Voice<small>'+esc(data.voice&&data.voice.label?data.voice.label:'--')+'</small></div></div>'+
       '</div>';
   }
+  if(name==='council'){renderCouncilPanel();return '<div style="color:var(--dim)">Loading…</div>';}
+  if(name==='capture'){renderCapturePanel();return '<div style="color:var(--dim)">Loading…</div>';}
+  if(name==='workspace'){renderWorkspacePanel();return '<div style="color:var(--dim)">Loading…</div>';}
+  if(name==='clipboard'){renderClipboardPanel();return '<div style="color:var(--dim)">Loading…</div>';}
+  if(name==='dream'){renderDreamPanel();return '<div style="color:var(--dim)">Loading…</div>';}
   return '<div style="color:var(--dim)">Panel: '+esc(name)+'</div>';
+}
+
+function savePref(key,value){
+  return fetch('/api/prefs',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({key:key,value:value})}).then(function(r){return r.json();});
+}
+
+async function renderCouncilPanel(){
+  const el = document.getElementById('panel-council');
+  if(!el)return;
+  let levels = [];
+  try {
+    const r = await fetch('/api/council/levels').then(r => r.json());
+    levels = r.levels || [];
+  } catch {}
+  el.innerHTML = `
+    <div class="panel-section">
+      <div class="panel-section-title">Council Levels</div>
+      <div class="set-list">
+        ${levels.map(l => `
+          <div class="set-row">
+            <div class="label">L${l.level} — ${l.name}
+              <small>${l.models} model${l.models===1?'':'s'} · ~${l.timeout}s · ~$${l.cost_estimate.toFixed(3)}</small>
+            </div>
+            <div class="actions">
+              <button data-test="${l.name}">TEST</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Quick Test</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="council-test-q" placeholder="Ask a question..."
+               style="flex:1;background:rgba(0,0,0,.4);border:1px solid var(--border);color:#fff;font-family:var(--mono);font-size:11px;padding:8px 10px;border-radius:3px;outline:none">
+        <button id="council-test-go" class="dbtn">RUN</button>
+      </div>
+      <div id="council-test-result" style="margin-top:10px;font-size:10px"></div>
+    </div>
+  `;
+  el.querySelectorAll('[data-test]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const name = b.dataset.test;
+      addLog(`Testing ${name}...`, 'system');
+      try {
+        const r = await fetch('/api/council/run', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({question: 'What is 2+2?', level: name, confirm: true})
+        }).then(r => r.json());
+        addLog(r.ok ? `✓ ${name}: ${r.confidence}% conf in ${r.elapsed}s`
+                    : `✗ ${name} failed`, r.ok ? 'system' : 'warn');
+      } catch (e){ addLog(`✗ ${name}: ${e.message}`, 'warn'); }
+    });
+  });
+  const inp = document.getElementById('council-test-q');
+  const go = document.getElementById('council-test-go');
+  if (go) go.addEventListener('click', async () => {
+    const q = inp.value.trim();
+    if (!q) return;
+    const res = document.getElementById('council-test-result');
+    res.innerHTML = '<span style="color:var(--dim)">Running council…</span>';
+    try {
+      const r = await fetch('/api/council/run', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({question: q, level: 'council'})
+      }).then(r => r.json());
+      res.innerHTML = r.ok
+        ? `<div class="info-badge">${r.confidence}% confidence</div> <div class="info-badge dim">${r.ok_count}/${r.total_count} models · ${r.elapsed}s</div><div style="margin-top:8px;color:var(--text);white-space:pre-wrap">${r.answer}</div>`
+        : `<span style="color:#ff5c7a">✗ ${r.error || 'failed'}</span>`;
+    } catch (e){ res.innerHTML = `<span style="color:#ff5c7a">✗ ${e.message}</span>`; }
+  });
+}
+
+async function renderCapturePanel(){
+  const el = document.getElementById('panel-capture');
+  if(!el)return;
+  let contacts = [], reminders = [];
+  try {
+    contacts = (await fetch('/api/contacts').then(r => r.json())).contacts || [];
+  } catch {}
+  try {
+    reminders = (await fetch('/api/reminders').then(r => r.json())).reminders || [];
+  } catch {}
+  el.innerHTML = `
+    <div class="panel-section">
+      <div class="panel-section-title">Quick Capture</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="capture-input" placeholder="remind me in 10 minutes to call Ali"
+               style="flex:1;background:rgba(0,0,0,.4);border:1px solid var(--border);color:#fff;font-family:var(--mono);font-size:11px;padding:8px 10px;border-radius:3px;outline:none">
+        <button id="capture-go" class="dbtn">CAPTURE</button>
+      </div>
+      <div id="capture-result" style="margin-top:8px;font-size:10px"></div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Contacts <span class="info-badge dim">${contacts.length}</span></div>
+      <div class="set-list" style="max-height:150px;overflow:auto">
+        ${contacts.length ? contacts.slice(0,20).map(c => `
+          <div class="set-row">
+            <div class="label">${c.name}<small>${c.phone || c.email || 'no contact info'}</small></div>
+          </div>
+        `).join('') : '<div style="color:var(--dim);font-size:10px;padding:8px">No contacts yet.</div>'}
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Reminders <span class="info-badge dim">${reminders.length}</span></div>
+      <div class="set-list" style="max-height:150px;overflow:auto">
+        ${reminders.length ? reminders.slice(0,20).map(r => `
+          <div class="set-row">
+            <div class="label">${r.text}<small>${r.due_at.slice(11,16)} · ${r.due_at.slice(0,10)}</small></div>
+          </div>
+        `).join('') : '<div style="color:var(--dim);font-size:10px;padding:8px">No reminders.</div>'}
+      </div>
+    </div>
+  `;
+  const inp = document.getElementById('capture-input');
+  const go = document.getElementById('capture-go');
+  if (go) go.addEventListener('click', async () => {
+    const text = inp.value.trim();
+    if (!text) return;
+    const res = document.getElementById('capture-result');
+    try {
+      const r = await fetch('/api/capture', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({text})
+      }).then(r => r.json());
+      res.innerHTML = `<span style="color:${r.ok ? '#4ade80' : '#ff5c7a'}">${r.reply}</span>`;
+      inp.value = '';
+      if (r.ok) setTimeout(renderCapturePanel, 800);
+    } catch (e){ res.innerHTML = `<span style="color:#ff5c7a">${e.message}</span>`; }
+  });
+}
+
+async function renderWorkspacePanel(){
+  const el = document.getElementById('panel-workspace');
+  if(!el)return;
+  let layouts = [], time = [], focus = {};
+  try { layouts = (await fetch('/api/layouts').then(r => r.json())).layouts || []; } catch {}
+  try { time = (await fetch('/api/time/summary?hours=24').then(r => r.json())).entries || []; } catch {}
+  try { focus = await fetch('/api/focus/status').then(r => r.json()); } catch {}
+  el.innerHTML = `
+    <div class="panel-section">
+      <div class="panel-section-title">Focus Lock
+        <span class="info-badge ${focus.active ? '' : 'dim'}">${focus.active ? 'ON until ' + (focus.until || '').slice(11,16) : 'off'}</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input type="number" id="focus-mins" value="60" min="5" max="480"
+               style="width:80px;background:rgba(0,0,0,.4);border:1px solid var(--border);color:#fff;font-family:var(--mono);font-size:11px;padding:8px 10px;border-radius:3px;outline:none">
+        <button id="focus-start" class="dbtn">START</button>
+        <button id="focus-stop" class="dbtn">STOP</button>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Window Layouts</div>
+      <div class="set-list" style="max-height:140px;overflow:auto">
+        ${layouts.length ? layouts.map(l => `
+          <div class="set-row">
+            <div class="label">${l.name}</div>
+            <div class="actions">
+              <button data-restore="${l.name}">LOAD</button>
+            </div>
+          </div>
+        `).join('') : '<div style="color:var(--dim);font-size:10px;padding:8px">No saved layouts.</div>'}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input type="text" id="layout-name" placeholder="layout name"
+               style="flex:1;background:rgba(0,0,0,.4);border:1px solid var(--border);color:#fff;font-family:var(--mono);font-size:11px;padding:8px 10px;border-radius:3px;outline:none">
+        <button id="layout-save" class="dbtn">SAVE CURRENT</button>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Time Tracking (24h)</div>
+      <div class="set-list" style="max-height:160px;overflow:auto">
+        ${time.length ? time.slice(0,10).map(t => `
+          <div class="set-row">
+            <div class="label">${t.app}<small>${Math.round(t.seconds/60)} min</small></div>
+          </div>
+        `).join('') : '<div style="color:var(--dim);font-size:10px;padding:8px">No time entries yet.</div>'}
+      </div>
+    </div>
+  `;
+  const fs = document.getElementById('focus-start');
+  const fx = document.getElementById('focus-stop');
+  if (fs) fs.addEventListener('click', async () => {
+    const m = parseInt(document.getElementById('focus-mins').value) || 60;
+    await fetch('/api/focus/start', { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({minutes: m}) });
+    renderWorkspacePanel();
+  });
+  if (fx) fx.addEventListener('click', async () => {
+    await fetch('/api/focus/stop', { method:'POST' });
+    renderWorkspacePanel();
+  });
+  el.querySelectorAll('[data-restore]').forEach(b => {
+    b.addEventListener('click', async () => {
+      await fetch('/api/layouts/restore', { method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({name: b.dataset.restore}) });
+      addLog(`Restored layout: ${b.dataset.restore}`, 'system');
+    });
+  });
+  const ls = document.getElementById('layout-save');
+  if (ls) ls.addEventListener('click', async () => {
+    const name = document.getElementById('layout-name').value.trim();
+    if (!name) return;
+    await fetch('/api/layouts/save', { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name}) });
+    renderWorkspacePanel();
+  });
+}
+
+async function renderClipboardPanel(){
+  const el = document.getElementById('panel-clipboard');
+  if(!el)return;
+  let items = [];
+  try {
+    items = (await fetch('/api/clipboard/recent').then(r => r.json())).items || [];
+  } catch {}
+  const types = {};
+  items.forEach(i => { types[i.type] = (types[i.type] || 0) + 1; });
+  el.innerHTML = `
+    <div class="panel-section">
+      <div class="panel-section-title">Recent Clipboard</div>
+      <div style="margin-bottom:10px">
+        ${Object.entries(types).map(([k, v]) =>
+          `<span class="info-badge dim">${k}: ${v}</span>`).join(' ')}
+      </div>
+      <div class="set-list" style="max-height:400px;overflow:auto">
+        ${items.length ? items.slice().reverse().map(i => `
+          <div class="set-row">
+            <div class="label">[${i.type}] ${(i.preview || '').slice(0,80)}
+              <small>${i.ts.slice(11,16)} · ${i.length} chars</small>
+            </div>
+          </div>
+        `).join('') : '<div style="color:var(--dim);font-size:10px;padding:8px">Clipboard empty.</div>'}
+      </div>
+    </div>
+  `;
+}
+
+async function renderDreamPanel(){
+  const el = document.getElementById('panel-dream');
+  if(!el)return;
+  let status = {}, last = {};
+  try { status = await fetch('/api/dream/status').then(r => r.json()); } catch {}
+  try { last = await fetch('/api/dream/last').then(r => r.json()); } catch {}
+  el.innerHTML = `
+    <div class="panel-section">
+      <div class="panel-section-title">Dream Mode
+        <span class="info-badge ${status.enabled ? '' : 'dim'}">${status.enabled ? 'enabled' : 'disabled'}</span>
+      </div>
+      <div class="set-list">
+        <div class="set-row">
+          <div class="label">Enabled
+            <small>Run nightly autonomous routine</small>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="dream-enable" ${status.enabled ? 'checked' : ''}>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="set-row">
+          <div class="label">Active window
+            <small>Only runs during these hours</small>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="number" id="dream-start" min="0" max="23" value="${status.start_hour || 3}"
+                   style="width:60px;background:rgba(0,0,0,.4);border:1px solid var(--border);color:#fff;font-family:var(--mono);font-size:11px;padding:6px 8px;border-radius:3px;outline:none">
+            <span style="color:var(--dim)">→</span>
+            <input type="number" id="dream-end" min="0" max="23" value="${status.end_hour || 5}"
+                   style="width:60px;background:rgba(0,0,0,.4);border:1px solid var(--border);color:#fff;font-family:var(--mono);font-size:11px;padding:6px 8px;border-radius:3px;outline:none">
+          </div>
+        </div>
+        <div class="set-row">
+          <div class="label">Manual actions</div>
+          <div class="actions">
+            <button id="dream-dry">DRY RUN</button>
+            <button id="dream-run">RUN NOW</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Last Report</div>
+      ${last.started_at ? `
+        <div style="font-size:10px;color:var(--dim)">
+          ${last.started_at} · ${last.elapsed || 0}s
+        </div>
+        ${last.folders ? last.folders.map(f =>
+          `<div style="font-size:10px;margin-top:6px">${f.folder}: ${f.moved} moved, ${f.skipped} skipped</div>`
+        ).join('') : ''}
+        ${last.day_summary ? `<div class="mini-code">${last.day_summary}</div>` : ''}
+      ` : '<div style="color:var(--dim);font-size:10px">No reports yet.</div>'}
+    </div>
+  `;
+  const en = document.getElementById('dream-enable');
+  if (en) en.addEventListener('change', async (e) => {
+    await savePref('dream_enabled', e.target.checked);
+  });
+  const ds = document.getElementById('dream-start');
+  if (ds) ds.addEventListener('change', async (e) => {
+    await savePref('dream_start_hour', parseInt(e.target.value));
+  });
+  const de = document.getElementById('dream-end');
+  if (de) de.addEventListener('change', async (e) => {
+    await savePref('dream_end_hour', parseInt(e.target.value));
+  });
+  const dd = document.getElementById('dream-dry');
+  if (dd) dd.addEventListener('click', async () => {
+    addLog('Dream dry run...', 'system');
+    const r = await fetch('/api/dream/run', { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({dry_run: true}) }).then(r => r.json());
+    addLog(JSON.stringify(r).slice(0, 200), 'system');
+  });
+  const dr = document.getElementById('dream-run');
+  if (dr) dr.addEventListener('click', async () => {
+    addLog('Running Dream Mode...', 'system');
+    const r = await fetch('/api/dream/run', { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({dry_run: false}) }).then(r => r.json());
+    addLog(JSON.stringify(r).slice(0, 200), 'system');
+    renderDreamPanel();
+  });
 }
 
 function openDrawer(){
