@@ -1,0 +1,3 @@
+# Headless browser automation (needs: playwright install chromium).
+playwright>=1.40
+pywhatkit>=5.4

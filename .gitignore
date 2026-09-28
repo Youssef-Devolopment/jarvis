@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+logs/
+.browser_profile/
+.voice_cache/
+memory/*.db
+memory/*.db-journal
+skills_backup_*/
+voices/*.onnx
+voices/*.wav

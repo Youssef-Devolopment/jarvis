@@ -1,0 +1,14 @@
+# JARVIS core — server, AI, memory, scheduling. Always install.
+flask>=3.0
+python-dotenv>=1.0
+openai>=1.30
+groq>=0.11.0
+requests>=2.31.0
+mcp>=1.0.0
+psutil>=5.9
+numpy>=1.24
+apscheduler>=3.10
+watchdog>=3.0
+duckduckgo-search>=8.0
+gunicorn>=21.2 ; sys_platform != "win32"
+waitress>=3.0 ; sys_platform == "win32"

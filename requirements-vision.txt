@@ -1,0 +1,5 @@
+# Screen capture + OCR (easyocr pulls torch, ~2GB; install when needed).
+mss>=9.0
+easyocr>=1.7
+pillow>=10.0.0
+pyautogui>=0.9.54

@@ -1,0 +1,913 @@
+﻿/* JARVIS v7.0 - app.js (full rewrite, defensive) */
+(function(){
+'use strict';
+
+var STATE={BOOT:'boot',IDLE:'idle',LISTENING:'listening',
+           THINKING:'thinking',SPEAKING:'speaking',
+           TOOL:'tool_call',ERROR:'error'};
+var state=STATE.BOOT;
+var busy=false;
+var muted=false;
+var micActive=false;
+var mediaRecorder=null;
+var audioChunks=[];
+var uptimeSec=0;
+
+var $=function(id){return document.getElementById(id);};
+var on=function(id,ev,fn){var e=$(id);if(e)e.addEventListener(ev,fn);};
+var setText=function(id,v){var e=$(id);if(e)e.textContent=v;};
+var setHTML=function(id,v){var e=$(id);if(e)e.innerHTML=v;};
+var addCls=function(id,c){var e=$(id);if(e)e.classList.add(c);};
+var rmCls=function(id,c){var e=$(id);if(e)e.classList.remove(c);};
+
+function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+function ts(){
+  var n=new Date();
+  return [n.getHours(),n.getMinutes(),n.getSeconds()]
+    .map(function(x){return String(x).padStart(2,'0');}).join(':');
+}
+
+function addLog(msg,cls){
+  try{
+    var log=$('log');if(!log)return;
+    var d=document.createElement('div');
+    d.className='log-entry '+(cls||'');
+    d.innerHTML='<span class="t">'+ts()+'</span>'+esc(msg);
+    log.appendChild(d);
+    while(log.children.length>200)log.removeChild(log.firstChild);
+    log.scrollTop=log.scrollHeight;
+  }catch(e){console.warn('addLog',e);}
+}
+
+function addStreamingLog(cls){
+  try{
+    var log=$('log');if(!log)return null;
+    var d=document.createElement('div');
+    d.className='log-entry '+(cls||'bot');
+    log.appendChild(d);
+    log.scrollTop=log.scrollHeight;
+    return d;
+  }catch(e){return null;}
+}
+
+function setState(next){
+  if(state===next)return;
+  state=next;
+  try{document.body.dataset.state=next;}catch(e){}
+  var labels={boot:'BOOTING',idle:'ONLINE',listening:'LISTENING',
+    thinking:'PROCESSING',speaking:'SPEAKING',tool_call:'TOOL CALL',error:'ERROR'};
+  setText('status-text',labels[next]||labels.idle);
+  var tags={boot:'INITIALIZING',idle:'SYSTEM ONLINE',listening:'LISTENING',
+    thinking:'PROCESSING',speaking:'SPEAKING',tool_call:'TOOL CALL',error:'ERROR'};
+  setText('tagline',tags[next]||tags.idle);
+}
+
+function initCanvas(){
+  try{
+    var canvas=document.getElementById('orb');
+    if(!canvas)return;
+    var ctx=canvas.getContext('2d');
+    var particlesCanvas=document.getElementById('particles');
+    var particles=[];
+    var W,H,CX,CY,DPR,orbTime=0;
+
+    function resize(){
+      DPR=Math.min(window.devicePixelRatio||1,2);
+      W=window.innerWidth;H=window.innerHeight;
+      CX=W/2;CY=H*0.42;
+      canvas.width=W*DPR;canvas.height=H*DPR;
+      canvas.style.width=W+'px';canvas.style.height=H+'px';
+      ctx.setTransform(DPR,0,0,DPR,0,0);
+      if(particlesCanvas){
+        particlesCanvas.width=W*DPR;particlesCanvas.height=H*DPR;
+        particlesCanvas.style.width=W+'px';particlesCanvas.style.height=H+'px';
+        var pctx=particlesCanvas.getContext('2d');
+        pctx.setTransform(DPR,0,0,DPR,0,0);pctx.clearRect(0,0,W,H);
+        particles=[];
+        for(var i=0;i<80;i++){
+          particles.push({x:Math.random()*W,y:Math.random()*H,
+            r:Math.random()*1.4+0.3,vx:(Math.random()-0.5)*0.15,
+            vy:(Math.random()-0.5)*0.15,a:Math.random()*0.5+0.15,
+            tw:Math.random()*Math.PI*2});
+        }
+      }
+    }
+
+    resize();
+    window.addEventListener('resize',resize);
+
+    function draw(){
+      orbTime+=0.016;
+      ctx.clearRect(0,0,W,H);
+      var accent=getComputedStyle(document.documentElement).getPropertyValue('--theme-accent').trim()||'#8b3fff';
+      var hue=getComputedStyle(document.documentElement).getPropertyValue('--theme-hue').trim()||'290';
+      var R=Math.min(W,H)*0.13;
+      var st=document.body.dataset.state||'idle';
+      var active=st==='listening'||st==='speaking';
+      var thinking=st==='thinking'||st==='tool_call';
+      var pulse=1+Math.sin(orbTime*(active?3:thinking?5:1.2))*(active?0.06:0.03);
+      var r=R*pulse;
+
+      var g1=ctx.createRadialGradient(CX,CY,0,CX,CY,r*3);
+      g1.addColorStop(0,'hsla('+hue+',100%,70%,0.35)');
+      g1.addColorStop(0.4,'hsla('+hue+',100%,55%,0.12)');
+      g1.addColorStop(1,'hsla('+hue+',100%,40%,0)');
+      ctx.fillStyle=g1;ctx.beginPath();ctx.arc(CX,CY,r*3,0,Math.PI*2);ctx.fill();
+
+      var g2=ctx.createRadialGradient(CX,CY-r*0.2,0,CX,CY,r);
+      g2.addColorStop(0,'hsla('+hue+',100%,98%,0.95)');
+      g2.addColorStop(0.35,'hsla('+hue+',90%,70%,0.85)');
+      g2.addColorStop(1,'hsla('+hue+',80%,40%,0.35)');
+      ctx.fillStyle=g2;ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.fill();
+
+      ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);
+      ctx.strokeStyle='hsla('+hue+',100%,85%,0.7)';ctx.lineWidth=1;ctx.stroke();
+
+      var ringSpeeds=[0.3,-0.45],ringScales=[2.4,3.0],ringTilts=[0.35,-0.55],ringSquash=[0.32,-0.36];
+      for(var k=0;k<2;k++){
+        var baseR=R*ringScales[k],tilt=ringTilts[k],squash=ringSquash[k];
+        ctx.save();ctx.translate(CX,CY);ctx.rotate(tilt);ctx.scale(1,Math.abs(squash));
+        ctx.beginPath();ctx.ellipse(0,0,baseR,baseR,0,0,Math.PI*2);
+        ctx.strokeStyle='hsla('+hue+',80%,70%,0.18)';ctx.lineWidth=0.8;ctx.stroke();
+        ctx.setLineDash([2,6]);
+        ctx.beginPath();ctx.ellipse(0,0,baseR*0.96,baseR*0.96,0,0,Math.PI*2);
+        ctx.strokeStyle='hsla('+hue+',90%,75%,0.3)';ctx.lineWidth=0.6;ctx.stroke();
+        ctx.setLineDash([]);
+        var n=12,speed=ringSpeeds[k]*(thinking?4:active?2:1);
+        for(var i=0;i<n;i++){
+          var a=(i/n)*Math.PI*2+orbTime*speed;
+          var px=Math.cos(a)*baseR,py=Math.sin(a)*baseR*Math.abs(squash);
+          var rx=px*Math.cos(tilt)-py*Math.sin(tilt),ry=px*Math.sin(tilt)+py*Math.cos(tilt);
+          var alpha=0.4+0.4*Math.sin(orbTime*2+i);
+          ctx.beginPath();ctx.arc(rx,ry,1.2,0,Math.PI*2);
+          ctx.fillStyle='hsla('+(hue+20)+',100%,85%,'+alpha+')';ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      if(particlesCanvas){
+        var pctx=particlesCanvas.getContext('2d');
+        pctx.clearRect(0,0,W,H);
+        for(var j=0;j<particles.length;j++){
+          var p=particles[j];
+          p.x+=p.vx;p.y+=p.vy;p.tw+=0.02;
+          if(p.x<0)p.x=W;if(p.x>W)p.x=0;
+          if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+          var tw=0.6+Math.sin(p.tw)*0.4;
+          pctx.beginPath();pctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+          pctx.fillStyle='hsla('+hue+',80%,75%,'+(p.a*tw)+')';pctx.fill();
+        }
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+  }catch(e){console.warn('canvas',e);}
+}
+
+function applyTheme(hue,accent){
+  try{
+    if(hue!=null)document.documentElement.style.setProperty('--theme-hue',hue);
+    if(accent)document.documentElement.style.setProperty('--theme-accent',accent);
+  }catch(e){}
+}
+
+async function loadPrefs(){
+  try{
+    var r=await fetch('/api/prefs');var d=await r.json();
+    var p=d.prefs||{};applyTheme(p.hue,p.accent);return p;
+  }catch(e){console.warn('loadPrefs',e);return{};}
+}
+
+async function loadInfo(){
+  try{
+    var r=await fetch('/api/info');var info=await r.json();
+    setText('side-model',info.model_label||info.model||'--');
+    var v=info.voice;
+    setText('side-voice',v&&v.label?v.label:(typeof v==='string'?v:'--'));
+    setText('side-mood',info.mood||'--');
+    if(info.theme)applyTheme(info.theme.hue,info.theme.accent);
+    return info;
+  }catch(e){console.warn('loadInfo',e);return null;}
+}
+
+async function loadMemory(){
+  try{
+    var r=await fetch('/api/memory');var d=await r.json();
+    setText('side-memory',(d.facts||[]).length+' facts');
+  }catch(e){setText('side-memory','--');}
+}
+
+var modelCycle=[];var modelCycleIdx=0;
+var voiceCycle=[];var voiceCycleIdx=0;
+var moodCycle=[];var moodCycleIdx=0;
+
+async function loadModels(){
+  try{
+    var r=await fetch('/api/models');var d=await r.json();
+    var active=d.active||'auto';
+    modelCycle=['auto'].concat((d.models||[]).map(function(m){return m.id;}));
+    modelCycle=Array.from(new Set(modelCycle));
+    var i=modelCycle.indexOf(active);modelCycleIdx=i>=0?i:0;
+    updateModelUI();
+    var sideBlock=document.querySelector('#side-model');
+    if(sideBlock&&!sideBlock.dataset.wired){
+      sideBlock.dataset.wired='1';sideBlock.style.cursor='pointer';
+      sideBlock.addEventListener('click',cycleModel);
+    }
+    var chips=document.getElementById('model-chips');if(chips)chips.innerHTML='';
+  }catch(e){console.warn('loadModels',e);}
+}
+
+function updateModelUI(){
+  var current=modelCycle[modelCycleIdx]||'auto';
+  var label=current==='auto'?'Auto':current.replace('deepseek-','').replace(':free',' \u25CF').replace('qwen3.8-flash','qwen 3.8').replace('mimo-v2.5','mimo').replace('v4.1-flash','Flash').replace('v4-flash','V4');
+  var el=document.getElementById('side-model');if(el)el.textContent=label;
+}
+
+async function cycleModel(){
+  if(!modelCycle.length)return;
+  modelCycleIdx=(modelCycleIdx+1)%modelCycle.length;
+  var next=modelCycle[modelCycleIdx];
+  updateModelUI();
+  try{
+    var r=await fetch('/api/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:next})});
+    var d=await r.json();
+    if(d.ok&&d.theme){
+      document.documentElement.style.setProperty('--theme-hue',d.theme.hue);
+      document.documentElement.style.setProperty('--theme-accent',d.theme.accent);
+    }
+    addLog('Model \u2192 '+next,'system');
+  }catch(e){console.warn('cycleModel',e);}
+}
+
+async function loadVoices(){
+  try{
+    var r=await fetch('/api/voices');var d=await r.json();
+    voiceCycle=(d.voices||[]).map(function(v){return v.key;});
+    voiceCycleIdx=Math.max(0,voiceCycle.indexOf(d.active||'oliver'));
+    updateVoiceUI();
+    var sideBlock=document.querySelector('#side-voice');
+    if(sideBlock&&!sideBlock.dataset.wired){
+      sideBlock.dataset.wired='1';sideBlock.style.cursor='pointer';
+      sideBlock.addEventListener('click',cycleVoice);
+    }
+  }catch(e){console.warn('loadVoices',e);}
+}
+
+function updateVoiceUI(){
+  var key=voiceCycle[voiceCycleIdx]||'ryan';
+  var label=key.charAt(0).toUpperCase()+key.slice(1);
+  var el=document.getElementById('side-voice');if(el)el.textContent=label;
+}
+
+async function cycleVoice(){
+  if(!voiceCycle.length)return;
+  voiceCycleIdx=(voiceCycleIdx+1)%voiceCycle.length;
+  var next=voiceCycle[voiceCycleIdx];
+  updateVoiceUI();
+  try{
+    await fetch('/api/voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:next})});
+    addLog('Voice \u2192 '+next,'system');
+  }catch(e){console.warn('cycleVoice',e);}
+}
+
+async function loadMoods(){
+  try{
+    var r=await fetch('/api/info');var info=await r.json();
+    moodCycle=(info.moods||[]).map(function(m){return m.name;});
+    moodCycleIdx=Math.max(0,moodCycle.indexOf(info.mood||'thinking'));
+    updateMoodUI();
+    var sideBlock=document.querySelector('#side-mood');
+    if(sideBlock&&!sideBlock.dataset.wired){
+      sideBlock.dataset.wired='1';sideBlock.style.cursor='pointer';
+      sideBlock.addEventListener('click',cycleMood);
+    }
+  }catch(e){console.warn('loadMoods',e);}
+}
+
+function updateMoodUI(){
+  var el=document.getElementById('side-mood');if(el)el.textContent=moodCycle[moodCycleIdx]||'thinking';
+}
+
+async function cycleMood(){
+  if(!moodCycle.length)return;
+  moodCycleIdx=(moodCycleIdx+1)%moodCycle.length;
+  var next=moodCycle[moodCycleIdx];
+  updateMoodUI();
+  try{
+    await fetch('/api/mood',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:next})});
+    addLog('Mood \u2192 '+next,'system');
+  }catch(e){console.warn('cycleMood',e);}
+}
+
+async function updateStats(){
+  try{
+    var r=await fetch('/api/stats');var s=await r.json();
+    setText('st-cpu',s.cpu>=0?s.cpu+'%':'--');
+    setText('st-ram',s.ram>=0?s.ram+'%':'--');
+    setText('st-bat',s.battery>=0?s.battery+'%':'--');
+    setText('st-net',s.net>=0?s.net+'MB':'--');
+  }catch(e){
+    setText('st-cpu','--');setText('st-ram','--');
+    setText('st-bat','--');setText('st-net','--');
+  }
+}
+
+function startStatsLoop(){updateStats();setInterval(updateStats,3000);}
+
+function startUptime(){
+  setInterval(function(){
+    uptimeSec++;
+    var h=String(Math.floor(uptimeSec/3600)).padStart(2,'0');
+    var m=String(Math.floor((uptimeSec%3600)/60)).padStart(2,'0');
+    var s=String(uptimeSec%60).padStart(2,'0');
+    setText('side-uptime',h+':'+m+':'+s);
+  },1000);
+}
+
+function startClock(){
+  var tick=function(){
+    var n=new Date();
+    var p=function(v){return String(v).padStart(2,'0');};
+    setText('clock',p(n.getHours())+':'+p(n.getMinutes())+':'+p(n.getSeconds()));
+  };tick();setInterval(tick,1000);
+}
+
+function initWaveform(){
+  try{
+    var wf=$('waveform');if(!wf)return;wf.innerHTML='';
+    for(var i=0;i<28;i++){
+      var bar=document.createElement('div');bar.className='bar';
+      bar.style.height=(8+Math.random()*12)+'px';wf.appendChild(bar);
+    }
+    setInterval(function(){
+      var bars=wf.children;
+      for(var i=0;i<bars.length;i++){bars[i].style.height=(6+Math.random()*28)+'px';}
+    },120);
+  }catch(e){}
+}
+
+async function startRecording(){
+  try{
+    var stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    mediaRecorder=new MediaRecorder(stream,{mimeType:'audio/webm;codecs=opus'});
+    audioChunks=[];
+    mediaRecorder.ondataavailable=function(e){if(e.data.size>0)audioChunks.push(e.data);};
+    mediaRecorder.onstop=async function(){
+      stream.getTracks().forEach(function(t){t.stop();});
+      if(!audioChunks.length)return;
+      var blob=new Blob(audioChunks,{type:'audio/webm'});
+      var fd=new FormData();fd.append('audio',blob,'recording.webm');
+      try{
+        addLog('Transcribing...','system');
+        var r=await fetch('/api/transcribe',{method:'POST',body:fd});
+        var d=await r.json();
+        if(d.text&&d.text.trim()){addLog(d.text,'user');sendCommand(d.text);}
+        else{addLog('No speech detected.','warn');}
+      }catch(err){addLog('Transcribe error: '+err.message,'error');}
+    };
+    mediaRecorder.start();micActive=true;
+    addCls('btn-mic','recording');setText('btn-mic','\u25CF RECORDING');
+    setState(STATE.LISTENING);addLog('Mic recording...','system');
+  }catch(err){addLog('Mic error: '+err.message,'error');}
+}
+
+function stopRecording(){
+  if(mediaRecorder&&mediaRecorder.state!=='inactive'){try{mediaRecorder.stop();}catch(e){}}
+  micActive=false;rmCls('btn-mic','recording');setText('btn-mic','\u25C9 MIC');
+  setState(STATE.IDLE);setText('tagline','SYSTEM ONLINE');
+}
+
+function speakText(text){
+  if(muted||!text)return;
+  try{
+    window.speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance(text);u.rate=1.0;
+    u.onend=function(){setState(STATE.IDLE);setText('tagline','SYSTEM ONLINE');};
+    u.onerror=function(){setState(STATE.IDLE);setText('tagline','SYSTEM ONLINE');};
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+function toggleMute(){
+  muted=!muted;
+  if(muted){
+    rmCls('btn-voice','active');setText('btn-voice','\u25CB VOICE');
+    try{window.speechSynthesis.cancel();}catch(e){}
+    addLog('Voice muted.','system');
+  }else{
+    addCls('btn-voice','active');setText('btn-voice','\u25C9 VOICE');
+    addLog('Voice unmuted.','system');
+  }
+}
+
+function stopSpeak(){
+  try{window.speechSynthesis.cancel();}catch(e){}
+  fetch('/api/stop-speak',{method:'POST'}).catch(function(){});
+  setState(STATE.IDLE);setText('tagline','SYSTEM ONLINE');
+}
+
+var thinkingBuffer='';
+function resetThinking(){
+  thinkingBuffer='';setHTML('think-body','<div class="think-empty">Thinking...</div>');
+  addCls('thinkpanel','active');
+}
+function appendThinking(delta){
+  try{
+    var body=$('think-body');if(!body||!delta)return;
+    thinkingBuffer+=delta;
+    var empty=body.querySelector('.think-empty');if(empty)empty.remove();
+    var span=document.createElement('span');span.className='think-chunk';
+    span.textContent=delta;body.appendChild(span);body.scrollTop=body.scrollHeight;
+  }catch(e){}
+}
+function finishThinking(){
+  rmCls('thinkpanel','active');
+  if(!thinkingBuffer){setHTML('think-body','<div class="think-empty">Idle. Speak or type to see the reasoning stream.</div>');}
+}
+
+var SLASH_CMDS=[
+  {cmd:'/clear',desc:'Clear the log'},{cmd:'/voice',desc:'Toggle voice output'},
+  {cmd:'/mood',desc:'Set current mood'},{cmd:'/personality',desc:'Set personality preset'},
+  {cmd:'/search',desc:'Deep web search'},{cmd:'/browse',desc:'Browse a URL'},
+  {cmd:'/skills',desc:'List loaded skills'},{cmd:'/tools',desc:'List available tools'},
+  {cmd:'/context',desc:'Show session context'},{cmd:'/model',desc:'Switch AI model'},
+  {cmd:'/voice-list',desc:'List available voices'},{cmd:'/settings',desc:'Open settings panel'},
+  {cmd:'/help',desc:'Show available commands'}
+];
+var slashIdx=-1;
+
+function openSlash(filter){
+  var el=$('slash-menu');if(!el)return;
+  var items=SLASH_CMDS.filter(function(c){return !filter||c.cmd.indexOf(filter)>=0;});
+  if(!items.length){closeSlash();return;}
+  slashIdx=0;
+  el.innerHTML=items.map(function(c,i){
+    return '<div class="slash-item'+(i===0?' selected':'')+'" data-cmd="'+esc(c.cmd)+'">'+
+    '<span class="cmd">'+esc(c.cmd)+'</span><span class="desc">'+esc(c.desc)+'</span></div>';
+  }).join('');el.classList.add('open');
+}
+function closeSlash(){var el=$('slash-menu');if(el)el.classList.remove('open');slashIdx=-1;}
+function navSlash(dir){
+  var el=$('slash-menu');if(!el||!el.classList.contains('open'))return;
+  var items=el.querySelectorAll('.slash-item');if(!items.length)return;
+  items[slashIdx]&&items[slashIdx].classList.remove('selected');
+  slashIdx=(slashIdx+dir+items.length)%items.length;
+  items[slashIdx]&&items[slashIdx].classList.add('selected');
+  items[slashIdx]&&items[slashIdx].scrollIntoView({block:'nearest'});
+}
+function pickSlash(){
+  var el=$('slash-menu');if(!el||!el.classList.contains('open'))return;
+  var items=el.querySelectorAll('.slash-item');
+  var item=items[slashIdx];
+  if(item){
+    var cmd=item.getAttribute('data-cmd');closeSlash();
+    var cmdEl=$('cmd');if(cmdEl)cmdEl.value='';handleSlash(cmd);
+  }
+}
+function handleSlash(cmd){
+  if(cmd==='/clear'){var log=$('log');if(log)log.innerHTML='';addLog('Log cleared.','system');}
+  else if(cmd==='/voice')toggleMute();
+  else if(cmd==='/settings')openSettings();
+  else sendCommand(cmd);
+}
+
+async function sendCommand(text){
+  if(busy||!text||!text.trim())return;
+  busy=true;resetThinking();
+  var cmdEl=$('cmd');if(cmdEl)cmdEl.value='';
+  addLog(text,'user');setState(STATE.THINKING);
+  var streamEl=null;var full='';
+  try{
+    var res=await fetch('/api/command',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:text})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var reader=res.body.getReader();var dec=new TextDecoder();var buf='';
+    while(true){
+      var result=await reader.read();if(result.done)break;
+      buf+=dec.decode(result.value,{stream:true});
+      var parts=buf.split('\n\n');buf=parts.pop();
+      for(var i=0;i<parts.length;i++){
+        var part=parts[i];
+        if(part.indexOf('data: ')!==0)continue;
+        var payload=part.slice(6);if(payload==='[DONE]')continue;
+        try{
+          var obj=JSON.parse(payload);
+          if(obj.route)addLog('Route: '+obj.route,'system');
+          if(obj.reasoning)appendThinking(obj.reasoning);
+          if(obj.delta){
+            if(!streamEl)streamEl=addStreamingLog(obj.source==='skill'?'skill':'bot');
+            full+=obj.delta;if(streamEl)streamEl.textContent=full;
+            var logEl=$('log');if(logEl)logEl.scrollTop=logEl.scrollHeight;
+            if(state===STATE.THINKING)setState(STATE.SPEAKING);
+          }
+          if(obj.tool_call){
+            setState(STATE.TOOL);
+            addLog('\u2699 '+obj.tool_call.name+'('+JSON.stringify(obj.tool_call.args||{})+')','tool');
+            (function(){var s=state;setTimeout(function(){if(state===STATE.TOOL)setState(STATE.THINKING);},1200);})();
+          }
+          if(obj.tool_result){
+            addLog('\u2714 '+(obj.tool_result.summary||JSON.stringify(obj.tool_result).slice(0,120)),'tool');
+          }
+          if(obj.error)addLog('\u2718 '+obj.error,'error');
+          if(obj.speak){setState(STATE.SPEAKING);speakText(obj.speak);}
+        }catch(e){}
+      }
+    }
+  }catch(err){addLog('Error: '+err.message,'error');}
+  finally{
+    busy=false;
+    finishThinking();
+    // Only reset to IDLE if we're not currently speaking
+    if(state!==STATE.SPEAKING&&state!==STATE.IDLE){
+      setState(STATE.IDLE);setText('tagline','SYSTEM ONLINE');
+    }
+  }
+}
+
+function openSettings(){addCls('modal-settings','open');loadTab('model');}
+function closeSettings(){rmCls('modal-settings','open');}
+
+function loadTab(name){
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.classList.toggle('active',t.getAttribute('data-tab')===name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(function(p){
+    p.classList.toggle('active',p.getAttribute('data-panel')===name);
+  });
+  var inner=$('panel-'+name);if(!inner)return;
+  var endpoints={model:'/api/models',voice:'/api/voices',mood:'/api/info',
+    personality:'/api/personality',skills:'/api/skills',tools:'/api/tools',
+    mcp:'/api/mcp',appearance:'/api/prefs',audio:'/api/prefs',
+    general:'/api/prefs',about:'/api/info'};
+  fetch(endpoints[name]||'/api/info')
+    .then(function(r){return r.json();})
+    .then(function(data){inner.innerHTML=renderTab(name,data);})
+    .catch(function(){inner.innerHTML='<div style="color:var(--red)">Failed to load</div>';});
+}
+
+function renderTab(name,data){
+  if(name==='model'){
+    var models=data.models||[];
+    if(!models.length)return '<div style="color:var(--dim)">No models</div>';
+    return '<div class="set-list">'+models.map(function(m){
+      return '<div class="set-row"><div class="label">'+esc(m.id)+
+        '<small>'+(m.free?'Free':'Paid')+(m.rank?' Rank:'+m.rank:'')+'</small></div>'+
+        '<div class="actions"><button class="dbtn'+(m.id===data.active?' active':'')+
+        '" data-action="select-model" data-model="'+esc(m.id)+'">SELECT</button></div></div>';
+    }).join('')+'</div>';
+  }
+  if(name==='voice'){
+    var voices=data.voices||[];
+    return '<div class="set-list">'+voices.map(function(v){
+      return '<div class="set-row"><div class="label">'+esc(v.label)+
+        '<small>'+esc(v.desc||'')+' | '+esc(v.id)+'</small></div>'+
+        '<div class="actions"><button class="dbtn'+(v.key===data.active?' active':'')+
+        '" data-action="select-voice" data-key="'+esc(v.key)+'">SELECT</button></div></div>';
+    }).join('')+'</div>';
+  }
+  if(name==='skills'){
+    var skills=data.skills||[];
+    return '<div class="set-list">'+skills.map(function(s){
+      return '<div class="set-row"><div class="label">'+esc(s.name)+
+        '<small>'+esc(s.description||'')+'</small></div>'+
+        '<div class="actions"><button class="dbtn'+(s.enabled?' on':'')+
+        '" data-action="toggle-skill" data-name="'+esc(s.name)+
+        '" data-enabled="'+(!s.enabled)+'">'+(s.enabled?'ON':'OFF')+'</button></div></div>';
+    }).join('')+'</div>';
+  }
+  if(name==='tools'){
+    var tools=data.tools||[];
+    return '<div class="set-list">'+tools.map(function(t){
+      return '<div class="set-row"><div class="label">'+esc(t.name||t)+
+        '<small>'+esc(t.description||'')+'</small></div></div>';
+    }).join('')+'</div>';
+  }
+  if(name==='mcp'){
+    var servers=data.servers||[];
+    if(!servers.length)return '<div style="color:var(--dim)">No MCP servers</div>';
+    return '<div class="set-list">'+servers.map(function(s){
+      return '<div class="set-row"><div class="label">'+esc(s.name||s)+
+        '<small>'+esc(s.status||s.command||'')+'</small></div></div>';
+    }).join('')+'</div>';
+  }
+  if(name==='personality'){
+    var cur=data.current||{};var presets=data.presets||[];
+    var html='<div class="set-list">';
+    html+='<div class="set-row"><div class="label">Preset<small>'+esc(cur.preset||'default')+'</small></div></div>';
+    html+='<div class="set-row"><div class="label">Formality<small>'+esc(String(cur.formality!=null?cur.formality:50))+'%</small></div></div>';
+    html+='<div class="set-row"><div class="label">Humor<small>'+esc(String(cur.humor!=null?cur.humor:50))+'%</small></div></div>';
+    html+='<div class="set-row"><div class="label">Verbosity<small>'+esc(String(cur.verbosity!=null?cur.verbosity:50))+'%</small></div></div>';
+    html+='</div>';
+    if(presets.length){html+='<div style="margin-top:12px;color:var(--dim);font-size:9px;letter-spacing:2px">PRESETS</div><div class="set-list" style="margin-top:8px">';
+      presets.forEach(function(p){
+        html+='<div class="set-row"><div class="label">'+esc(p.name||p)+'</div>'+
+          '<div class="actions"><button class="dbtn" data-action="select-personality" data-name="'+esc(p.name||p)+'">SELECT</button></div></div>';
+      });html+='</div>';}
+    return html;
+  }
+  if(name==='appearance'){
+    var prefs=data.prefs||{};
+    return '<div class="set-list">'+
+      '<div class="set-row"><div class="label">Theme hue<small>'+esc(String(prefs.hue||290))+'</small></div></div>'+
+      '<div class="set-row"><div class="label">Compact mode<small>'+(prefs.compact_mode?'On':'Off')+'</small></div></div>'+
+      '<div class="set-row"><div class="label">Animation intensity<small>'+esc(prefs.anim_intensity||'vivid')+'</small></div></div>'+
+      '<div class="set-row"><div class="label">Font scale<small>'+esc(String(prefs.font_scale||1))+'</small></div></div>'+
+      '</div>';
+  }
+function prefToggle(key,on,label,sub){
+  return '<div class="set-row"><div class="label">'+esc(label)+
+    '<small>'+esc(sub||(on?'On':'Off'))+'</small></div>'+
+    '<div class="actions"><button class="dbtn'+(on?' on':'')+
+    '" data-action="set-pref" data-key="'+esc(key)+
+    '" data-value="'+(!on)+'">'+(on?'ON':'OFF')+'</button></div></div>';
+}
+  if(name==='audio'){
+    var p2=data.prefs||{};
+    var dl=p2.duck_level!=null?p2.duck_level:0.25;
+    return '<div class="set-list">'+
+      '<div class="set-row"><div class="label">Sound effects<small>'+(p2.sound_effects?'On':'Off')+'</small></div></div>'+
+      '<div class="set-row"><div class="label">Wake chime<small>'+(p2.wake_chime?'On':'Off')+'</small></div></div>'+
+      '<div class="set-row"><div class="label">Voice rate offset<small>'+esc(String(p2.voice_rate_offset||0))+'</small></div></div>'+
+      prefToggle('ducking_enabled',!!p2.ducking_enabled,'Audio ducking','Lower other apps while JARVIS speaks')+
+      '<div class="set-row"><div class="label">Duck level<small>'+Math.round(dl*100)+'%</small></div>'+
+      '<div class="actions"><button class="dbtn" data-action="cycle-duck" data-level="'+dl+'">CYCLE</button></div></div>'+
+      '</div>';
+  }
+  if(name==='general'){
+    var p3=data.prefs||{};
+    return '<div class="set-list">'+
+      '<div class="set-row"><div class="label">Autostart<small>'+(p3.autostart_enabled?'On':'Off')+'</small></div></div>'+
+      '<div class="set-row"><div class="label">System tray<small>'+(p3.tray_enabled?'On':'Off')+'</small></div></div>'+
+      '<div class="set-row"><div class="label">Hotkey (Ctrl+Alt+J)<small>'+(p3.hotkey_enabled?'On':'Off')+'</small></div></div>'+
+      '<div class="set-row"><div class="label">Wake word<small>'+(p3.wake_word_enabled?'On':'Off')+'</small></div></div>'+
+      prefToggle('briefings_enabled',!!p3.briefings_enabled,'Morning briefing','Spoken daily briefing')+
+      '<div class="set-row"><div class="label">Briefing hour<small>'+esc(String(p3.briefing_hour!=null?p3.briefing_hour:8))+':00</small></div>'+
+      '<div class="actions"><input id="input-briefing-hour" type="number" min="0" max="23" value="'+esc(String(p3.briefing_hour!=null?p3.briefing_hour:8))+'" style="width:52px;background:#000;color:#fff;border:1px solid var(--border);border-radius:4px;padding:6px;">'+
+      '<button class="dbtn" data-action="set-hour">SET</button></div></div>'+
+      prefToggle('sentinel_enabled',!!p3.sentinel_enabled,'Folder sentinel','Master switch for watched folders')+
+      prefToggle('autonomy_enabled',!!p3.autonomy_enabled,'Autonomy','Background agent loop (supervised)')+
+      prefToggle('dnd',!!p3.dnd,'Do not disturb','Silence unprompted speech')+
+      prefToggle('desktop_control_enabled',!!p3.desktop_control_enabled,'Desktop control','Mouse/keyboard/window control')+
+      '<div class="set-row"><div class="label">Auto summarize<small>'+(p3.auto_summarize?'On':'Off')+'</small></div></div>'+
+      '<div class="set-row"><div class="label">Toasts<small>'+(p3.notify_toasts?'On':'Off')+'</small></div></div>'+
+      '</div>';
+  }
+  if(name==='about'){
+    return '<div class="set-list">'+
+      '<div class="set-row"><div class="label">Version<small>v7.0</small></div></div>'+
+      '<div class="set-row"><div class="label">Model<small>'+esc(data.model||'--')+'</small></div></div>'+
+      '<div class="set-row"><div class="label">Skills<small>'+esc(String((data.skills||[]).length))+'</small></div></div>'+
+      '<div class="set-row"><div class="label">Voice<small>'+esc(data.voice&&data.voice.label?data.voice.label:'--')+'</small></div></div>'+
+      '</div>';
+  }
+  return '<div style="color:var(--dim)">Panel: '+esc(name)+'</div>';
+}
+
+function openDrawer(){
+  addCls('drawer-history','open');
+  fetch('/api/history').then(function(r){return r.json();}).then(function(data){
+    var body=$('drawer-body');if(!body)return;
+    var sessions=data.sessions||data||[];
+    if(!sessions.length){body.innerHTML='<div style="color:var(--dim);padding:20px">No history yet.</div>';return;}
+    body.innerHTML=sessions.map(function(s){
+      return '<div class="set-row" style="cursor:pointer" data-sid="'+esc(s.id||s.sid||'')+'">'+
+        '<div class="label">'+esc(s.summary||s.id||'Session')+
+        '<small>'+esc(s.date||s.timestamp||'')+'</small></div></div>';
+    }).join('');
+  }).catch(function(){
+    var body=$('drawer-body');if(body)body.innerHTML='<div style="color:var(--red)">Failed to load</div>';
+  });
+}
+function closeDrawer(){rmCls('drawer-history','open');}
+
+function updateCodeToggle(enabled){
+  var btn=document.getElementById('code-toggle');
+  if(!btn)return;
+  btn.classList.toggle('on',!!enabled);
+  btn.title=enabled
+    ?'Code Mode is ON — full file + terminal control'
+    :'Code Mode is OFF — click to enable';
+}
+
+async function openOpenCodeTab(tab,url){
+  for(var i=0;i<60;i++){
+    await new Promise(function(res){setTimeout(res,1000);});
+    try{
+      var resp=await fetch('/api/opencode/ready');
+      if(resp.status===404)return 'stale';
+      var st=await resp.json();
+      if(st&&st.ready){
+        if(tab&&!tab.closed){tab.location.href=url;}
+        else{window.open(url,'_blank','noopener');}
+        addLog('OpenCode web opened in new tab.','system');
+        return true;
+      }
+    }catch(e){}
+  }
+  return false;
+}
+
+async function toggleCodeMode(){
+  try{
+    var cur=await fetch('/api/prefs').then(function(r){return r.json();});
+    var was=!!cur.prefs?.code_mode_enabled;
+    var next=!was;
+    if(next){
+      var ok=confirm(
+        'Enable Code Mode?\n\n'+
+        '\u2022 Opens a terminal running `opencode web`\n'+
+        '\u2022 Opens the OpenCode web UI in a new tab\n'+
+        '\u2022 JARVIS gains coding + file + terminal access');
+      if(!ok)return;
+      var tab=null;
+      try{tab=window.open('about:blank','_blank');}catch(e){tab=null;}
+      await fetch('/api/prefs',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({key:'code_mode_enabled',value:next})
+      });
+      addLog('Opening OpenCode terminal\u2026','system');
+      var resp=await fetch('/api/opencode/web',{method:'POST'});
+      if(resp.status===404){
+        if(tab)tab.close();
+        addLog('JARVIS server is outdated \u2014 restart it (close the window, double-click start.bat), then press CODE again.','warn');
+        updateCodeToggle(next);
+        return;
+      }
+      var r={};try{r=await resp.json();}catch(e){}
+      if(!r.ok&&!r.url){
+        if(tab)tab.close();
+        addLog('OpenCode launch failed: '+(r.error||r.detail||'unknown'),
+               'warn');
+        updateCodeToggle(next);
+        return;
+      }
+      addLog('Waiting for OpenCode web\u2026','system');
+      var opened=await openOpenCodeTab(tab,r.url);
+      if(opened==='stale'){
+        if(tab)tab.close();
+        addLog('JARVIS server is outdated \u2014 restart it (close the window, double-click start.bat), then press CODE again.','warn');
+      }else if(!opened){
+        if(tab)tab.close();
+        addLog('Timed out waiting for '+r.url+' \u2014 open it manually.',
+               'warn');
+      }
+    }else{
+      await fetch('/api/prefs',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({key:'code_mode_enabled',value:next})
+      });
+      await fetch('/api/opencode/stop',{method:'POST'});
+      addLog('Code Mode off. (Terminal server left running \u2014 close its window to stop it.)','system');
+    }
+    updateCodeToggle(next);
+  }catch(e){console.warn('toggleCodeMode',e);}
+}
+
+async function loadCodeMode(){
+  try{
+    var r=await fetch('/api/prefs').then(function(r){return r.json();});
+    var enabled=!!r.prefs?.code_mode_enabled;
+    updateCodeToggle(enabled);
+    if(enabled){
+      fetch('/api/opencode/start',{method:'POST'}).catch(function(){});
+    }
+  }catch(e){}
+}
+
+async function boot(){
+  addLog('Initializing JARVIS kernel...','system');
+  initCanvas();
+  await loadPrefs();
+  await loadCodeMode();
+  await loadInfo();
+  await loadMemory();
+  await loadModels();
+  await loadVoices();
+  await loadMoods();
+  startStatsLoop();startUptime();startClock();initWaveform();
+  addLog('JARVIS online. Type / for commands.','system');
+  setTimeout(function(){setState(STATE.IDLE);},1200);
+  fetch('/api/greeting').then(function(r){return r.json();}).then(function(d){
+    if(d.greeting)addLog(d.greeting,'bot');
+  }).catch(function(){});
+}
+
+/* Event listeners */
+document.addEventListener('DOMContentLoaded',function(){
+  on('cmd','keydown',function(e){
+    if(e.key==='Enter'){
+      e.preventDefault();
+      var val=($('cmd')?$('cmd').value:'').trim();
+      if(!val)return;
+      var sm=$('slash-menu');
+      if(sm&&sm.classList.contains('open'))pickSlash();
+      else if(val.charAt(0)==='/')handleSlash(val);
+      else sendCommand(val);
+      return;
+    }
+    if(e.key==='ArrowDown'){e.preventDefault();navSlash(1);return;}
+    if(e.key==='ArrowUp'){e.preventDefault();navSlash(-1);return;}
+    if(e.key==='Escape'){closeSlash();}
+  });
+  on('cmd','input',function(){
+    var val=$('cmd')?$('cmd').value:'';
+    if(val.charAt(0)==='/')openSlash(val);else closeSlash();
+  });
+  on('btn-mic','click',function(){if(micActive)stopRecording();else startRecording();});
+  document.addEventListener('keydown',function(e){
+    if(e.ctrlKey&&e.key==='m'){e.preventDefault();if(!micActive)startRecording();}
+  });
+  document.addEventListener('keyup',function(e){
+    if(e.ctrlKey&&e.key==='m'){e.preventDefault();if(micActive)stopRecording();}
+  });
+  on('btn-voice','click',toggleMute);
+  on('btn-stop','click',stopSpeak);
+  on('btn-clear','click',function(){var l=$('log');if(l)l.innerHTML='';addLog('Log cleared.','system');});
+  on('btn-settings','click',openSettings);
+  on('btn-modal-close','click',closeSettings);
+  on('modal-settings','click',function(e){if(e.target&&e.target.id==='modal-settings')closeSettings();});
+  document.querySelectorAll('.tab').forEach(function(tab){
+    tab.addEventListener('click',function(){
+      var t=tab.getAttribute('data-tab');if(t)loadTab(t);
+    });
+  });
+  on('btn-history','click',openDrawer);
+  on('btn-drawer-close','click',closeDrawer);
+  on('drawer-history','click',function(e){if(e.target&&e.target.id==='drawer-history')closeDrawer();});
+  on('think-toggle','click',function(e){e.stopPropagation();if($('thinkpanel'))$('thinkpanel').classList.toggle('expanded');});
+  on('think-head','click',function(){$('thinkpanel')&&$('thinkpanel').classList.toggle('expanded');});
+
+  var codeBtn=document.getElementById('code-toggle');
+  if(codeBtn)codeBtn.addEventListener('click',toggleCodeMode);
+
+  document.querySelectorAll('.side-block').forEach(function(block){
+    block.addEventListener('mousemove',function(e){
+      var r=block.getBoundingClientRect();
+      block.style.setProperty('--mx',((e.clientX-r.left)/r.width*100)+'%');
+      block.style.setProperty('--my',((e.clientY-r.top)/r.height*100)+'%');
+    });
+  });
+
+  document.addEventListener('click',function(e){
+    var target=e.target;
+    if(target.getAttribute&&target.getAttribute('data-action')==='select-model'){
+      switchModel(target.getAttribute('data-model'));
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='select-voice'){
+      var key=target.getAttribute('data-key');
+      fetch('/api/voice',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({key:key})}).then(function(r){return r.json();}).then(function(d){
+        if(d.ok&&d.voice){setText('side-voice',d.voice.label||key);addLog('Voice: '+key,'system');}
+      }).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='toggle-skill'){
+      var sname=target.getAttribute('data-name');
+      var senabled=target.getAttribute('data-enabled')==='true';
+      fetch('/api/skill',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:sname,enabled:senabled})}).then(function(){loadTab('skills');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='select-personality'){
+      var pname=target.getAttribute('data-name');
+      fetch('/api/personality/preset',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:pname})}).then(function(){loadTab('personality');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='set-pref'){
+      var pkey=target.getAttribute('data-key');
+      var pval=target.getAttribute('data-value');
+      var val=(pval==='true')?true:((pval==='false')?false:pval);
+      (function(){
+        var t=document.querySelector('.tab.active');
+        var tab=t?t.getAttribute('data-tab'):'general';
+        fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({key:pkey,value:val})}).then(function(){loadTab(tab);}).catch(function(){});
+      })();
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='cycle-duck'){
+      var cur=parseFloat(target.getAttribute('data-level'))||0.25;
+      var levels=[0.1,0.25,0.5];
+      var next=levels[0];
+      for(var i=0;i<levels.length;i++){if(levels[i]>cur+0.001){next=levels[i];break;}}
+      fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({key:'duck_level',value:next})}).then(function(){loadTab('audio');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='set-hour'){
+      var inp=document.getElementById('input-briefing-hour');
+      var h=inp?parseInt(inp.value,10):8;
+      if(isNaN(h))h=8;h=Math.max(0,Math.min(23,h));
+      fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({key:'briefing_hour',value:h})}).then(function(){
+          fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({key:'briefings_enabled',value:true})}).then(function(){loadTab('general');}).catch(function(){});
+        }).catch(function(){});
+    }
+  });
+
+  boot();
+});
+
+})();

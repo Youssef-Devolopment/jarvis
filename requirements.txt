@@ -1,0 +1,13 @@
+# JARVIS — install everything, or pick only the groups you need:
+#   pip install -r requirements-core.txt        (server + AI, always)
+#   pip install -r requirements-voice.txt       (mic + speech)
+#   pip install -r requirements-browser.txt     (headless Chromium)
+#   pip install -r requirements-vision.txt      (screen capture + OCR)
+#   pip install -r requirements-desktop.txt     (native control + toasts)
+#   pip install -r requirements-integrations.txt (Google, Todoist, agents)
+-r requirements-core.txt
+-r requirements-voice.txt
+-r requirements-browser.txt
+-r requirements-vision.txt
+-r requirements-desktop.txt
+-r requirements-integrations.txt

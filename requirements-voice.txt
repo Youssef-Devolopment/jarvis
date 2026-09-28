@@ -1,0 +1,8 @@
+# Voice in/out — mic, transcription, speech.
+faster-whisper>=1.0.3
+sounddevice>=0.4.6
+edge-tts>=6.1.10
+pygame>=2.5.0
+piper-tts>=1.2.0
+pycaw>=20240210
+comtypes>=1.4.4

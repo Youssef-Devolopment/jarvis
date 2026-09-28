@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body data-state="boot">
+
+<!-- Background layers -->
+<canvas id="orb"></canvas>
+<canvas id="particles"></canvas>
+<div class="vignette"></div>
+<div class="scanlines"></div>
+
+<!-- Top bar -->
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">&#9670;</span>
+    <span class="brand-name">JARVIS</span>
+    <span class="brand-ver" id="brand-ver">v7.0</span>
+    <button class="code-toggle" id="code-toggle" title="Code Mode (file + terminal control)">
+      <span class="code-toggle-dot"></span>
+      <span class="code-toggle-label">CODE</span>
+    </button>
+  </div>
+  <div class="topbar-center">
+    <span class="status-pill">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">BOOTING</span>
+    </span>
+  </div>
+  <div class="topbar-right">
+    <button class="top-icon" id="btn-history" title="Chat history">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/>
+      </svg>
+    </button>
+    <span class="code-badge off" id="code-badge">&#9889; CODE</span>
+    <span class="clock" id="clock">--:--:--</span>
+  </div>
+</header>
+
+<!-- Left sidebar -->
+<aside class="sidebar">
+  <div class="side-block">
+    <div class="side-label">MODEL</div>
+    <div class="side-value" id="side-model">&ndash;</div>
+    <div class="model-chips" id="model-chips"></div>
+  </div>
+  <div class="side-block">
+    <div class="side-label">VOICE</div>
+    <div class="side-value" id="side-voice">&ndash;</div>
+  </div>
+  <div class="side-block">
+    <div class="side-label">MOOD</div>
+    <div class="side-value" id="side-mood">&ndash;</div>
+  </div>
+  <div class="side-block">
+    <div class="side-label">MEMORY</div>
+    <div class="side-value" id="side-memory">&ndash;</div>
+  </div>
+  <div class="side-block">
+    <div class="side-label">SYSTEM</div>
+    <div class="stats-grid">
+      <div class="stat-row"><span>CPU</span><span id="st-cpu">&ndash;</span></div>
+      <div class="stat-row"><span>RAM</span><span id="st-ram">&ndash;</span></div>
+      <div class="stat-row"><span>BAT</span><span id="st-bat">&ndash;</span></div>
+      <div class="stat-row"><span>NET</span><span id="st-net">&ndash;</span></div>
+    </div>
+  </div>
+  <div class="side-block">
+    <div class="side-label">UPTIME</div>
+    <div class="side-value" id="side-uptime">00:00:00</div>
+  </div>
+</aside>
+
+<!-- Log panel (right) -->
+<aside class="logpanel">
+  <div class="log-head">
+    <span>SYSTEM LOG</span>
+    <button id="btn-clear">CLEAR</button>
+  </div>
+  <div class="log-body" id="log"></div>
+</aside>
+
+<!-- Thinking panel (left, below sidebar) -->
+<aside class="thinkpanel" id="thinkpanel">
+  <div class="think-head" id="think-head">
+    <div class="think-title">
+      <span class="think-dot"></span>
+      <span>THINKING</span>
+    </div>
+    <button class="think-toggle" id="think-toggle">&#10063;</button>
+  </div>
+  <div class="think-body" id="think-body">
+    <div class="think-empty">Idle. Speak or type &mdash; I'll show my actions here.</div>
+  </div>
+</aside>
+
+<!-- Center wordmark -->
+<div class="center">
+  <div class="wordmark">
+    <span>J</span><span>A</span><span>R</span><span>V</span><span>I</span><span>S</span>
+  </div>
+  <div class="tagline" id="tagline">SYSTEM ONLINE</div>
+</div>
+
+<!-- Bottom dock -->
+<footer class="dock">
+  <div class="waveform" id="waveform"></div>
+  <div class="input-container">
+    <div class="slash-menu" id="slash-menu"></div>
+    <div class="input-wrap">
+      <span class="arrow">&rsaquo;</span>
+      <input id="cmd" type="text" placeholder="TYPE / FOR COMMANDS..." autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+  <div class="dock-buttons">
+    <button class="dbtn" id="btn-mic">&#9673; MIC</button>
+    <button class="dbtn active" id="btn-voice">&#9673; VOICE</button>
+    <button class="dbtn" id="btn-stop">&#9632; STOP</button>
+    <button class="dbtn" id="btn-settings">&#9881; SETTINGS</button>
+  </div>
+</footer>
+
+<!-- Settings modal -->
+<div class="modal" id="modal-settings">
+  <div class="modal-inner modal-large">
+    <div class="modal-header">
+      <div class="modal-title">SETTINGS</div>
+      <button class="dbtn" id="btn-modal-close">&#10005; CLOSE</button>
+    </div>
+    <div class="modal-tabs" id="modal-tabs">
+      <button class="tab active" data-tab="model">MODEL</button>
+      <button class="tab" data-tab="voice">VOICE</button>
+      <button class="tab" data-tab="mood">MOOD</button>
+      <button class="tab" data-tab="personality">PERSONALITY</button>
+      <button class="tab" data-tab="skills">SKILLS</button>
+      <button class="tab" data-tab="tools">TOOLS</button>
+      <button class="tab" data-tab="mcp">MCP</button>
+      <button class="tab" data-tab="appearance">APPEARANCE</button>
+      <button class="tab" data-tab="audio">AUDIO</button>
+      <button class="tab" data-tab="general">GENERAL</button>
+      <button class="tab" data-tab="about">ABOUT</button>
+    </div>
+    <div class="modal-body" id="modal-body">
+      <div class="tab-panel active" data-panel="model"><div id="panel-model">Loading&hellip;</div></div>
+      <div class="tab-panel" data-panel="voice"><div id="panel-voice">Loading&hellip;</div></div>
+      <div class="tab-panel" data-panel="mood"><div id="panel-mood">Loading&hellip;</div></div>
+      <div class="tab-panel" data-panel="personality"><div id="panel-personality">Loading&hellip;</div></div>
+      <div class="tab-panel" data-panel="skills"><div id="panel-skills">Loading&hellip;</div></div>
+      <div class="tab-panel" data-panel="tools"><div id="panel-tools">Loading&hellip;</div></div>
+      <div class="tab-panel" data-panel="mcp"><div id="panel-mcp">Loading&hellip;</div></div>
+      <div class="tab-panel" data-panel="appearance"><div id="panel-appearance">Loading&hellip;</div></div>
+      <div class="tab-panel" data-panel="audio"><div id="panel-audio">Loading&hellip;</div></div>
+      <div class="tab-panel" data-panel="general"><div id="panel-general">Loading&hellip;</div></div>
+      <div class="tab-panel" data-panel="about"><div id="panel-about">Loading&hellip;</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- History drawer -->
+<div class="drawer" id="drawer-history">
+  <div class="drawer-header">
+    <div class="drawer-title">CHAT HISTORY</div>
+    <div class="drawer-actions">
+      <button class="drawer-btn" id="btn-new-chat">+ NEW</button>
+      <button class="drawer-btn" id="btn-drawer-close">&#10005;</button>
+    </div>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
