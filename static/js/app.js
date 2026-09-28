@@ -434,6 +434,8 @@ var SLASH_CMDS=[
   {cmd:'/skills',desc:'List loaded skills'},{cmd:'/tools',desc:'List available tools'},
   {cmd:'/context',desc:'Show session context'},{cmd:'/model',desc:'Switch AI model'},
   {cmd:'/voice-list',desc:'List available voices'},{cmd:'/settings',desc:'Open settings panel'},
+  {cmd:'/council',desc:'Run a council — /council <question>'},
+  {cmd:'/levels',desc:'Show council levels'},
   {cmd:'/help',desc:'Show available commands'}
 ];
 var slashIdx=-1;
@@ -470,7 +472,47 @@ function handleSlash(cmd){
   if(cmd==='/clear'){var log=$('log');if(log)log.innerHTML='';addLog('Log cleared.','system');}
   else if(cmd==='/voice')toggleMute();
   else if(cmd==='/settings')openSettings();
+  else if(cmd==='/levels'||cmd.indexOf('/levels ')===0){showLevels();}
+  else if(cmd==='/council'||cmd.indexOf('/council ')===0){runCouncil(cmd.slice(8).trim());}
   else sendCommand(cmd);
+}
+async function runCouncil(arg){
+  if(!arg){addLog('Usage: /council <question>','warn');return;}
+  addLog('Running council on: "'+arg+'"','system');
+  setState(STATE.THINKING);
+  try{
+    var body={question:arg,level:'council'};
+    var r=await fetch('/api/council/run',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)}).then(function(x){return x.json();});
+    if(r.needs_confirmation){
+      var msg='Council "'+r.level+'" costs ~$'+r.cost_estimate+' and takes ~'+r.timeout+'s. Run it?';
+      addLog(msg,'system');
+      setState(STATE.IDLE);
+      if(!confirm(msg))return;
+      setState(STATE.THINKING);
+      body.confirm=true;
+      r=await fetch('/api/council/run',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)}).then(function(x){return x.json();});
+    }
+    if(r.ok){
+      addLog('Council answer ('+r.confidence+'% conf, '+r.ok_count+'/'+r.total_count+' models, '+r.elapsed+'s):','system');
+      addLog(r.answer,'bot');
+      speakText(r.answer);
+    }else{
+      addLog('Council failed: '+(r.error||'unknown'),'warn');
+    }
+  }catch(e){addLog('Council error: '+e.message,'warn');}
+  setState(STATE.IDLE);
+}
+async function showLevels(){
+  try{
+    var r=await fetch('/api/council/levels').then(function(x){return x.json();});
+    addLog('Council levels:','system');
+    (r.levels||[]).forEach(function(l){
+      addLog('  L'+l.level+' '+l.name+': '+l.models+' models, ~'+l.timeout+'s, ~$'+l.cost_estimate,'system');});
+  }catch(e){}
 }
 
 async function sendCommand(text){

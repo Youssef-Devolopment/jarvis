@@ -1,6 +1,8 @@
 """Router — decides between JARVIS fast skills and OpenHands heavy tasks."""
 from __future__ import annotations
 import re
+from moods.levels import Level
+from moods.classifier import classify, needs_user_confirmation
 
 FAST_MODEL = "qwen3.8-flash:free"
 REASON_MODEL = "deepseek-v4.1-flash:free"
@@ -73,3 +75,12 @@ def pick_model(text, *, manual_override="", mood_reasoner=False,
     if mood_reasoner or needs_reasoning(text):
         return REASON_MODEL
     return FAST_MODEL
+
+
+def pick_level(text: str) -> Level:
+    """Return the escalation level for this query."""
+    return classify(text)
+
+
+def level_needs_confirmation(level: Level) -> bool:
+    return needs_user_confirmation(level)

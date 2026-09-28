@@ -1,7 +1,6 @@
 """Speech input — records locally, transcribes via Groq. Verbose logging."""
 from __future__ import annotations
 import queue
-import sys
 import tempfile
 import threading
 import time

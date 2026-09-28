@@ -35,8 +35,11 @@ from skills import code_mode       # noqa: F401
 from skills import opencode_bridge # noqa: F401
 from skills import interpreter_hand # noqa: F401
 from skills import web_open         # noqa: F401
+from skills import web_read        # noqa: F401
+from skills import web_screenshot  # noqa: F401
 from skills import folder_sentinel # noqa: F401
 from skills import screen_ocr      # noqa: F401
 from skills import win_target      # noqa: F401
+from skills import auto_generated  # noqa: F401
 
 __all__ = ["Skill", "all_skills", "dispatch", "get_skill", "toggle_skill"]

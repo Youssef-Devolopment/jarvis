@@ -1,7 +1,6 @@
 from __future__ import annotations
 import concurrent.futures, queue, threading, time
 from pathlib import Path
-from typing import Optional
 from urllib.parse import quote
 from config import get_settings
 from errors import BrowserError

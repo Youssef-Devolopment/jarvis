@@ -1,16 +1,11 @@
 """Dictionary via dictionaryapi.dev (Wiktionary fallback)."""
 from __future__ import annotations
-import json, re, urllib.parse, urllib.request
+import re, urllib.parse
 from skills.registry import register
+from skills.http_util import http_get
 from logger import get_logger
 
 log = get_logger(__name__)
-
-
-def _get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "JARVIS/1.0"})
-    with urllib.request.urlopen(req, timeout=15) as r:
-        return json.loads(r.read().decode("utf-8"))
 
 
 @register("dictionary", [
@@ -24,8 +19,8 @@ def s_dict(text, m):
     if not word:
         return None
     try:
-        data = _get("https://api.dictionaryapi.dev/api/v2/entries/en/"
-                    + urllib.parse.quote(word))
+        data = http_get("https://api.dictionaryapi.dev/api/v2/entries/en/"
+                    + urllib.parse.quote(word), as_json=True)
         if not isinstance(data, list) or not data:
             return f"No definition for '{word}'."
         meanings = data[0].get("meanings") or []
@@ -44,8 +39,8 @@ def s_dict(text, m):
         pass
     # Fallback: Wiktionary REST API (fast, same infra as Wikipedia)
     try:
-        data = _get("https://en.wiktionary.org/api/rest_v1/page/definition/"
-                    + urllib.parse.quote(word.lower()))
+        data = http_get("https://en.wiktionary.org/api/rest_v1/page/definition/"
+                    + urllib.parse.quote(word.lower()), as_json=True)
         entries = data.get("en") or []
         for entry in entries:
             part = entry.get("partOfSpeech", "")

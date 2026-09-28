@@ -48,6 +48,7 @@ _DEFAULTS = {
     "code_mode_allowed": [],
     "desktop_control_enabled": True,
     "opencode_model": "",
+    "auto_gen_enabled": True,
 }
 
 

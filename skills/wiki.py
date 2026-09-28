@@ -1,19 +1,12 @@
 """Wikipedia summaries via REST API (no key)."""
 from __future__ import annotations
-import json
 import re
 import urllib.parse
-import urllib.request
 from skills.registry import register
+from skills.http_util import http_get
 from logger import get_logger
 
 log = get_logger(__name__)
-
-
-def _get(url: str, timeout: float = 8.0):
-    req = urllib.request.Request(url, headers={"User-Agent": "JARVIS/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read().decode("utf-8"))
 
 
 @register("wiki", [
@@ -30,16 +23,16 @@ def skill_wiki(text, m):
     if re.fullmatch(r"[\d\s\+\-\*/\.]+", query):
         return None
     try:
-        search = _get("https://en.wikipedia.org/w/api.php?"
+        search = http_get("https://en.wikipedia.org/w/api.php?"
                       + urllib.parse.urlencode({
                           "action": "query", "list": "search",
-                          "srsearch": query, "srlimit": 1, "format": "json"}))
+                          "srsearch": query, "srlimit": 1, "format": "json"}), as_json=True)
         hits = (search.get("query") or {}).get("search") or []
         if not hits:
             return None
         title = hits[0]["title"]
-        summary = _get("https://en.wikipedia.org/api/rest_v1/page/summary/"
-                       + urllib.parse.quote(title.replace(" ", "_")))
+        summary = http_get("https://en.wikipedia.org/api/rest_v1/page/summary/"
+                       + urllib.parse.quote(title.replace(" ", "_")), as_json=True)
         extract = (summary.get("extract") or "").strip()
         if not extract:
             return None

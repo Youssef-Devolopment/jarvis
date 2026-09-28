@@ -3,7 +3,7 @@ from skills.registry import register
 
 
 @register("web_screenshot", [
-    r"^(?:please\s+)?(?:take\s+)?(?:a\s+)?(?:screenshot|capture|screen\s*shot)(?:\s+of\s+(?:this|the)\s+page)?[\?\.\!]?$",
+    r"^(?:please\s+)?(?:take\s+)?(?:a\s+)?(?:page|browser|tab)\s+screenshot[\?\.\!]?$",
 ], "Screenshot current page")
 def skill(text, match):
     try:

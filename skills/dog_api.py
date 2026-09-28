@@ -1,17 +1,10 @@
 """Dog APIs: random images, facts, breeds."""
 from __future__ import annotations
-import json
-import urllib.request
 from skills.registry import register
+from skills.http_util import http_get
 from logger import get_logger
 
 log = get_logger(__name__)
-
-
-def _get(url: str, timeout: float = 6.0):
-    req = urllib.request.Request(url, headers={"User-Agent": "JARVIS/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read().decode("utf-8"))
 
 
 @register("dog_image", [
@@ -20,7 +13,7 @@ def _get(url: str, timeout: float = 6.0):
 ], "Random dog image")
 def s_dog_image(text, m):
     try:
-        d = _get("https://dog.ceo/api/breeds/image/random")
+        d = http_get("https://dog.ceo/api/breeds/image/random", as_json=True)
         return f"Here is a random dog: {d.get('message', '')}"
     except Exception as exc:
         return f"Dog API failed: {str(exc)[:60]}"
@@ -32,7 +25,7 @@ def s_dog_image(text, m):
 ], "Random dog fact")
 def s_dog_fact(text, m):
     try:
-        d = _get("https://dogapi.dog/api/v2/facts")
+        d = http_get("https://dogapi.dog/api/v2/facts", as_json=True)
         data = d.get("data", [])
         if data:
             return data[0].get("attributes", {}).get("body", "")
@@ -51,7 +44,7 @@ def s_dog_breed(text, m):
     if not breed:
         return None
     try:
-        d = _get(f"https://api.thedogapi.com/v1/breeds/search?q={breed}")
+        d = http_get(f"https://api.thedogapi.com/v1/breeds/search?q={breed}", as_json=True)
         if d:
             info = d[0]
             name = info.get("name", breed)

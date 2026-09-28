@@ -1,9 +1,8 @@
 """Weather via Open-Meteo (free, no key required)."""
 from __future__ import annotations
-import json
 import urllib.parse
-import urllib.request
 from skills.registry import register
+from skills.http_util import http_get
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -21,17 +20,11 @@ WMO = {
 }
 
 
-def _get(url: str, timeout: float = 8.0):
-    req = urllib.request.Request(url, headers={"User-Agent": "JARVIS/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read().decode("utf-8"))
-
-
 def _geocode(city: str):
     url = ("https://geocoding-api.open-meteo.com/v1/search?"
            + urllib.parse.urlencode({
                "name": city, "count": 1, "language": "en", "format": "json"}))
-    data = _get(url)
+    data = http_get(url, as_json=True)
     results = data.get("results") or []
     return results[0] if results else None
 
@@ -79,7 +72,7 @@ def skill_weather(text, m):
                               "apparent_temperature,wind_speed_10m,"
                               "weather_code",
                    "timezone": "auto"}))
-        data = _get(url)
+        data = http_get(url, as_json=True)
         return _format_current(label, data)
     except Exception as exc:
         log.exception("Weather failed")

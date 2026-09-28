@@ -7,7 +7,7 @@ from ai.tools import TOOL_SCHEMAS
 from config import get_settings
 from errors import AIError, ValidationError
 from logger import get_logger
-from skills import dispatch as dispatch_skill, all_skills, get_skill, toggle_skill
+from skills import dispatch as dispatch_skill, all_skills, toggle_skill
 from tools import all_tools, toggle_tool, filtered_schemas
 from mcp import all_servers as mcp_list, add_server as mcp_add, \
                 remove_server as mcp_remove, toggle_server as mcp_toggle
@@ -16,6 +16,8 @@ from voice import (speak_async, listen_until_silence,
 from moods.models import (get_active, set_active, set_cache, get_cache,
                            theme_for, label_for, build_fallback_list)
 from moods.router import needs_reasoning
+from moods import classifier, council, moderator
+from moods.levels import Level, LEVEL_SPECS
 import moods, memory, harness
 
 log = get_logger(__name__)
@@ -86,7 +88,7 @@ def models_featured():
 
 @bp.post("/models/test")
 def models_test():
-    from moods.models import set_working, all_working
+    from moods.models import set_working
     import time
     d = request.get_json(silent=True) or {}
     ids = d.get("ids") or []
@@ -214,6 +216,118 @@ def skill_toggle():
     if not toggle_skill(name, enabled):
         raise ValidationError(f"Unknown skill: {name}")
     return jsonify({"ok": True, "name": name, "enabled": enabled})
+
+
+# ---------- AUTO SKILLS ----------
+@bp.get("/auto_skills/pending")
+def auto_skills_pending():
+    from skills import auto_generator as _ag
+    return jsonify({"pending": _ag.list_pending(),
+                    "enabled": _ag.auto_gen_enabled()})
+
+
+@bp.post("/auto_skills/approve")
+def auto_skills_approve():
+    from skills import auto_generator as _ag
+    d = request.get_json(silent=True) or {}
+    name = (d.get("name") or "").strip()
+    if not name:
+        raise ValidationError("Missing 'name'.")
+    r = _ag.approve_skill(name)
+    if not r.get("ok"):
+        raise ValidationError(r.get("error") or "Approve failed.")
+    return jsonify({"ok": True, "name": r["name"]})
+
+
+@bp.post("/auto_skills/reject")
+def auto_skills_reject():
+    from skills import auto_generator as _ag
+    d = request.get_json(silent=True) or {}
+    name = (d.get("name") or "").strip()
+    if not name:
+        raise ValidationError("Missing 'name'.")
+    r = _ag.reject_skill(name)
+    if not r.get("ok"):
+        raise ValidationError(r.get("error") or "Reject failed.")
+    return jsonify({"ok": True, "name": r["name"]})
+
+
+@bp.post("/auto_skills/enabled")
+def auto_skills_enabled():
+    from skills import auto_generator as _ag
+    d = request.get_json(silent=True) or {}
+    ok = _ag.set_auto_gen_enabled(bool(d.get("enabled", True)))
+    if not ok:
+        raise ValidationError("Could not save preference.")
+    return jsonify({"ok": True, "enabled": _ag.auto_gen_enabled()})
+
+
+# ---------- COUNCIL ----------
+@bp.post("/council/run")
+def council_run():
+    """Run a council at an explicit level."""
+    from moods.council import run_council
+    from moods.moderator import synthesize
+
+    d = request.get_json(silent=True) or {}
+    question = (d.get("question") or "").strip()
+    level_name = (d.get("level") or "council").strip().lower()
+
+    if not question:
+        raise ValidationError("Missing 'question'.")
+
+    # Map name → Level
+    level = None
+    for lv, spec in LEVEL_SPECS.items():
+        if spec.name == level_name:
+            level = lv
+            break
+    if level is None:
+        raise ValidationError(f"Unknown level: {level_name}")
+
+    # Confirmation gate for expensive levels (L7+).
+    if int(level) >= int(Level.COUNCIL_MAX) \
+            and not d.get("confirm", False):
+        spec = LEVEL_SPECS[level]
+        return jsonify({
+            "ok": False,
+            "needs_confirmation": True,
+            "level": spec.name,
+            "cost_estimate": spec.estimated_cost_usd,
+            "timeout": spec.timeout_sec,
+        })
+
+    result = run_council(question, level)
+    if not result.get("ok"):
+        return jsonify({"ok": False, "error": "no model succeeded",
+                        "results": result.get("results", [])})
+
+    final = synthesize(question, result)
+    return jsonify({
+        "ok": final.get("ok"),
+        "answer": final.get("answer"),
+        "confidence": final.get("confidence"),
+        "level": result.get("level"),
+        "elapsed": result.get("elapsed"),
+        "ok_count": result.get("ok_count"),
+        "total_count": result.get("total_count"),
+    })
+
+
+@bp.get("/council/levels")
+def council_levels():
+    return jsonify({
+        "levels": [
+            {
+                "name": spec.name,
+                "level": int(lv),
+                "models": len(spec.models),
+                "timeout": spec.timeout_sec,
+                "cost_estimate": spec.estimated_cost_usd,
+            }
+            for lv, spec in sorted(LEVEL_SPECS.items())
+        ]
+    })
 
 
 # ---------- TOOLS ----------
@@ -578,6 +692,45 @@ def command():
         return Response(s(), mimetype="text/event-stream", headers={
             "Cache-Control": "no-cache", "X-Accel-Buffering": "no",
             "Connection": "keep-alive"})
+
+    # Auto-generate hook: approve/reject commands first, then draft on miss.
+    if not is_conversational(text):
+        try:
+            from skills import auto_generator as _ag
+            _handled = _ag.handle_approval_text(text)
+            if _handled:
+                def _sa():
+                    yield f"data: {json.dumps({'delta': _handled, 'source': 'auto_skill'})}\n\n"
+                    yield "data: [DONE]\n\n"
+                try:
+                    store0 = get_store()
+                    store0.messages_for(sid, text)
+                    store0.record_reply(sid, _handled)
+                except Exception:
+                    pass
+                speak_async(_handled)
+                return Response(_sa(), mimetype="text/event-stream", headers={
+                    "Cache-Control": "no-cache", "X-Accel-Buffering": "no",
+                    "Connection": "keep-alive"})
+            _proposal = _ag.propose_if_enabled(text)
+        except Exception:
+            _proposal = None
+        if _proposal:
+            _prompt = _ag.approval_prompt(_proposal)
+            try:
+                store1 = get_store()
+                store1.messages_for(sid, text)
+                store1.record_reply(sid, _prompt)
+            except Exception:
+                pass
+            speak_async(_prompt)
+
+            def _sp():
+                yield f"data: {json.dumps({'delta': _prompt, 'source': 'auto_skill'})}\n\n"
+                yield "data: [DONE]\n\n"
+            return Response(_sp(), mimetype="text/event-stream", headers={
+                "Cache-Control": "no-cache", "X-Accel-Buffering": "no",
+                "Connection": "keep-alive"})
 
     route = "reasoning" if needs_reasoning(text) else "fast"
 

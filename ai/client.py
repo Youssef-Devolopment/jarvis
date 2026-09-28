@@ -3,14 +3,14 @@ import json
 import time
 from typing import Iterator
 from openai import OpenAI
-from ai.tools import TOOL_SCHEMAS, execute_tool
+from ai.tools import execute_tool
 from config import get_settings
 from errors import AIError
 from logger import get_logger
 from moods import current as current_mood
 from moods.models import (get_active, set_active, theme_for, label_for,
                            build_fallback_list, is_free, speed_rank, sort_models)
-from moods.router import pick_model, FAST_MODEL, REASON_MODEL
+from moods.router import pick_model
 
 log = get_logger(__name__)
 
@@ -83,7 +83,6 @@ class AIClient:
         from memory import context as ctx_tracker
         from moods import current as current_mood
         from moods import personality
-        from ai.self_awareness import is_conversational
         mood = current_mood()
         pers = personality.current()
         parts = [BASE_PROMPT, mood.system_suffix, pers.system_suffix()]

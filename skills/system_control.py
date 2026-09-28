@@ -133,3 +133,39 @@ def s_lock(text, m): return _lock()
     r"^capture\s+(?:the\s+)?screen[\?\.\!]?$",
 ], "Take screenshot")
 def s_screenshot(text, m): return _screenshot()
+
+
+@register("volume_set", [
+    r"\b(?:set\s+)?volume\s+(?:to\s+)?(?P<level>\d{1,3})\b",
+], "Set volume to a specific level (0-100)")
+def s_volume_set(text, m):
+    level = max(0, min(100, int(m.group("level"))))
+    # pyautogui approach — press up/down until level reached is
+    # unreliable, so use pycaw if available else nudge
+    try:
+        from ctypes import cast, POINTER
+        from comtypes import CLSCTX_ALL
+        from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+        devices = AudioUtilities.GetSpeakers()
+        interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+        vol = cast(interface, POINTER(IAudioEndpointVolume))
+        vol.SetMasterVolumeLevelScalar(level / 100.0, None)
+        return f"Volume set to {level}%."
+    except Exception:
+        return f"Cannot set exact volume. Try 'volume up' or 'volume down'."
+
+
+@register("brightness_set", [
+    r"\b(?:set\s+)?brightness\s+(?:to\s+)?(?P<level>\d{1,3})\b",
+], "Set brightness to a specific level (0-100)")
+def s_brightness_set(text, m):
+    level = max(0, min(100, int(m.group("level"))))
+    try:
+        import subprocess
+        ps = ('powershell -NoProfile -Command "'
+              f'(Get-WmiObject -Namespace root/WMI '
+              f'-Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,{level})"')
+        subprocess.run(ps, capture_output=True, timeout=5)
+        return f"Brightness set to {level}%."
+    except Exception as exc:
+        return f"Brightness set failed: {str(exc)[:60]}"

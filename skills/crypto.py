@@ -1,9 +1,8 @@
 """Crypto prices via CoinGecko (free, no key)."""
 from __future__ import annotations
-import json
 import urllib.parse
-import urllib.request
 from skills.registry import register
+from skills.http_util import http_get
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -27,21 +26,15 @@ COINS = {
 }
 
 
-def _get(url: str, timeout: float = 8.0):
-    req = urllib.request.Request(url, headers={"User-Agent": "JARVIS/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read().decode("utf-8"))
-
-
 def _price(symbol: str) -> str:
     cid = COINS.get(symbol.lower())
     if not cid:
         return None
     try:
-        data = _get("https://api.coingecko.com/api/v3/simple/price?"
+        data = http_get("https://api.coingecko.com/api/v3/simple/price?"
                     + urllib.parse.urlencode({
                         "ids": cid, "vs_currencies": "usd",
-                        "include_24hr_change": "true"}))
+                        "include_24hr_change": "true"}), as_json=True)
         info = data.get(cid, {})
         price = info.get("usd")
         change = info.get("usd_24h_change", 0)

@@ -1,7 +1,8 @@
 """Exchange rates via open.er-api.com."""
 from __future__ import annotations
-import json, urllib.parse, urllib.request
+import urllib.parse
 from skills.registry import register
+from skills.http_util import http_get
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -14,12 +15,6 @@ CURRENCIES = {
     "inr":"INR","rupee":"INR","rupees":"INR","cad":"CAD","aud":"AUD",
     "chf":"CHF","try":"TRY","lira":"TRY",
 }
-
-
-def _get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "JARVIS/1.0"})
-    with urllib.request.urlopen(req, timeout=6) as r:
-        return json.loads(r.read().decode("utf-8"))
 
 
 @register("fx", [
@@ -38,8 +33,8 @@ def s_fx(text, m):
         dst = CURRENCIES.get(m.group("dst").lower())
         if not src or not dst:
             return None
-        d = _get("https://open.er-api.com/v6/latest/"
-                 + urllib.parse.quote(src))
+        d = http_get("https://open.er-api.com/v6/latest/"
+                 + urllib.parse.quote(src), as_json=True)
         rate = (d.get("rates") or {}).get(dst)
         if rate is None:
             return None
