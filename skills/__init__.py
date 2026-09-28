@@ -38,7 +38,6 @@ from skills import web_open         # noqa: F401
 from skills import web_read        # noqa: F401
 from skills import web_screenshot  # noqa: F401
 from skills import folder_sentinel # noqa: F401
-from skills import screen_ocr      # noqa: F401
 from skills import win_target      # noqa: F401
 from skills import bridge_skill    # noqa: F401
 from skills import quick_capture_skill     # noqa: F401

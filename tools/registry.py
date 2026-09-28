@@ -7,7 +7,8 @@ _lock = Lock()
 _disabled = set()
 
 _ALL = ["web_search", "open_url", "read_current_page",
-        "remember_fact", "switch_mood", "read_own_code"]
+        "remember_fact", "switch_mood", "read_own_code",
+        "outcome_stats", "reality_check_tool", "bridge_transfer"]
 
 
 def all_tools():

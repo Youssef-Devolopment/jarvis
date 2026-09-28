@@ -50,11 +50,11 @@ def detect_intent(text):
     if not t: return {"intent": "unknown"}
     low = t.lower()
 
-    m = re.search(r"(?:save|add)\s+(?:contact\s+)?(?:for\s+)?([A-Z][a-zA-Z\u0600-\u06FF]{1,30})"
-                  r"(?:\s+(?:phone|number|رقم)\s*:?\s*(\+?\d[\d\s\-]{6,15}))?", t)
+    m = re.search(r"(?:save|add)\s+(?:contact\s+)?(?:for\s+)?([A-Z][A-Za-z0-9\u0600-\u06FF]{1,30})"
+                  r"(?:\s+(?:phone|number|رقم)\s*:?\s*(\+?\d[\d\s\-.()]{5,18}))?", t)
     if m and "contact" in low:
         return {"intent": "contact", "name": m.group(1), "phone": (m.group(2) or "").strip()}
-    m = re.search(r"(?:احفظ|سجّل)\s+رقم\s+([^\s:]+)\s+(\+?\d[\d\s\-]{6,15})", t)
+    m = re.search(r"(?:احفظ|سجّل)\s+رقم\s+([^\s:]+)\s+(\+?\d[\d\s\-.()]{5,18})", t)
     if m:
         return {"intent": "contact", "name": m.group(1).strip(), "phone": m.group(2).strip()}
 
