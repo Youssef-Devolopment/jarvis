@@ -166,4 +166,29 @@ TOOL_SCHEMAS = [
         "parameters": {"type": "object",
                        "properties": {"url": {"type": "string"}},
                        "required": ["url"]}}},
+    {"type": "function", "function": {
+        "name": "outcome_stats",
+        "description": "Show how many JARVIS answers the user accepted or rejected.",
+        "parameters": {"type": "object", "properties": {}}}},
+    {"type": "function", "function": {
+        "name": "reality_check_tool",
+        "description": "Cross-verify an answer against a second source.",
+        "parameters": {"type": "object",
+                       "properties": {"question": {"type": "string"},
+                                      "answer": {"type": "string"}},
+                       "required": ["question", "answer"]}}},
+    {"type": "function", "function": {
+        "name": "bridge_transfer",
+        "description": (
+            "Transfer content between running applications via clipboard. "
+            "Use for requests like 'copy the code from VS Code to Discord' "
+            "or 'send the link from Chrome to Notion'."
+        ),
+        "parameters": {"type": "object",
+                       "properties": {
+                           "source": {"type": "string"},
+                           "target": {"type": "string"},
+                           "action": {"type": "string",
+                                      "enum": ["copy", "link"]}},
+                       "required": ["source", "target"]}}},
 ]

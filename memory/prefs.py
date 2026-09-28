@@ -49,6 +49,13 @@ _DEFAULTS = {
     "desktop_control_enabled": True,
     "opencode_model": "",
     "auto_gen_enabled": True,
+    "dream_enabled": False,
+    "dream_start_hour": 3,
+    "dream_end_hour": 5,
+    "dream_organize_desktop": True,
+    "dream_organize_downloads": True,
+    "dream_backup_memory": True,
+    "dream_summarize_day": True,
 }
 
 

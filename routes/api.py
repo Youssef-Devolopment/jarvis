@@ -18,6 +18,13 @@ from moods.models import (get_active, set_active, set_cache, get_cache,
 from moods.router import needs_reasoning
 from moods import classifier, council, moderator
 from moods.levels import Level, LEVEL_SPECS
+from memory import outcomes
+from ai import reality_check
+from ai import agents
+from ai import dream_mode
+from ai import (clipboard_watcher, quick_capture, screen_text,
+                focus_lock, snippets, window_layouts, url_cleaner,
+                auto_format, time_tracker)
 import moods, memory, harness
 
 log = get_logger(__name__)
@@ -328,6 +335,217 @@ def council_levels():
             for lv, spec in sorted(LEVEL_SPECS.items())
         ]
     })
+
+
+# ---------- OUTCOMES + REALITY CHECK ----------
+@bp.get("/outcomes/stats")
+def outcomes_stats():
+    return jsonify(outcomes.stats())
+
+
+@bp.get("/outcomes/rejected")
+def outcomes_rejected():
+    return jsonify({"rejected": outcomes.recent_rejected(limit=20)})
+
+
+@bp.post("/reality-check")
+def reality_check_endpoint():
+    """Manually verify an answer."""
+    d = request.get_json(silent=True) or {}
+    question = (d.get("question") or "").strip()
+    answer = (d.get("answer") or "").strip()
+    if not (question and answer):
+        raise ValidationError("Missing 'question' or 'answer'.")
+    result = reality_check.verify(question, answer)
+    return jsonify(result)
+
+
+# ---------- AGENTS ----------
+@bp.post("/agents/run")
+def agents_run():
+    """Run an autonomous multi-agent session."""
+    d = request.get_json(silent=True) or {}
+    question = (d.get("question") or "").strip()
+    if not question:
+        raise ValidationError("Missing 'question'.")
+
+    result = agents.run(question)
+    return jsonify({
+        "ok": result.get("ok"),
+        "mode": result.get("mode"),
+        "answer": result.get("answer"),
+        "tasks": result.get("tasks"),
+        "ok_tasks": result.get("ok_tasks"),
+        "elapsed": result.get("elapsed"),
+        "sub_results": [
+            {"task": r.get("task"), "ok": r.get("ok"),
+             "elapsed": r.get("elapsed")}
+            for r in (result.get("sub_results") or [])
+        ],
+    })
+
+
+# ---------- DREAM MODE ----------
+@bp.post("/dream/run")
+def dream_run():
+    """Trigger Dream Mode manually (or dry-run)."""
+    d = request.get_json(silent=True) or {}
+    dry_run = bool(d.get("dry_run", False))
+    result = dream_mode.run_dream(dry_run=dry_run)
+    return jsonify(result)
+
+
+@bp.get("/dream/last")
+def dream_last():
+    return jsonify(dream_mode.get_last_report())
+
+
+@bp.get("/dream/status")
+def dream_status():
+    from memory import get_pref
+    return jsonify({
+        "enabled": bool(get_pref("dream_enabled", False)),
+        "start_hour": int(get_pref("dream_start_hour", 3)),
+        "end_hour": int(get_pref("dream_end_hour", 5)),
+    })
+
+
+# ---------- QUICK CAPTURE / CLIPBOARD / DESK ----------
+@bp.get("/clipboard/recent")
+def clip_recent():
+    return jsonify({"items": clipboard_watcher.recent(limit=15)})
+
+
+@bp.get("/clipboard/suggestions")
+def clip_sugg():
+    consume = request.args.get("consume", "0") == "1"
+    return jsonify({"suggestions": clipboard_watcher.pending_suggestions(consume)})
+
+
+@bp.post("/capture")
+def capture_ep():
+    d = request.get_json(silent=True) or {}
+    text = (d.get("text") or "").strip()
+    if not text: raise ValidationError("Missing 'text'.")
+    return jsonify(quick_capture.execute(text))
+
+
+@bp.post("/ocr/screen")
+def ocr_ep():
+    text = screen_text.extract_text()
+    return jsonify({"ok": not text.startswith("[error]"), "text": text})
+
+
+@bp.get("/contacts")
+def contacts_ep():
+    from memory import list_contacts
+    return jsonify({"contacts": list_contacts(limit=100)})
+
+
+@bp.post("/contacts")
+def contacts_save_ep():
+    from memory import save_contact
+    d = request.get_json(silent=True) or {}
+    name = (d.get("name") or "").strip()
+    if not name: raise ValidationError("Missing 'name'.")
+    cid = save_contact(name, phone=(d.get("phone") or "").strip(),
+                       email=(d.get("email") or "").strip())
+    return jsonify({"ok": bool(cid), "id": cid})
+
+
+@bp.get("/reminders")
+def reminders_ep():
+    from memory import list_reminders
+    return jsonify({"reminders": list_reminders(only_pending=True)})
+
+
+@bp.post("/focus/start")
+def focus_start_ep():
+    d = request.get_json(silent=True) or {}
+    mins = int(d.get("minutes", 60))
+    ok = focus_lock.start(mins)
+    return jsonify({"ok": ok, "minutes": mins})
+
+
+@bp.post("/focus/stop")
+def focus_stop_ep():
+    focus_lock.stop()
+    return jsonify({"ok": True})
+
+
+@bp.get("/focus/status")
+def focus_status_ep():
+    return jsonify(focus_lock.status())
+
+
+@bp.get("/snippets")
+def snippets_ep():
+    q = request.args.get("q", "")
+    return jsonify({"snippets": snippets.list_all(query=q)})
+
+
+@bp.post("/snippets")
+def snippets_save_ep():
+    d = request.get_json(silent=True) or {}
+    title = (d.get("title") or "").strip()
+    code = d.get("code") or ""
+    if not title or not code: raise ValidationError("Missing title or code.")
+    return jsonify(snippets.save(title, code,
+                                 language=(d.get("language") or ""),
+                                 tags=(d.get("tags") or "")))
+
+
+@bp.get("/snippets/<int:sid>")
+def snippet_get_ep(sid):
+    s = snippets.get(sid)
+    if not s: raise ValidationError("Snippet not found.")
+    return jsonify(s)
+
+
+@bp.delete("/snippets/<int:sid>")
+def snippet_delete_ep(sid):
+    return jsonify({"ok": snippets.delete(sid)})
+
+
+@bp.get("/layouts")
+def layouts_ep():
+    return jsonify({"layouts": window_layouts.list_layouts()})
+
+
+@bp.post("/layouts/save")
+def layout_save_ep():
+    d = request.get_json(silent=True) or {}
+    name = (d.get("name") or "").strip()
+    if not name: raise ValidationError("Missing name.")
+    return jsonify(window_layouts.save(name))
+
+
+@bp.post("/layouts/restore")
+def layout_restore_ep():
+    d = request.get_json(silent=True) or {}
+    name = (d.get("name") or "").strip()
+    if not name: raise ValidationError("Missing name.")
+    return jsonify(window_layouts.restore(name))
+
+
+@bp.post("/url/clean")
+def url_clean_ep():
+    return jsonify(url_cleaner.clean_clipboard())
+
+
+@bp.post("/format")
+def format_ep():
+    d = request.get_json(silent=True) or {}
+    text = d.get("text") or ""
+    mode = d.get("mode", "auto")
+    if not text: raise ValidationError("Missing 'text'.")
+    return jsonify(auto_format.format_text(text, mode=mode))
+
+
+@bp.get("/time/summary")
+def time_summary_ep():
+    hours = int(request.args.get("hours", 24))
+    return jsonify({"entries": time_tracker.summary(hours=hours)})
 
 
 # ---------- TOOLS ----------
@@ -679,6 +897,16 @@ def command():
     if len(text) > 4000:
         raise ValidationError("Command too long.")
 
+    # Check if this is a rejection of the previous answer
+    if outcomes.detect_rejection(text):
+        marked = outcomes.update_last(accepted=False, feedback=text)
+        if marked:
+            speak_async("Understood. I'll avoid that approach, sir.")
+
+    # Check if this is a confirmation
+    elif outcomes.detect_confirmation(text):
+        marked = outcomes.update_last(accepted=True, feedback=text)
+
     # Skip skills for purely conversational input
     from ai.self_awareness import is_conversational
     skill_reply = None
@@ -762,6 +990,10 @@ def command():
                 store.record_reply(sid, full)
                 speak_async(full)
                 extract_memory_async(text, full)
+                try:
+                    outcomes.record(text, full)
+                except Exception:
+                    pass
             yield "data: [DONE]\n\n"
 
     return Response(generate(), mimetype="text/event-stream", headers={

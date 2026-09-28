@@ -78,6 +78,14 @@ class AIClient:
         log.info("AIClient ready (provider=%s, default=%s, base=%s)",
                  pname, self.default_model, base_url)
 
+    def should_use_agents(self, question: str) -> bool:
+        """Should this go to the parallel agent pool?"""
+        try:
+            from ai.agents import should_use_agents
+            return should_use_agents(question)
+        except Exception:
+            return False
+
     def _system_prompt(self) -> str:
         from memory import facts_block
         from memory import context as ctx_tracker
@@ -100,6 +108,10 @@ class AIClient:
         ctx = ctx_tracker.context_block(minutes=60)
         if ctx:
             parts.append(ctx)
+        from memory import outcomes as _outcomes
+        rejected = _outcomes.rejection_block(limit=3)
+        if rejected:
+            parts.append(rejected)
         parts.append(
             "You are helping the user on their computer. Be aware of "
             "the recent activity above. Mention things briefly if they "

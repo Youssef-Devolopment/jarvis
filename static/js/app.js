@@ -436,6 +436,21 @@ var SLASH_CMDS=[
   {cmd:'/voice-list',desc:'List available voices'},{cmd:'/settings',desc:'Open settings panel'},
   {cmd:'/council',desc:'Run a council — /council <question>'},
   {cmd:'/levels',desc:'Show council levels'},
+  {cmd:'/outcomes',desc:'Show outcome memory stats'},
+  {cmd:'/verify',desc:'Cross-check the last answer'},
+  {cmd:'/agents',desc:'Run parallel multi-agent session'},
+  {cmd:'/dream',desc:'Run Dream Mode now'},
+  {cmd:'/dream-dry',desc:'Preview Dream Mode (no changes)'},
+  {cmd:'/dream-last',desc:'Show last Dream report'},
+  {cmd:'/clipboard',desc:'Recent clipboard items'},
+  {cmd:'/contacts',desc:'List contacts'},
+  {cmd:'/reminders',desc:'Pending reminders'},
+  {cmd:'/ocr',desc:'Extract text from screen'},
+  {cmd:'/focus',desc:'Focus lock — /focus 60'},
+  {cmd:'/snippets',desc:'List snippets'},
+  {cmd:'/layouts',desc:'Window layouts'},
+  {cmd:'/cleanurl',desc:'Clean clipboard URL'},
+  {cmd:'/timesum',desc:'Time tracking summary'},
   {cmd:'/help',desc:'Show available commands'}
 ];
 var slashIdx=-1;
@@ -474,7 +489,104 @@ function handleSlash(cmd){
   else if(cmd==='/settings')openSettings();
   else if(cmd==='/levels'||cmd.indexOf('/levels ')===0){showLevels();}
   else if(cmd==='/council'||cmd.indexOf('/council ')===0){runCouncil(cmd.slice(8).trim());}
+  else if(cmd==='/outcomes'){showOutcomes();}
+  else if(cmd.indexOf('/verify')===0){runVerify(cmd.slice(7).trim());}
+  else if(cmd==='/agents'||cmd.indexOf('/agents ')===0){runAgents(cmd.slice(8).trim());}
+  else if(cmd==='/dream'||cmd==='/dream-dry'){runDream(cmd==='/dream-dry');}
+  else if(cmd==='/dream-last'){showDreamLast();}
+  else if(cmd==='/clipboard'){showClipboard();}
+  else if(cmd==='/contacts'){showContacts();}
+  else if(cmd==='/reminders'){showReminders();}
+  else if(cmd==='/ocr'){runOcr();}
+  else if(cmd==='/focus'||cmd.indexOf('/focus ')===0){runFocus(cmd.slice(6).trim());}
+  else if(cmd==='/snippets'){showSnippets();}
+  else if(cmd==='/layouts'){showLayouts();}
+  else if(cmd==='/cleanurl'){runCleanUrl();}
+  else if(cmd==='/timesum'){showTimeSum();}
   else sendCommand(cmd);
+}
+async function showClipboard(){
+  try{
+    var r=await fetch('/api/clipboard/recent').then(function(x){return x.json();});
+    var items=r.items||[];
+    if(!items.length)addLog('Clipboard empty.','system');
+    else{
+      addLog('Clipboard ('+items.length+'):','system');
+      items.slice(-8).forEach(function(it){
+        addLog('  ['+it.type+'] '+((it.preview||'').slice(0,60)),'system');});
+    }
+  }catch(e){}
+}
+async function showContacts(){
+  try{
+    var r=await fetch('/api/contacts').then(function(x){return x.json();});
+    var c=r.contacts||[];
+    if(!c.length)addLog('No contacts.','system');
+    else c.slice(0,10).forEach(function(x){
+      addLog('  '+x.name+(x.phone?' — '+x.phone:''),'system');});
+  }catch(e){}
+}
+async function showReminders(){
+  try{
+    var r=await fetch('/api/reminders').then(function(x){return x.json();});
+    var items=r.reminders||[];
+    if(!items.length)addLog('No pending reminders.','system');
+    else items.forEach(function(x){
+      addLog('  '+x.due_at.slice(11,16)+' — '+x.text.slice(0,60),'system');});
+  }catch(e){}
+}
+async function runOcr(){
+  addLog('Capturing screen...','system');
+  try{
+    var r=await fetch('/api/ocr/screen',{method:'POST'}).then(function(x){return x.json();});
+    addLog(r.ok?r.text.slice(0,1000):('OCR failed: '+(r.text||'unknown')),r.ok?'bot':'warn');
+  }catch(e){addLog('OCR error: '+e.message,'warn');}
+}
+async function runFocus(arg){
+  try{
+    if(!arg){
+      var r=await fetch('/api/focus/status').then(function(x){return x.json();});
+      addLog('Focus: '+(r.active?'ON until '+r.until:'off'),'system');
+    }else{
+      var mins=parseInt(arg)||60;
+      var r2=await fetch('/api/focus/start',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({minutes:mins})}).then(function(x){return x.json();});
+      addLog(r2.ok?('Focus ON for '+mins+' min.'):'Focus already active.','system');
+    }
+  }catch(e){}
+}
+async function showSnippets(){
+  try{
+    var r=await fetch('/api/snippets').then(function(x){return x.json();});
+    var items=r.snippets||[];
+    if(!items.length)addLog('No snippets.','system');
+    else items.slice(0,10).forEach(function(s){
+      addLog('  #'+s.id+' '+s.title+(s.language?' ['+s.language+']':''),'system');});
+  }catch(e){}
+}
+async function showLayouts(){
+  try{
+    var r=await fetch('/api/layouts').then(function(x){return x.json();});
+    var items=r.layouts||[];
+    if(!items.length)addLog('No layouts.','system');
+    else items.forEach(function(l){addLog('  '+l.name,'system');});
+  }catch(e){}
+}
+async function runCleanUrl(){
+  try{
+    var r=await fetch('/api/url/clean',{method:'POST'}).then(function(x){return x.json();});
+    addLog(r.ok?('Cleaned: '+r.after):('Clean failed: '+r.error),r.ok?'bot':'warn');
+  }catch(e){}
+}
+async function showTimeSum(){
+  try{
+    var r=await fetch('/api/time/summary?hours=24').then(function(x){return x.json();});
+    var items=r.entries||[];
+    if(!items.length)addLog('No time entries yet.','system');
+    else items.slice(0,8).forEach(function(x){
+      addLog('  '+x.app+': '+Math.round(x.seconds/60)+' min','system');});
+  }catch(e){}
 }
 async function runCouncil(arg){
   if(!arg){addLog('Usage: /council <question>','warn');return;}
@@ -514,7 +626,97 @@ async function showLevels(){
       addLog('  L'+l.level+' '+l.name+': '+l.models+' models, ~'+l.timeout+'s, ~$'+l.cost_estimate,'system');});
   }catch(e){}
 }
+async function showOutcomes(){
+  try{
+    var r=await fetch('/api/outcomes/stats').then(function(x){return x.json();});
+    addLog('Outcomes: '+r.total+' total | '+r.accepted+' accepted | '+
+           r.rejected+' rejected | '+r.pending+' pending','system');
+    if(r.rejected>0){
+      var rl=await fetch('/api/outcomes/rejected').then(function(x){return x.json();});
+      (rl.rejected||[]).slice(0,3).forEach(function(rj){
+        addLog('  X '+(rj.question||'').slice(0,60),'warn');});
+    }
+  }catch(e){addLog('Outcomes error: '+e.message,'warn');}
+}
+async function runVerify(arg){
+  var q=null,a=null;
+  if(arg&&arg.indexOf('||')>=0){var p=arg.split('||');q=p[0].trim();a=p[1].trim();}
+  if(!q||!a){
+    try{
+      var h=await fetch('/api/history/default').then(function(x){return x.json();});
+      var msgs=h.messages||[];
+      for(var i=msgs.length-1;i>=0;i--){if(msgs[i].role==='assistant'&&msgs[i].content){a=msgs[i].content;break;}}
+      for(var j=msgs.length-1;j>=0;j--){if(msgs[j].role==='user'&&msgs[j].content){q=msgs[j].content;break;}}
+    }catch(e){}
+  }
+  if(!q||!a){addLog('Usage: /verify <question> || <answer> (or chat first)','warn');return;}
+  addLog('Reality-checking last answer…','system');
+  try{
+    var r=await fetch('/api/reality-check',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q,answer:a})}).then(function(x){return x.json();});
+    addLog('Reality check: agree='+r.agree+', confidence='+r.confidence+'%'+
+           (r.note?' — '+r.note:''), r.agree==='no'?'warn':'system');
+    if(r.escalate_to_council)addLog('Sources disagree — consider /council '+q,'warn');
+  }catch(e){addLog('Verify error: '+e.message,'warn');}
+}
 
+async function runAgents(arg){
+  if(!arg){addLog('Usage: /agents <complex question>','warn');return;}
+  addLog('Running agents on: "'+arg+'"','system');
+  setState(STATE.THINKING);
+  try{
+    var r=await fetch('/api/agents/run',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:arg})}).then(function(x){return x.json();});
+    if(r.ok){
+      addLog('Agents ('+r.ok_tasks+'/'+r.tasks+' ok, '+r.elapsed+'s):','system');
+      (r.sub_results||[]).forEach(function(s,i){
+        var mark=s.ok?'✓':'✗';
+        addLog('  '+mark+' Task '+(i+1)+': '+((s.task||'').slice(0,60))+' ('+s.elapsed+'s)','system');});
+      addLog(r.answer,'bot');
+      speakText(r.answer);
+    }else{
+      addLog('Agents failed: '+(r.error||'unknown'),'warn');
+    }
+  }catch(e){addLog('Agents error: '+e.message,'warn');}
+  setState(STATE.IDLE);
+}
+async function runDream(dry){
+  addLog(dry?'Previewing Dream Mode...':'Running Dream Mode...','system');
+  setState(STATE.THINKING);
+  try{
+    var r=await fetch('/api/dream/run',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({dry_run:dry})}).then(function(x){return x.json();});
+    if(r.ok){
+      var folders=r.folders||[];
+      var total=folders.reduce(function(a,f){return a+(f.moved||0);},0);
+      addLog('Dream done in '+r.elapsed+'s. '+total+' file(s) moved.','system');
+      folders.forEach(function(f){
+        addLog('  '+f.folder+': '+f.moved+' moved, '+f.skipped+' skipped','system');});
+      if(r.backup)addLog('Backup: '+(r.backup.ok?'ok':'skip'),'system');
+      if(r.day_summary)addLog('Day summary: '+r.day_summary,'bot');
+    }else{
+      addLog('Dream skipped: '+(r.reason||'unknown'),'warn');
+    }
+  }catch(e){addLog('Dream error: '+e.message,'warn');}
+  setState(STATE.IDLE);
+}
+async function showDreamLast(){
+  try{
+    var r=await fetch('/api/dream/last').then(function(x){return x.json();});
+    if(r&&r.started_at){
+      addLog('Last Dream: '+r.started_at+' ('+r.elapsed+'s)','system');
+      var folders=r.folders||[];
+      var total=folders.reduce(function(a,f){return a+(f.moved||0);},0);
+      addLog('  '+total+' files organized','system');
+      if(r.day_summary)addLog('  Summary: '+r.day_summary,'bot');
+    }else{
+      addLog('No Dream reports yet.','system');
+    }
+  }catch(e){}
+}
 async function sendCommand(text){
   if(busy||!text||!text.trim())return;
   busy=true;resetThinking();

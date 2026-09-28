@@ -48,6 +48,36 @@ def main():
             logging.getLogger("run").warning("MCP autostart failed: %s", exc)
     threading.Thread(target=_start_mcp, daemon=True).start()
 
+    # Start Dream Mode scheduler
+    try:
+        from system import dream_scheduler
+        dream_scheduler.start()
+    except Exception as _exc:
+        import logging
+        logging.getLogger("run").warning(
+            "Dream scheduler failed: %s", _exc)
+
+    try:
+        from ai import clipboard_watcher
+        clipboard_watcher.start()
+    except Exception as _exc:
+        import logging
+        logging.getLogger("run").warning("Clipboard failed: %s", _exc)
+
+    try:
+        from system import reminder_loop
+        reminder_loop.start()
+    except Exception as _exc:
+        import logging
+        logging.getLogger("run").warning("Reminders failed: %s", _exc)
+
+    try:
+        from ai import time_tracker
+        time_tracker.start()
+    except Exception as _exc:
+        import logging
+        logging.getLogger("run").warning("Time tracker failed: %s", _exc)
+
     # Background scheduler: daily briefings + one-shot timers
     def _start_scheduler():
         try:

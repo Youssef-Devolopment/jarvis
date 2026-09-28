@@ -8,7 +8,10 @@ from logger import get_logger
 from ai import search_agent, headless_browser, app_manager
 from ai import tools_fs, tools_terminal
 from ai import tool_schemas
+from ai import reality_check
+from ai import bridge
 from memory import context as ctx_tracker
+from memory import outcomes
 
 log = get_logger(__name__)
 
@@ -111,6 +114,24 @@ def execute_tool(name: str, args: dict) -> str:
             from system import launch as _L
             out = _L.open_url(args.get("url", ""))
             return out or "Could not open that."
+        if name == "outcome_stats":
+            s = outcomes.stats()
+            return (f"Outcomes: {s['total']} total, "
+                    f"{s['accepted']} accepted, "
+                    f"{s['rejected']} rejected, "
+                    f"{s['pending']} pending.")
+        if name == "reality_check_tool":
+            r = reality_check.verify(
+                args.get("question", ""), args.get("answer", ""))
+            return (f"Checked: {r.get('checked')}, "
+                    f"agree: {r.get('agree')}, "
+                    f"confidence: {r.get('confidence')}%, "
+                    f"note: {r.get('note', '')}")
+        if name == "bridge_transfer":
+            return bridge.transfer(
+                args.get("source", ""),
+                args.get("target", ""),
+                args.get("action", "copy"))
         # MCP tool: name format is mcp__<server>__<tool>
         if name.startswith("mcp__"):
             parts = name.split("__", 2)

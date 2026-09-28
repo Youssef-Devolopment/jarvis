@@ -42,6 +42,27 @@ def _get_conn() -> sqlite3.Connection:
                     title TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL)""")
+                _conn.execute("""CREATE TABLE IF NOT EXISTS contacts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL, phone TEXT, email TEXT, notes TEXT,
+                    created_at TEXT NOT NULL)""")
+                _conn.execute("""CREATE TABLE IF NOT EXISTS reminders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    text TEXT NOT NULL, due_at TEXT NOT NULL,
+                    fired INTEGER DEFAULT 0, created_at TEXT NOT NULL)""")
+                _conn.execute("""CREATE TABLE IF NOT EXISTS snippets (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL, code TEXT NOT NULL,
+                    language TEXT DEFAULT '', tags TEXT DEFAULT '',
+                    created_at TEXT NOT NULL)""")
+                _conn.execute("""CREATE TABLE IF NOT EXISTS layouts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE, windows_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL)""")
+                _conn.execute("""CREATE TABLE IF NOT EXISTS time_entries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    app TEXT NOT NULL, window_title TEXT DEFAULT '',
+                    started_at TEXT NOT NULL, duration_sec INTEGER DEFAULT 0)""")
                 try:
                     _conn.execute("ALTER TABLE facts ADD COLUMN "
                                   "status TEXT DEFAULT 'active'")
@@ -303,3 +324,183 @@ def all_sessions(limit: int = 100) -> list[dict]:
             (limit,)).fetchall()
     return [{"id": r[0], "title": r[1], "updated_at": r[2], "count": r[3]}
             for r in rows]
+
+
+# ---------- CONTACTS ----------
+def save_contact(name, phone="", email="", notes=""):
+    from datetime import datetime as _dt
+    name = (name or "").strip()
+    if not name: return 0
+    c = _get_conn()
+    with _lock:
+        cur = c.execute(
+            "INSERT INTO contacts (name, phone, email, notes, created_at) VALUES (?,?,?,?,?)",
+            (name, phone[:40], email[:120], notes[:300],
+             _dt.now().isoformat(timespec="seconds")))
+        c.commit()
+        return cur.lastrowid or 0
+
+
+def list_contacts(limit=100):
+    c = _get_conn()
+    with _lock:
+        rows = c.execute(
+            "SELECT id, name, phone, email FROM contacts ORDER BY id DESC LIMIT ?",
+            (limit,)).fetchall()
+    return [{"id": r[0], "name": r[1], "phone": r[2], "email": r[3]} for r in rows]
+
+
+def find_contact(q):
+    q = (q or "").strip().lower()
+    if not q: return []
+    c = _get_conn()
+    with _lock:
+        rows = c.execute(
+            "SELECT id, name, phone, email FROM contacts WHERE lower(name) LIKE ? LIMIT 10",
+            (f"%{q}%",)).fetchall()
+    return [{"id": r[0], "name": r[1], "phone": r[2], "email": r[3]} for r in rows]
+
+
+# ---------- REMINDERS ----------
+def save_reminder(text, due_iso):
+    from datetime import datetime as _dt
+    if not (text or "").strip(): return 0
+    c = _get_conn()
+    with _lock:
+        cur = c.execute(
+            "INSERT INTO reminders (text, due_at, created_at) VALUES (?,?,?)",
+            (text[:300], due_iso, _dt.now().isoformat(timespec="seconds")))
+        c.commit()
+        return cur.lastrowid or 0
+
+
+def list_reminders(only_pending=True):
+    c = _get_conn()
+    with _lock:
+        if only_pending:
+            rows = c.execute("SELECT id, text, due_at, fired FROM reminders WHERE fired=0 ORDER BY due_at ASC").fetchall()
+        else:
+            rows = c.execute("SELECT id, text, due_at, fired FROM reminders ORDER BY due_at ASC").fetchall()
+    return [{"id": r[0], "text": r[1], "due_at": r[2], "fired": r[3]} for r in rows]
+
+
+def mark_reminder_fired(rid):
+    c = _get_conn()
+    with _lock:
+        c.execute("UPDATE reminders SET fired=1 WHERE id=?", (rid,))
+        c.commit()
+
+
+def due_reminders():
+    from datetime import datetime as _dt
+    now = _dt.now().isoformat(timespec="seconds")
+    c = _get_conn()
+    with _lock:
+        rows = c.execute(
+            "SELECT id, text, due_at FROM reminders WHERE fired=0 AND due_at <= ? ORDER BY due_at",
+            (now,)).fetchall()
+    return [{"id": r[0], "text": r[1], "due_at": r[2]} for r in rows]
+
+
+# ---------- SNIPPETS ----------
+def save_snippet(title, code, language="", tags=""):
+    from datetime import datetime as _dt
+    if not (title or "").strip() or not code: return 0
+    c = _get_conn()
+    with _lock:
+        cur = c.execute(
+            "INSERT INTO snippets (title, code, language, tags, created_at) VALUES (?,?,?,?,?)",
+            (title[:120], code[:10000], language[:40], tags[:200],
+             _dt.now().isoformat(timespec="seconds")))
+        c.commit()
+        return cur.lastrowid or 0
+
+
+def list_snippets(query="", limit=50):
+    c = _get_conn()
+    with _lock:
+        if query:
+            q = f"%{query.lower()}%"
+            rows = c.execute(
+                "SELECT id, title, language, tags FROM snippets WHERE lower(title) LIKE ? OR lower(tags) LIKE ? ORDER BY id DESC LIMIT ?",
+                (q, q, limit)).fetchall()
+        else:
+            rows = c.execute(
+                "SELECT id, title, language, tags FROM snippets ORDER BY id DESC LIMIT ?",
+                (limit,)).fetchall()
+    return [{"id": r[0], "title": r[1], "language": r[2], "tags": r[3]} for r in rows]
+
+
+def get_snippet(sid):
+    c = _get_conn()
+    with _lock:
+        row = c.execute("SELECT id, title, code, language FROM snippets WHERE id=?", (sid,)).fetchone()
+    if not row: return None
+    return {"id": row[0], "title": row[1], "code": row[2], "language": row[3]}
+
+
+def delete_snippet(sid):
+    c = _get_conn()
+    with _lock:
+        n = c.execute("DELETE FROM snippets WHERE id=?", (sid,)).rowcount
+        c.commit()
+        return n > 0
+
+
+# ---------- LAYOUTS ----------
+def save_layout(name, windows_json):
+    from datetime import datetime as _dt
+    if not (name or "").strip(): return False
+    c = _get_conn()
+    with _lock:
+        c.execute("""INSERT INTO layouts (name, windows_json, created_at) VALUES (?,?,?)
+                     ON CONFLICT(name) DO UPDATE SET windows_json=excluded.windows_json,
+                     created_at=excluded.created_at""",
+                  (name[:60], windows_json[:50000], _dt.now().isoformat(timespec="seconds")))
+        c.commit()
+        return True
+
+
+def list_layouts():
+    c = _get_conn()
+    with _lock:
+        rows = c.execute("SELECT id, name FROM layouts ORDER BY id DESC").fetchall()
+    return [{"id": r[0], "name": r[1]} for r in rows]
+
+
+def get_layout(name):
+    c = _get_conn()
+    with _lock:
+        row = c.execute("SELECT windows_json FROM layouts WHERE name=?", (name,)).fetchone()
+    return row[0] if row else None
+
+
+def delete_layout(name):
+    c = _get_conn()
+    with _lock:
+        n = c.execute("DELETE FROM layouts WHERE name=?", (name,)).rowcount
+        c.commit()
+        return n > 0
+
+
+# ---------- TIME ENTRIES ----------
+def log_time_entry(app, window_title, duration_sec):
+    from datetime import datetime as _dt
+    if not app or duration_sec < 5: return
+    c = _get_conn()
+    with _lock:
+        c.execute("INSERT INTO time_entries (app, window_title, started_at, duration_sec) VALUES (?,?,?,?)",
+                  (app[:100], (window_title or "")[:200],
+                   _dt.now().isoformat(timespec="seconds"), int(duration_sec)))
+        c.commit()
+
+
+def time_summary(hours=24):
+    from datetime import datetime as _dt, timedelta
+    since = (_dt.now() - timedelta(hours=hours)).isoformat(timespec="seconds")
+    c = _get_conn()
+    with _lock:
+        rows = c.execute(
+            "SELECT app, SUM(duration_sec) FROM time_entries WHERE started_at > ? GROUP BY app ORDER BY SUM(duration_sec) DESC LIMIT 20",
+            (since,)).fetchall()
+    return [{"app": r[0], "seconds": int(r[1] or 0)} for r in rows]
