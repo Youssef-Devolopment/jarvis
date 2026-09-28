@@ -771,7 +771,7 @@ async function sendCommand(text){
   }
 }
 
-function openSettings(){addCls('modal-settings','open');loadTab('model');}
+function openSettings(){addCls('modal-settings','open');loadTab('model');var _t=document.querySelector('.modal-tabs .tab.active');if(_t)_t.focus({preventScroll:true});}
 function closeSettings(){rmCls('modal-settings','open');}
 
 function loadTab(name){
@@ -797,7 +797,7 @@ function loadTab(name){
 function renderTab(name,data){
   if(name==='model'){
     var models=data.models||[];
-    if(!models.length)return '<div style="color:var(--dim)">No models</div>';
+    if(!models.length)return '<div class="empty-state">No models</div>';
     return '<div class="set-list">'+models.map(function(m){
       return '<div class="set-row"><div class="label">'+esc(m.id)+
         '<small>'+(m.free?'Free':'Paid')+(m.rank?' Rank:'+m.rank:'')+'</small></div>'+
@@ -833,7 +833,7 @@ function renderTab(name,data){
   }
   if(name==='mcp'){
     var servers=data.servers||[];
-    if(!servers.length)return '<div style="color:var(--dim)">No MCP servers</div>';
+    if(!servers.length)return '<div class="empty-state">No MCP servers</div>';
     return '<div class="set-list">'+servers.map(function(s){
       return '<div class="set-row"><div class="label">'+esc(s.name||s)+
         '<small>'+esc(s.status||s.command||'')+'</small></div></div>';
@@ -1017,7 +1017,7 @@ async function renderCapturePanel(){
           <div class="set-row">
             <div class="label">${c.name}<small>${c.phone || c.email || 'no contact info'}</small></div>
           </div>
-        `).join('') : '<div style="color:var(--dim);font-size:10px;padding:8px">No contacts yet.</div>'}
+        `).join('') : '<div class="empty-state">No contacts yet.</div>'}
       </div>
     </div>
     <div class="panel-section">
@@ -1027,7 +1027,7 @@ async function renderCapturePanel(){
           <div class="set-row">
             <div class="label">${r.text}<small>${r.due_at.slice(11,16)} · ${r.due_at.slice(0,10)}</small></div>
           </div>
-        `).join('') : '<div style="color:var(--dim);font-size:10px;padding:8px">No reminders.</div>'}
+        `).join('') : '<div class="empty-state">No reminders.</div>'}
       </div>
     </div>
   `;
@@ -1078,7 +1078,7 @@ async function renderWorkspacePanel(){
               <button data-restore="${l.name}">LOAD</button>
             </div>
           </div>
-        `).join('') : '<div style="color:var(--dim);font-size:10px;padding:8px">No saved layouts.</div>'}
+        `).join('') : '<div class="empty-state">No saved layouts.</div>'}
       </div>
       <div style="display:flex;gap:8px;margin-top:10px">
         <input type="text" id="layout-name" placeholder="layout name"
@@ -1093,7 +1093,7 @@ async function renderWorkspacePanel(){
           <div class="set-row">
             <div class="label">${t.app}<small>${Math.round(t.seconds/60)} min</small></div>
           </div>
-        `).join('') : '<div style="color:var(--dim);font-size:10px;padding:8px">No time entries yet.</div>'}
+        `).join('') : '<div class="empty-state">No time entries yet.</div>'}
       </div>
     </div>
   `;
@@ -1152,7 +1152,7 @@ async function renderClipboardPanel(){
               <small>${i.ts.slice(11,16)} · ${i.length} chars</small>
             </div>
           </div>
-        `).join('') : '<div style="color:var(--dim);font-size:10px;padding:8px">Clipboard empty.</div>'}
+        `).join('') : '<div class="empty-state">Clipboard empty.</div>'}
       </div>
     </div>
   `;
@@ -1210,7 +1210,7 @@ async function renderDreamPanel(){
           `<div style="font-size:10px;margin-top:6px">${f.folder}: ${f.moved} moved, ${f.skipped} skipped</div>`
         ).join('') : ''}
         ${last.day_summary ? `<div class="mini-code">${last.day_summary}</div>` : ''}
-      ` : '<div style="color:var(--dim);font-size:10px">No reports yet.</div>'}
+      ` : '<div class="empty-state">No reports yet.</div>'}
     </div>
   `;
   const en = document.getElementById('dream-enable');

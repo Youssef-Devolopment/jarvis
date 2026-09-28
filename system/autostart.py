@@ -24,23 +24,34 @@ def is_enabled() -> bool:
 
 
 def enable() -> bool:
+    """Enable login autostart: silent desktop mode + fresh browser window.
+
+    Points the Startup shortcut at pythonw.exe desktop.py --open so
+    Windows login starts the server (tray + hotkey, no console) and
+    opens JARVIS in a new browser window.
+    """
     try:
+        import sys
         d = _startup_dir()
         d.mkdir(parents=True, exist_ok=True)
-        target = str(_PROJECT / "start.bat")
-        if not (_PROJECT / "start.bat").exists():
-            target = str(_PROJECT / "run.py")
+        venv_pythonw = _PROJECT / ".venv" / "Scripts" / "pythonw.exe"
+        if venv_pythonw.exists():
+            target = str(venv_pythonw)
+        else:
+            target = sys.executable
+        args = "desktop.py --open"
         import pythoncom
         from win32com.client import Dispatch
         pythoncom.CoInitialize()
         shell = Dispatch("WScript.Shell")
         sc = shell.CreateShortCut(str(_lnk_path()))
         sc.TargetPath = target
+        sc.Arguments = args
         sc.WorkingDirectory = str(_PROJECT)
         sc.WindowStyle = 7
         sc.Description = "JARVIS voice assistant"
         sc.save()
-        log.info("Auto-start enabled -> %s", _lnk_path())
+        log.info("Auto-start enabled -> %s (%s %s)", _lnk_path(), target, args)
         return True
     except Exception as exc:
         log.exception("Auto-start enable failed: %s", exc)

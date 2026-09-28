@@ -19,6 +19,11 @@ def _loop():
                 log.info("Firing reminder %d: %s", r["id"], r["text"][:60])
                 try: speak_async(f"Reminder, sir: {r['text']}")
                 except Exception: pass
+                try:
+                    from system import notify
+                    notify.toast("JARVIS Reminder", r["text"][:200])
+                except Exception:
+                    pass
                 mark_reminder_fired(r["id"])
         except Exception as exc:
             log.debug("Reminder loop error: %s", exc)

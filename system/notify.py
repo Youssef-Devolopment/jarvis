@@ -5,6 +5,7 @@ import lazy: without the library everything degrades to log lines and
 confirm() safely defaults to False (deny).
 """
 from __future__ import annotations
+import platform
 import threading
 from logger import get_logger
 
@@ -72,3 +73,37 @@ def confirm(question: str, timeout: int = 120) -> bool:
     done.wait(timeout=max(5, timeout))
     log.info("Confirm answer: %s", "YES" if answer["yes"] else "NO/timeout")
     return answer["yes"]
+
+
+def toast(title: str, message: str = "", duration: int = 4):
+    """Show a native Windows notification (simple wrapper).
+
+    Prefers windows_toasts via notify(); falls back to a PowerShell
+    toast when the library is missing. duration is best-effort.
+    """
+    if notify(title, message or ""):
+        return
+    if platform.system() != "Windows":
+        log.info("[notify] %s — %s", title, message)
+        return
+    try:
+        import subprocess
+        ps = (
+            '[Windows.UI.Notifications.ToastNotificationManager, '
+            'Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null; '
+            '$template = [Windows.UI.Notifications.ToastNotificationManager]::'
+            'GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); '
+            f'$template.GetElementsByTagName("text")[0].AppendChild('
+            f'$template.CreateTextNode("{title}")) | Out-Null; '
+            f'$template.GetElementsByTagName("text")[1].AppendChild('
+            f'$template.CreateTextNode("{message}")) | Out-Null; '
+            '$notifier = [Windows.UI.Notifications.ToastNotificationManager]::'
+            'CreateToastNotifier("JARVIS"); '
+            '$notifier.Show([Windows.UI.Notifications.ToastNotification]::new($template));'
+        )
+        subprocess.Popen(["powershell", "-NoProfile", "-Command", ps],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except Exception as exc:
+        log.debug("PowerShell toast failed: %s", exc)
+        log.info("[notify] %s — %s", title, message)

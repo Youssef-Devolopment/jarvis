@@ -1,5 +1,6 @@
 """System tray icon with context menu."""
 from __future__ import annotations
+import threading
 import webbrowser
 from logger import get_logger
 
@@ -50,3 +51,75 @@ def start_tray():
         icon.run()
     except Exception as exc:
         log.warning("Tray failed: %s", exc)
+
+
+_icon = None
+_thread = None
+
+
+def _run_launcher_menu():
+    """Tray loop wired to the desktop launcher (Open/Restart/Exit)."""
+    global _icon
+    try:
+        import pystray
+        from pystray import MenuItem as Item, Menu
+
+        def on_open(icon, item):
+            try:
+                from system.launcher import open_jarvis_window
+                open_jarvis_window()
+            except Exception as exc:
+                log.warning("Open failed: %s", exc)
+
+        def on_restart(icon, item):
+            try:
+                from system import notify
+                notify.notify("JARVIS",
+                              "Exit from the tray, then launch again to restart.")
+            except Exception:
+                pass
+            try:
+                from system.launcher import open_jarvis_window
+                open_jarvis_window()
+            except Exception as exc:
+                log.warning("Restart open failed: %s", exc)
+
+        def on_exit(icon, item):
+            log.info("Tray: exit requested")
+            try:
+                from system.launcher import stop_all
+                stop_all()
+            except Exception:
+                pass
+            icon.stop()
+
+        menu = Menu(
+            Item("Open JARVIS", on_open, default=True),
+            Item("Restart", on_restart),
+            Menu.SEPARATOR,
+            Item("Exit", on_exit),
+        )
+        _icon = pystray.Icon("JARVIS", _make_icon(), "JARVIS", menu)
+        _icon.run()
+    except Exception as exc:
+        log.warning("Tray (launcher menu) failed: %s", exc)
+
+
+def start():
+    """Start the launcher-wired tray icon in a background thread."""
+    global _thread
+    if _thread and _thread.is_alive():
+        return
+    _thread = threading.Thread(target=_run_launcher_menu, name="tray",
+                               daemon=True)
+    _thread.start()
+
+
+def stop():
+    global _icon
+    if _icon:
+        try:
+            _icon.stop()
+        except Exception:
+            pass
+        _icon = None
