@@ -17,8 +17,10 @@ def _loop():
             from voice import speak_async
             for r in due_reminders():
                 log.info("Firing reminder %d: %s", r["id"], r["text"][:60])
-                try: speak_async(f"Reminder, sir: {r['text']}")
-                except Exception: pass
+                try:
+                    speak_async(f"Reminder, sir: {r['text']}")
+                except Exception as exc:
+                    log.warning("Reminder speech failed: %s", exc)
                 try:
                     from system import notify
                     notify.toast("JARVIS Reminder", r["text"][:200])

@@ -98,6 +98,43 @@ def _setup_tray():
         log.warning("Tray setup failed: %s", exc)
 
 
+def _system_uptime() -> str:
+    """How long the PC has been on, as a short human string."""
+    try:
+        import psutil
+        import time as _t
+        secs = int(_t.time() - psutil.boot_time())
+    except Exception:
+        try:
+            import ctypes
+            ms = ctypes.windll.kernel32.GetTickCount64()
+            secs = int(ms // 1000)
+        except Exception:
+            return "some time"
+    if secs < 90:
+        return f"{secs} seconds"
+    mins = secs // 60
+    if mins < 90:
+        return f"{mins} minute" + ("s" if mins != 1 else "")
+    hrs = mins // 60
+    if hrs < 48:
+        rest = mins % 60
+        out = f"{hrs} hour" + ("s" if hrs != 1 else "")
+        if rest:
+            out += f" and {rest} minute" + ("s" if rest != 1 else "")
+        return out
+    return f"{hrs // 24} day" + ("s" if hrs // 24 != 1 else "")
+
+
+def _welcome_message() -> str:
+    """Short spoken + toasted boot greeting with system uptime."""
+    import datetime as _dt
+    h = _dt.datetime.now().hour
+    daypart = ("morning" if h < 12 else "afternoon" if h < 18 else "evening")
+    return (f"Good {daypart}, sir. JARVIS is online. "
+            f"The system has been up for {_system_uptime()}.")  # noqa: E501
+
+
 def run_desktop_mode(open_browser: bool = False):
     """Full desktop mode: background Flask + tray + hotkey.
 
@@ -110,12 +147,27 @@ def run_desktop_mode(open_browser: bool = False):
     _setup_hotkey()
     _setup_tray()
 
-    # Show notification we're alive
+    # Boot greeting: toast always, spoken welcome best-effort.
     try:
         from system import notify
         notify.toast("JARVIS is running", "Press Ctrl+Alt+J to open")
     except Exception:
         pass
+    try:
+        msg = _welcome_message()
+        try:
+            from voice import speak_async
+            speak_async(msg)
+        except Exception as exc:
+            log.debug("Boot welcome speech skipped: %s", exc)
+        try:
+            from system import notify as _n
+            _n.toast("Welcome back, sir", msg)
+        except Exception:
+            pass
+        log.info("Boot welcome: %s", msg)
+    except Exception as exc:
+        log.debug("Boot welcome failed: %s", exc)
 
     if open_browser:
         open_jarvis_window(new_window=True)

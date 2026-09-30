@@ -157,18 +157,47 @@ def _ensure_tick() -> None:
         log.warning("Tick install failed: %s", exc)
 
 
+def compose_briefing() -> str:
+    """Morning briefing with teeth: greeting + reminders + remembered facts."""
+    from ai.proactive import startup_greeting
+    from memory import get_pref
+    title = get_pref("user_title", "sir") or "sir"
+    parts = [startup_greeting(title).rstrip(".")]
+    try:
+        from memory import list_reminders
+        pending = list_reminders(only_pending=True)
+        if pending:
+            first = pending[0]["text"][:80]
+            parts.append(f"You have {len(pending)} pending reminder"
+                         f"{'s' if len(pending) != 1 else ''}, "
+                         f"first: {first}")
+    except Exception:
+        pass
+    try:
+        from memory import all_facts
+        facts = all_facts()
+        if facts:
+            sample = "; ".join(str(f.get("fact", ""))[:60] for f in facts[:3])
+            parts.append(f"You told me: {sample}")
+    except Exception:
+        pass
+    return ". ".join(parts) + "."
+
+
 def _run_briefing() -> None:
     try:
-        from ai.proactive import startup_greeting
-        from memory import get_pref
-        title = get_pref("user_title", "sir") or "sir"
-        msg = startup_greeting(title)
+        msg = compose_briefing()
         log.info("Morning briefing: %r", msg[:120])
         try:
             from voice import speak_async
             speak_async("Good morning. " + msg)
         except Exception as exc:
             log.warning("Briefing speech failed: %s", exc)
+        try:
+            from system import notify
+            notify.toast("Morning briefing", msg[:220])
+        except Exception:
+            pass
         try:
             from memory import context as ctx
             ctx.log_event("briefing", msg[:200])

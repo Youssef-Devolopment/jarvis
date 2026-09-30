@@ -1024,6 +1024,12 @@ def greeting_endpoint():
     return jsonify({"greeting": startup_greeting(title)})
 
 
+@bp.get("/briefing")
+def briefing_endpoint():
+    from system import scheduler
+    return jsonify({"briefing": scheduler.compose_briefing()})
+
+
 @bp.post("/opencode/start")
 def opencode_start_route():
     from skills.opencode_bridge import start_server

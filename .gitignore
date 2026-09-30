@@ -10,3 +10,5 @@ memory/*.db-journal
 skills_backup_*/
 voices/*.onnx
 voices/*.wav
+screencapture-*.png
+jarvis_data/

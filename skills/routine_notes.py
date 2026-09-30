@@ -1,4 +1,4 @@
-"""Save and read notes (SQLite)."""
+"""Save and read notes (Obsidian vault when available, else SQLite)."""
 from __future__ import annotations
 import sqlite3, threading
 from datetime import datetime
@@ -10,6 +10,14 @@ log = get_logger(__name__)
 
 _DB = Path(__file__).resolve().parent.parent / "memory" / "jarvis_memory.db"
 _lock = threading.Lock()
+
+
+def _obsidian():
+    try:
+        from ai import obsidian
+        return obsidian if obsidian.is_available() else None
+    except Exception:
+        return None
 
 
 def _conn():
@@ -31,6 +39,11 @@ def s_save(text, m):
     note = (gd.get("n") or gd.get("n2") or "").strip()
     if not note or len(note) < 2:
         return None
+    ob = _obsidian()
+    if ob:
+        fn = ob.save_note(note)
+        if fn:
+            return f"Noted in Obsidian: {note[:80]}"
     with _lock:
         c = _conn()
         c.execute("INSERT INTO notes (content, created_at) VALUES (?,?)",
@@ -46,6 +59,15 @@ def s_save(text, m):
     r"^show\s+(?:my|the)\s+notes[\?\.\!]?$",
 ], "Read notes")
 def s_read(text, m):
+    ob = _obsidian()
+    if ob:
+        rows = ob.list_notes(limit=5)
+        if not rows:
+            return "No notes yet."
+        lines = [f"Last {len(rows)} notes (Obsidian):"]
+        for r in rows:
+            lines.append(f"- {r['content'][:80]}")
+        return " ".join(lines)
     with _lock:
         c = _conn()
         rows = c.execute("SELECT content, created_at FROM notes "
@@ -63,9 +85,11 @@ def s_read(text, m):
     r"^(?:clear|delete|erase|forget)\s+(?:all\s+)?(?:my\s+)?notes[\?\.\!]?$",
 ], "Clear notes")
 def s_clear(text, m):
+    ob = _obsidian()
+    cleared_ob = ob.clear_notes() if ob else 0
     with _lock:
         c = _conn()
         n = c.execute("DELETE FROM notes").rowcount
         c.commit()
         c.close()
-    return f"Cleared {n} notes."
+    return f"Cleared {n + cleared_ob} notes."

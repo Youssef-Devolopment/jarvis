@@ -11,6 +11,12 @@ def _speak(msg):
     try:
         from voice import speak_async
         speak_async(msg)
+        return
+    except Exception as exc:
+        log.warning("Timer speech failed: %s", exc)
+    try:
+        from system import notify
+        notify.toast("JARVIS Timer", msg)
     except Exception as exc:
         log.warning("Timer alert failed: %s", exc)
 

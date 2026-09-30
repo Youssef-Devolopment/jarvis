@@ -50,6 +50,7 @@ class Settings:
     groq_api_key: str
     groq_stt_model: str
     groq_stt_language: str
+    obsidian_vault: str
 
     @classmethod
     def load(cls) -> "Settings":
@@ -125,6 +126,7 @@ class Settings:
             groq_api_key=os.getenv("GROQ_API_KEY", "").strip(),
             groq_stt_model=os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo"),
             groq_stt_language=os.getenv("GROQ_STT_LANGUAGE", "en"),
+            obsidian_vault=os.getenv("OBSIDIAN_VAULT", "").strip(),
         )
 
 
