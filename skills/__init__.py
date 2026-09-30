@@ -45,5 +45,6 @@ from skills import screen_ocr_skill        # noqa: F401
 from skills import focus_lock_skill        # noqa: F401
 from skills import snippets_skill          # noqa: F401
 from skills import auto_generated  # noqa: F401
+from plugins import load_plugins as _load_community_plugins  # noqa: F401
 
 __all__ = ["Skill", "all_skills", "dispatch", "get_skill", "toggle_skill"]

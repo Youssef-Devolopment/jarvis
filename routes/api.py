@@ -269,6 +269,19 @@ def auto_skills_enabled():
     return jsonify({"ok": True, "enabled": _ag.auto_gen_enabled()})
 
 
+# ---------- COMMUNITY PLUGINS ----------
+@bp.get("/plugins")
+def plugins_status():
+    from plugins import status
+    return jsonify(status())
+
+
+@bp.post("/plugins/reload")
+def plugins_reload():
+    from plugins import load_plugins
+    return jsonify(load_plugins())
+
+
 # ---------- COUNCIL ----------
 @bp.post("/council/run")
 def council_run():
