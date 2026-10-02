@@ -114,6 +114,20 @@ def _dirs():
     return f"{len(needed)} directories present"
 
 
+def _memory_store():
+    from memory import all_facts
+    facts = all_facts(limit=100000)          # opens/creates the SQLite DB
+    if facts is None:
+        raise RuntimeError("facts table unreadable")
+    return f"sqlite OK - {len(facts)} facts"
+
+
+def _approval_gate():
+    from skills import auto_generator as ag
+    state = "ON" if ag.auto_approve_enabled() else "OFF"
+    return f"auto-approve {state}, {len(ag.list_pending())} pending"
+
+
 def main():
     print("\nJARVIS preflight check")
     print("=" * 50)
@@ -125,6 +139,8 @@ def main():
     check("Project directories", _dirs)
     check(".env file", _env_file)
     check("Config loads", _config)
+    check("Memory store", _memory_store)
+    check("Skill approval gate", _approval_gate)
     check("Chromium (Playwright)", _chromium)
     check("API key works", _api_key)
 

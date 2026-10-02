@@ -49,6 +49,7 @@ _DEFAULTS = {
     "desktop_control_enabled": True,
     "opencode_model": "",
     "auto_gen_enabled": True,
+    "auto_approve_skills": True,
     "dream_enabled": False,
     "dream_start_hour": 3,
     "dream_end_hour": 5,

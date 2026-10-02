@@ -12,6 +12,7 @@ venv/
 logs/
 memory/*.db
 memory/*.db-journal
+memory/user_notes.json
 jarvis_data/
 skills_backup_*/
 voices/*.onnx

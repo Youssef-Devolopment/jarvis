@@ -15,7 +15,10 @@ app index knows it, this module:
      ``skills/auto_generated/app_<slug>.py`` following the repo's
      standard pattern, then **imports it immediately** — so the next
      "open <app>" is matched by the dedicated skill at the FRONT of
-     the registry (instant, no restart).
+     the registry (instant, no restart). When the durable
+     ``auto_approve_skills`` pref (memory prefs) is OFF, the generated
+     code is staged in the shared approval pipeline instead and goes
+     live only after "approve skill app_<slug>".
 
 Stores:
   logs/app_scan.json      scan cache  (norm -> {name, path})
@@ -26,9 +29,11 @@ Nothing outside those stores and skills/auto_generated/ is written;
 """
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import re
+import sys
 import threading
 import time
 from pathlib import Path
@@ -271,7 +276,16 @@ def _skill_source(display: str, path: str) -> str:
 
 
 def ensure_skill(display: str, path: str) -> tuple[str, bool]:
-    """Write + hot-import the learned skill. Returns (module, created)."""
+    """Stage or write the learned skill per the durable
+    `auto_approve_skills` pref. Returns (module, created).
+
+    Pref ON  -> write + hot-import immediately (instant skill).
+    Pref OFF -> hand the generated code to the shared approval pipeline
+                (skills/auto_generator.stage_candidate, trusted=True);
+                the file only lands after "approve skill app_<slug>".
+    The learned-app record is written either way, so launching keeps
+    working while the skill waits for approval.
+    """
     display = (display or "").strip()
     path = str(path)
     if not display or not path:
@@ -289,14 +303,31 @@ def ensure_skill(display: str, path: str) -> tuple[str, bool]:
     if not created and fp.read_text(encoding="utf-8", errors="replace") != want:
         created = True          # path moved: refresh the skill
     if created:
-        fp.write_text(want, encoding="utf-8")
-        log.info("App learner: wrote skill %s", fp.name)
+        from skills import auto_generator as ag
+        if ag.auto_approve_enabled():
+            fp.write_text(want, encoding="utf-8")
+            ag.drop_pending(fp.stem)   # clear any stale approval entry
+            log.info("App learner: wrote skill %s", fp.name)
+        else:
+            res = ag.stage_candidate(want, f"open {display}",
+                                     trusted=True, execute=False)
+            log.info("App learner: staged skill %s for approval "
+                     "(test_ok=%s)", fp.name, res.get("test_ok"))
 
-    module = f"skills.auto_generated.{fp.stem}"
-    try:
-        __import__(module)      # instant registration, no restart
-    except Exception as exc:
-        log.warning("App learner: import %s failed: %s", module, exc)
+    if fp.exists():
+        module = f"skills.auto_generated.{fp.stem}"
+        try:
+            if created and module in sys.modules:
+                # content changed: swap the registration cleanly
+                from skills.registry import unregister
+                unregister(fp.stem)
+                importlib.reload(sys.modules[module])
+            else:
+                __import__(module)  # instant registration, no restart
+        except Exception as exc:
+            log.warning("App learner: import %s failed: %s", module, exc)
+    else:
+        log.debug("App learner: %s awaiting approval", fp.stem)
     entry = {"name": display, "path": path, "skill": fp.stem,
              "learned_at": time.time()}
     with _lock:
@@ -328,6 +359,11 @@ def forget(query: str) -> bool:
     try:
         from skills.registry import unregister
         unregister(entry.get("skill", ""))
+    except Exception:
+        pass
+    try:
+        from skills import auto_generator as ag
+        ag.drop_pending(entry.get("skill", ""))   # staged copy, if any
     except Exception:
         pass
     log.info("App learner: forgot %s", query)
@@ -381,13 +417,21 @@ def learn_and_launch(query: str, ask_fn=None) -> dict | None:
         return None
     display, path = hit["name"], hit["path"]
     created = False
+    stem = None
     try:
-        _, created = ensure_skill(display, path)
+        stem, created = ensure_skill(display, path)
     except Exception as exc:
         log.warning("App learner: could not learn %s: %s", display, exc)
+    staged = False
+    try:
+        from skills.registry import get_skill
+        staged = bool(created and stem and not get_skill(stem))
+    except Exception:
+        pass
     out = launch_learned(path, display, ask_fn=ask_fn)
     if out is None:
         return {"declined": True, "name": display, "path": path,
-                "created": created}
+                "created": created, "staged": staged}
     return {"output": out, "name": display, "path": path,
-            "created": created, "source": hit.get("source", "scan")}
+            "created": created, "staged": staged,
+            "source": hit.get("source", "scan")}

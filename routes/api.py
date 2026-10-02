@@ -41,6 +41,13 @@ def _theme_dict(model_name: str) -> dict:
 def info():
     s = get_settings()
     active = get_active() or "auto"
+    try:
+        from memory import all_facts
+        from skills import auto_generator as _ag
+        facts = len(all_facts(limit=500))
+        auto_approve = _ag.auto_approve_enabled()
+    except Exception:
+        facts, auto_approve = -1, None
     return jsonify({
         "version": VERSION,
         "model": active,
@@ -50,6 +57,8 @@ def info():
         "mood": moods.current_name(),
         "moods": moods.all_moods(),
         "skills": [sk.name for sk in all_skills()],
+        "facts": facts,
+        "auto_approve": auto_approve,
         "theme": _theme_dict("auto" if active == "auto" else active),
     })
 
@@ -232,7 +241,8 @@ def skill_toggle():
 def auto_skills_pending():
     from skills import auto_generator as _ag
     return jsonify({"pending": _ag.list_pending(),
-                    "enabled": _ag.auto_gen_enabled()})
+                    "enabled": _ag.auto_gen_enabled(),
+                    "auto_approve": _ag.auto_approve_enabled()})
 
 
 @bp.post("/auto_skills/approve")
@@ -259,6 +269,18 @@ def auto_skills_reject():
     if not r.get("ok"):
         raise ValidationError(r.get("error") or "Reject failed.")
     return jsonify({"ok": True, "name": r["name"]})
+
+
+@bp.post("/auto_skills/auto_approve")
+def auto_skills_auto_approve():
+    """Toggle the durable bypass gate for test-passed candidates."""
+    from skills import auto_generator as _ag
+    d = request.get_json(silent=True) or {}
+    if "enabled" not in d:
+        raise ValidationError("Missing 'enabled'.")
+    if not _ag.set_auto_approve_enabled(bool(d.get("enabled"))):
+        raise ValidationError("Could not save auto-approve preference.")
+    return jsonify({"ok": True, "auto_approve": _ag.auto_approve_enabled()})
 
 
 @bp.post("/auto_skills/enabled")
@@ -710,7 +732,10 @@ def apps_learn():
             name, path = hit["name"], hit["path"]
         else:
             raise ValidationError("Provide 'query' or 'name' + 'path'.")
+        from skills.registry import get_skill
+        live = bool(get_skill(skill))
         return jsonify({"ok": True, "skill": skill, "created": created,
+                        "status": "live" if live else "pending",
                         "name": name, "path": path})
     except ValueError as exc:
         raise ValidationError(str(exc))

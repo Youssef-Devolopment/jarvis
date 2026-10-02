@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import memory.prefs as prefs
 from system import app_learner as AL
 from system import launch as L
 
@@ -36,6 +37,11 @@ class AppLearnerTests(unittest.TestCase):
         AL._roots = lambda: [self.apps_root]
         AL._misses.clear()
 
+        # hermetic prefs: fresh DB == defaults (auto_approve ON), so the
+        # suite never depends on the machine's real configuration
+        self._prefdb_orig = prefs._DB
+        prefs._DB = root / "prefs.db"
+
         # make the real auto_generated package able to import test skills
         import skills.auto_generated as ag
         self._ag = ag
@@ -65,6 +71,7 @@ class AppLearnerTests(unittest.TestCase):
                 pass
         AL._SCAN_CACHE, AL._LEARNED, AL._SKILL_DIR, AL._roots, _ = self._orig
         AL._misses.clear()
+        prefs._DB = self._prefdb_orig
         L.is_instant, L.launch_target = self._launch_orig
         self._ag.__path__[:] = self._ag_path
         self.tmp.cleanup()
@@ -137,6 +144,79 @@ class AppLearnerTests(unittest.TestCase):
         txt = self.apps_root / "notes.txt"
         with self.assertRaises(ValueError):
             AL.ensure_skill("Notes", str(txt))
+
+    # ---------- approval gate (durable auto_approve_skills pref) ----------
+    def _gate_off(self):
+        """auto-approve OFF + isolated candidate/pending/audit state."""
+        from skills import auto_generator as gen
+        from memory import set_pref
+        self._ag_gen = gen
+        root = Path(self.tmp.name)
+        (root / "cand").mkdir(exist_ok=True)
+        self._gen_orig = (gen._LOG_DIR, gen._PENDING_FILE, gen._AUTO_DIR,
+                          gen._AUDIT, dict(gen._PENDING))
+        gen._LOG_DIR = root / "cand"
+        gen._PENDING_FILE = root / "pending.json"
+        gen._AUTO_DIR = root / "autogen"
+        gen._AUDIT = root / "audit.log"
+        gen._PENDING.clear()
+        set_pref("auto_approve_skills", False)   # writes the temp prefs DB
+        self.addCleanup(self._gate_restore)
+
+    def _gate_restore(self):
+        gen = self._ag_gen
+        (gen._LOG_DIR, gen._PENDING_FILE, gen._AUTO_DIR, gen._AUDIT,
+         pend) = self._gen_orig
+        gen._PENDING.clear()
+        gen._PENDING.update(pend)
+
+    def test_ensure_skill_staged_when_auto_approve_off(self):
+        self._gate_off()
+        fake = self.apps_root / "SoloApp" / "SoloApp.exe"
+        module, created = AL.ensure_skill("SoloApp", str(fake))
+        self._track(module)
+        self.assertTrue(created)
+        self.assertEqual(module, "app_soloapp")
+        # NOT written / NOT live yet ...
+        self.assertFalse((AL._SKILL_DIR / "app_soloapp.py").exists())
+        from skills import get_skill
+        self.assertIsNone(get_skill("app_soloapp"))
+        # ... but queued for approval exactly once, marked trusted
+        pend = [p for p in self._ag_gen.list_pending()
+                if p["name"] == "app_soloapp"]
+        self.assertEqual(len(pend), 1)
+        self.assertTrue(pend[0]["trusted"])
+        self.assertEqual(pend[0]["source"], "app_learner")
+        self.assertTrue(pend[0]["test_ok"])
+        # learned record kept -> launching still works while pending
+        store = json.loads(AL._LEARNED.read_text(encoding="utf-8"))
+        self.assertIn("soloapp", store["apps"])
+        # idempotent: learning again must not duplicate the entry
+        AL.ensure_skill("SoloApp", str(fake))
+        pend2 = [p for p in self._ag_gen.list_pending()
+                 if p["name"] == "app_soloapp"]
+        self.assertEqual(len(pend2), 1)
+
+    def test_learn_and_launch_staged_reports_pending(self):
+        self._gate_off()
+        res = AL.learn_and_launch("soloapp")
+        self.assertIsNotNone(res)
+        self._track("app_soloapp")
+        self.assertTrue(res["created"])
+        self.assertTrue(res["staged"])          # awaiting approval
+        self.assertTrue(res["output"].startswith("LAUNCHED:"))
+        self.assertFalse((AL._SKILL_DIR / "app_soloapp.py").exists())
+
+    def test_forget_clears_staged_candidate(self):
+        self._gate_off()
+        fake = self.apps_root / "SoloApp" / "SoloApp.exe"
+        AL.ensure_skill("SoloApp", str(fake))
+        self._track("app_soloapp")
+        self.assertIn("app_soloapp",
+                      [p["name"] for p in self._ag_gen.list_pending()])
+        self.assertTrue(AL.forget("SoloApp"))
+        self.assertNotIn("app_soloapp",
+                         [p["name"] for p in self._ag_gen.list_pending()])
 
     def test_generated_skill_registered_at_front(self):
         from skills import all_skills, get_skill

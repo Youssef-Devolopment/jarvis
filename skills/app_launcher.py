@@ -90,7 +90,10 @@ def skill_launch(text, m):
             if res.get("declined"):
                 return "OK, not opening it."
             out = res.get("output") or f"Opened {app}."
-            if res.get("created"):
+            if res.get("staged"):
+                out += (f"  [learned: '{res['name']}' — skill drafted, "
+                        f"awaiting approval]")
+            elif res.get("created"):
                 out += f"  [learned: '{res['name']}' is now a skill]"
             return out
     except Exception as exc:
