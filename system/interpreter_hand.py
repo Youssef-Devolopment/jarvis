@@ -42,7 +42,8 @@ def status() -> dict:
     if not is_available():
         return {"ok": False,
                 "error": "open-interpreter not installed. "
-                         "Run: pip install open-interpreter==0.4.3"}
+                         "Run: pip install -r requirements-integrations.txt "
+                         "then pip install --no-deps open-interpreter==0.4.3"}
     try:
         cfg = _describe()
         return {"ok": True, **cfg}
@@ -85,7 +86,8 @@ def _get():
         except ImportError:
             raise RuntimeError(
                 "open-interpreter not installed. "
-                "Run: pip install open-interpreter==0.4.3")
+                "Run: pip install -r requirements-integrations.txt "
+                "then pip install --no-deps open-interpreter==0.4.3")
         from config import get_settings
         from moods.router import FAST_MODEL
         s = get_settings()

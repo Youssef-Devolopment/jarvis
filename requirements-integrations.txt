@@ -1,4 +1,47 @@
 # Third-party integrations (each needs its own API keys/setup).
 google-api-python-client>=2.100.0
 google-auth-oauthlib>=1.1.0
-open-interpreter==0.4.3
+
+# --- open-interpreter 0.4.3 (the newest release; upstream never fixed it)
+# Its own metadata now contradicts itself: it caps tiktoken<0.8.0 while
+# every modern litellm<2 release requires tiktoken>=0.8.0, so a plain
+# `pip install open-interpreter` (or `pip install -r` with it inline)
+# backtracks through every litellm down to a source-only tarball and
+# crashes the whole install. install.bat / setup.ps1 therefore install
+# the package itself with `--no-deps`; these are its runtime
+# dependencies with bounds that resolve today — the same set the
+# shipped JARVIS environment runs with. Manual equivalent:
+#   pip install -r requirements-integrations.txt
+#   pip install --no-deps open-interpreter==0.4.3
+litellm>=1.41.26,<2.0.0    # it.llm engine (caps openai<3, pulls tiktoken>=0.8)
+tiktoken>=0.8.0            # the edge open-interpreter pins too low
+anthropic>=0.37.1
+google-generativeai>=0.7.1
+nltk>=3.8.1
+setuptools<82           # 82+ removed pkg_resources, which open-interpreter imports
+astor>=0.8.1
+git-python>=1.0.3
+inquirer>=3.1.3
+pyyaml>=6.0.1
+rich>=13.4.2
+six>=1.16.0
+tokentrim>=0.1.13
+wget>=3.2
+psutil>=5.9.6
+pyreadline3>=3.4.1; sys_platform == "win32"
+html2image>=2.0.4.3
+send2trash>=1.8.2
+ipykernel>=6.26.0
+jupyter-client>=8.6.0
+matplotlib>=3.8.2
+toml>=0.10.2
+platformdirs>=4.2.0
+pydantic>=2.6.4
+pyperclip>=1.9.0
+yaspin>=3.0.2
+shortuuid>=1.0.13
+starlette>=0.37.2
+html2text>=2024.2.26
+selenium>=4.24.0
+webdriver-manager>=4.0.2
+typer>=0.12.5
