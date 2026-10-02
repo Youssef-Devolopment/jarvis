@@ -32,6 +32,21 @@ First GitHub-ready release.
   `GET /api/apps/learned`, `POST /api/apps/learn` / `/api/apps/forget`.
 - App finder, site finder, MCP presets/import, community plugin
   installer, DEV drawer (files / term / call / logs).
+- **Persistent remember**: the `remember` skill writes facts
+  (text + timestamp + source) into the core SQLite memory store —
+  recalled via `memory.recall()` and injected into the system prompt
+  (`facts_block()`); JSON sidecar fallback so a broken DB never loses a
+  note.
+- **Durable auto-approve gate** (`auto_approve_skills` preference):
+  "enable/disable auto approve skills" or `POST
+  /api/auto_skills/auto_approve` dynamically switches new-skill
+  registration between explicit human approval and instant (only for
+  code that passed validation + isolated test); app-learner skills
+  stage through the same approval queue when the gate is off, and
+  `forget()` / direct writes clean stale queue entries.
+- Health surface: `GET /api/info` reports `facts` + `auto_approve`,
+  `/api/auto_skills/pending` reports the gate state, `check.py` runs
+  11 preflight checks (memory store + approval gate added).
 - GitHub packaging: CI, issue templates, PR template, MIT license,
   CONTRIBUTING, ARCHITECTURE.
 
@@ -43,11 +58,17 @@ First GitHub-ready release.
   Tk callback exceptions are logged instead of lost under pythonw.
 - App-learner fuzzy matching tightened: sub-4-char keys can no longer
   hijack long queries ("open totally-unknown-app" no longer matches).
+- Skill approval pipeline: dead duplicate `test_in_isolation`
+  definition removed; re-approving a changed candidate never
+  double-registers, and approval after `forget()` re-registers even
+  when Python has the module cached.
+- The `auto_approve_skills` voice command now reports the persisted
+  state instead of flipping an in-memory flag that died on restart.
 
 ### Community
-- README live overlay screenshot (`docs/overlay.png`),
-  `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md`
-  (private reporting, scope, user hardening notes).
+- README live overlay screenshot (`docs/overlay.png`), HUD demo callout
+  with GIF placeholder, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1),
+  `SECURITY.md` (private reporting, scope, user hardening notes).
 - Rogue venv launcher binaries replaced (single-process boots).
 - MCP SDK shadowed by local `mcp/` package (`_sdk()` workaround).
 

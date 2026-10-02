@@ -2,7 +2,7 @@
 
 ![version](https://img.shields.io/badge/version-v1.0.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-80%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-94%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 JARVIS is a Flask + DeepSeek/OpenAI-compatible voice assistant with 124
@@ -16,7 +16,7 @@ A slim **Lite** build (25 skills, port 5002) lives next to it in
 
 ## Repository status
 
-- `main` builds green: syntax-check every file + **80 unit tests**
+- `main` builds green: syntax-check every file + **94 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - No secrets in the repo — `.env`, runtime data and browser caches
   are gitignored; API keys live only in your local `.env`
@@ -65,12 +65,18 @@ mechanisms are armed; disable via Settings or `POST /autostart/disable`.
   parallel, moderator synthesizes (levels 7–8 ask confirmation first)
 - **Agents** (`POST /api/agents/run`): split → parallel → merge
 - **Auto-generate skills** (`/api/auto_skills/*`): LLM drafts, isolated
-  test, your approval registers it into `skills/auto_generated/`
+  test, your approval registers it into `skills/auto_generated/` — or
+  turn on the durable **auto-approve gate** (`auto_approve_skills`
+  pref via `POST /api/auto_skills/auto_approve` or the "auto approve
+  skills" voice command): test-passed drafts then register instantly,
+  while anything failing its test still waits for you
 - **Autonomous app learner** (`system/app_learner.py`): "open <unknown
   app>" deep-scans Program Files / LocalAppData / Start Menu / %PATH%
   (parallel, 1h cache, warmed at boot), launches the hit behind the
   usual confirm gate, then writes a permanent `@register` skill at the
-  front of the dispatch order — next call is instant. Manage via
+  front of the dispatch order — next call is instant. With
+  auto-approve off, the skill is staged for approval instead (launching
+  still works). Manage via
   `GET /api/apps/learned`, `POST /api/apps/learn` / `/api/apps/forget`
 - **Outcome memory** + **reality check**: rejections steer the system
   prompt; factual answers get second-source verification
@@ -88,6 +94,15 @@ mechanisms are armed; disable via Settings or `POST /autostart/disable`.
 idle state):
 
 ![JARVIS Alt+Space overlay HUD](docs/overlay.png)
+
+> **▶ Demo:** press **Alt+Space** anywhere — the HUD fades in over the
+> active window, speak or type, `Esc` (or Alt+Space again) dismisses it.
+> Voice reply + mood-reactive glow included.
+
+<!-- GIF placeholder: drop a recording at docs/overlay-demo.gif
+     (record ~4s with Win+Alt+R: invoke HUD, ask "what time is it",
+     Esc) and swap the callout above for:
+     **▶ Demo:** ![Alt+Space HUD demo](docs/overlay-demo.gif) -->
 
 ## Background nervous system (v1.0.0)
 
@@ -150,6 +165,6 @@ Obsidian Markdown instead of SQLite), `TODOIST_API_TOKEN`.
 ## Health
 
 ```bat
-.venv\Scripts\python.exe check.py     :: 9 preflight checks
+.venv\Scripts\python.exe check.py     :: 11 preflight checks
 .venv\Scripts\python.exe -m unittest  :: test suite
 ```
