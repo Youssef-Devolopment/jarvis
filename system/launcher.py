@@ -43,6 +43,15 @@ def start_background():
     _flask_thread = threading.Thread(
         target=_start_flask, name="flask", daemon=True)
     _flask_thread.start()
+    # Background screen-context loop (RAM-only, pref-gated)
+    def _screen_context():
+        try:
+            from ai import screen_context
+            screen_context.start()
+        except Exception as exc:
+            log.warning("Screen context failed to start: %s", exc)
+    threading.Thread(target=_screen_context, name="screen-context",
+                     daemon=True).start()
     # Give it a moment to bind the port
     time.sleep(1.5)
 
@@ -79,11 +88,12 @@ def wait():
 
 
 def _setup_hotkey():
-    """Register global hotkey Ctrl+Alt+J."""
+    """Register global hotkeys: Ctrl+Alt+J (window) + Alt+Space (overlay)."""
     try:
         from system import hotkey
         hotkey.start_open_jarvis()
-        log.info("Global hotkey registered: Ctrl+Alt+J")
+        hotkey.start_overlay_hotkey()
+        log.info("Global hotkeys registered: Ctrl+Alt+J, Alt+Space")
     except Exception as exc:
         log.warning("Hotkey setup failed: %s", exc)
 

@@ -23,14 +23,25 @@ def _capture():
         return None
 
 
-def extract_text(question="Extract all visible text from this screenshot. Preserve line breaks. Return only the text."):
-    p = _capture()
-    if not p: return "[error] could not capture screen"
+def ask_image(img, question: str) -> str:
+    """One vision call over a PIL image (or an image file path).
+
+    Shared by on-demand OCR and the background screen-context loop.
+    Never raises — returns '[error] ...' on failure.
+    """
+    import io
     try:
         from ai.client import get_client
+        if isinstance(img, (str, Path)):
+            raw = Path(img).read_bytes()
+        elif isinstance(img, bytes):
+            raw = img
+        else:                       # PIL.Image
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            raw = buf.getvalue()
+        b64 = base64.b64encode(raw).decode("ascii")
         c = get_client()
-        with open(p, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode("ascii")
         r = c._client.chat.completions.create(
             model="deepseek-v4.1-flash:free",
             messages=[{"role": "user", "content": [
@@ -39,8 +50,15 @@ def extract_text(question="Extract all visible text from this screenshot. Preser
             ]}], max_tokens=1500, temperature=0.1)
         return (r.choices[0].message.content or "").strip()
     except Exception as exc:
-        log.exception("OCR failed")
+        log.exception("Vision call failed")
         return f"[error] {exc}"
+
+
+def extract_text(question="Extract all visible text from this screenshot. Preserve line breaks. Return only the text."):
+    p = _capture()
+    if not p: return "[error] could not capture screen"
+    try:
+        return ask_image(p, question)
     finally:
         try: p.unlink(missing_ok=True)
         except Exception: pass

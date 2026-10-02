@@ -44,6 +44,7 @@ from skills import app_finder      # noqa: F401
 from skills import site_finder     # noqa: F401
 from skills import quick_capture_skill     # noqa: F401
 from skills import screen_ocr_skill        # noqa: F401
+from skills import screen_context_skill    # noqa: F401
 from skills import focus_lock_skill        # noqa: F401
 from skills import snippets_skill          # noqa: F401
 from skills import auto_generated  # noqa: F401

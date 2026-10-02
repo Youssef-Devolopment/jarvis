@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import sys
+import threading
 from flask import Blueprint, Response, jsonify, request
 from ai import get_client, get_store, extract_memory_async
 from ai.tools import TOOL_SCHEMAS
@@ -464,6 +465,35 @@ def ocr_ep():
     return jsonify({"ok": not text.startswith("[error]"), "text": text})
 
 
+# ---------- SCREEN CONTEXT (omniscience loop) ----------
+@bp.get("/screen/context")
+def screen_context_status():
+    from ai import screen_context
+    return jsonify(screen_context.status())
+
+
+@bp.post("/screen/context/start")
+def screen_context_start():
+    from ai import screen_context
+    return jsonify({"started": screen_context.start()})
+
+
+@bp.post("/screen/context/stop")
+def screen_context_stop():
+    from ai import screen_context
+    screen_context.stop()
+    return jsonify({"stopped": True})
+
+
+@bp.post("/screen/ask")
+def screen_ask():
+    from ai import screen_context
+    d = request.get_json(silent=True) or {}
+    q = (d.get("question") or "").strip()
+    text = screen_context.ask(q)
+    return jsonify({"ok": not text.startswith("[error]"), "text": text})
+
+
 @bp.get("/contacts")
 def contacts_ep():
     from memory import list_contacts
@@ -608,6 +638,14 @@ def ports_kill():
     if not r.get("ok"):
         raise ValidationError(r.get("error") or "Kill failed.")
     return jsonify(r)
+
+
+# ---------- OVERLAY (Alt+Space HUD) ----------
+@bp.post("/overlay/toggle")
+def overlay_toggle():
+    from system import overlay
+    threading.Thread(target=overlay.toggle, daemon=True).start()
+    return jsonify({"ok": True})
 
 
 # ---------- APP INDEX ----------
@@ -774,6 +812,51 @@ def mcp_stop_route():
 def mcp_tools_route():
     from mcp import runtime
     return jsonify({"tools": runtime.all_tools()})
+
+
+@bp.get("/mcp/serve")
+def mcp_serve_route():
+    """Host config for JARVIS's own native MCP stdio server."""
+    from mcp.presets import serve_config
+    return jsonify(serve_config())
+
+
+# ---------- OBSIDIAN BRIDGE (productivity) ----------
+@bp.get("/obsidian")
+def obsidian_status():
+    from ai import obsidian
+    available = obsidian.is_available()
+    return jsonify({
+        "available": available,
+        "vault": str(obsidian.find_vault() or ""),
+        "notes": obsidian.list_notes(limit=10) if available else [],
+    })
+
+
+@bp.post("/obsidian/save")
+def obsidian_save():
+    from ai import obsidian
+    d = request.get_json(silent=True) or {}
+    content = (d.get("content") or "").strip()
+    if not content:
+        raise ValidationError("Missing 'content'.")
+    if not obsidian.is_available():
+        raise ValidationError("Obsidian vault not configured "
+                              "(set OBSIDIAN_VAULT in .env).")
+    path = obsidian.save_note(content)
+    return jsonify({"ok": True, "path": path})
+
+
+@bp.post("/obsidian/search")
+def obsidian_search():
+    from ai import obsidian
+    d = request.get_json(silent=True) or {}
+    q = (d.get("query") or "").strip()
+    if not q:
+        raise ValidationError("Missing 'query'.")
+    if not obsidian.is_available():
+        raise ValidationError("Obsidian vault not configured.")
+    return jsonify({"notes": obsidian.search_notes(q, limit=15)})
 
 
 # ---------- MEMORY ----------

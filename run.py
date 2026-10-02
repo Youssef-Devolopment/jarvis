@@ -37,6 +37,11 @@ def main():
             get_agent().prewarm()
         except Exception:
             pass
+        try:
+            from ai import screen_context
+            screen_context.start()   # RAM-only screen context loop
+        except Exception:
+            pass
     threading.Thread(target=_prewarm, daemon=True).start()
 
     # Auto-start enabled MCP servers in background

@@ -104,3 +104,30 @@ def import_claude_config(data: dict) -> dict:
                 entry["env"] = dict(spec["env"])
             added.append(entry.get("name", name))
     return {"ok": True, "added": added}
+
+
+def serve_config() -> dict:
+    """How an MCP host should launch JARVIS's own native server.
+
+    Returns ready-to-paste configs for Claude Desktop, VS Code and a
+    raw command line. Uses the venv python.exe (never pythonw — hosts
+    need real stdio).
+    """
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    exe = Path(sys.executable).resolve()
+    if exe.name.lower().startswith("pythonw"):
+        sibling = exe.with_name("python.exe")
+        if sibling.exists():
+            exe = sibling
+    args = ["-m", "mcp.server"]
+    entry = {"command": str(exe), "args": args, "cwd": str(root)}
+    return {
+        "command": str(exe),
+        "args": args,
+        "cwd": str(root),
+        "claude_config": {"mcpServers": {"jarvis": dict(entry)}},
+        "vscode_config": {"servers": {"jarvis": {"type": "stdio", **entry}}},
+        "cli": f'"{exe}" -m mcp.server   (cwd: {root})',
+    }

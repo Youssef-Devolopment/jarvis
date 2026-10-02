@@ -52,18 +52,50 @@ with system uptime. Disable anytime via Settings or
   snippets vault, window layouts, URL cleaner, auto-format, time
   tracking, focus lock, screen OCR, cross-app bridge
 
+## Background nervous system (v1.0.0)
+
+JARVIS runs as an invisible background OS layer, not just a chat tab:
+
+- **Single-instance guard** — `logs/jarvis.lock` holds the live PID;
+  a second boot refuses cleanly (exit 2, logged warning). No forks.
+- **Alt+Space floating overlay** — a transparent, always-on-top HUD
+  over any window (game, IDE, browser): type or dictate a command,
+  get the reply in-place. Auto-hides on blur / Esc / second press.
+  (`system/overlay.py`, pref `overlay_enabled`)
+- **LIFE / DEV mode switcher** — top-bar toggle, persisted in
+  localStorage. LIFE shows briefing/vault/notes; DEV reveals the
+  terminal drawer, port sentinel and file editor without reload.
+- **Native MCP server** — `venv\python.exe -m mcp.server` speaks
+  MCP stdio/JSON-RPC and exposes 7 tools (skills, command, terminal,
+  memory, Obsidian, ports, screen OCR) + 4 resources to VS Code,
+  Claude Desktop, Cursor, etc. Copy ready-made configs from
+  `GET /api/mcp/serve`.
+- **Port sentinel** — `GET /api/ports` lists listeners with process
+  names, `POST /api/ports/kill` one-click kills (refuses self and
+  system PIDs). Also a DEV-sidebar widget + `/ports`, `/kill`.
+- **Developer terminal** — DEV drawer → TERM tab runs sandboxed
+  commands (`POST /api/terminal/run`), same guards as Code Mode.
+- **Screen-context loop** — RAM-only background capture every ~20s
+  (never written to disk, zero API calls while looping); "what's on
+  my screen" / "fix this error" answer from the freshest frame.
+  Prefs: `screen_loop_enabled`, `screen_loop_interval`.
+- **Obsidian bridge** — `POST /api/obsidian/save` clips ideas to the
+  vault; `/clip <text>` and `/vault` from the chat bar.
+
 ## Layout
 
 ```
 run.py / server.py / config.py      entry points + settings (.env)
 ai/          LLM client, tools, agents, council backends, integrations
-skills/      112 @register skills (+ skills/auto_generated/)
+skills/      119 @register skills (+ skills/auto_generated/)
 voice/       Groq mic input, Piper/edge-tts output (Ryan)
 memory/      SQLite facts, messages, prefs, outcomes, contacts, …
 moods/       personalities, router, escalation levels, classifier
-routes/      Flask blueprints (93 endpoints)
-system/      tray, hotkey, notify, autostart, scheduler, launcher
-static/ + templates/   web UI (16 settings tabs, 37 slash commands)
+mcp/         client runtime, presets, native stdio MCP server
+plugins/     community plugins (hot-reload, MIT-replaceable)
+system/      tray, hotkey, overlay, singleton, autostart, launcher
+routes/      Flask blueprints (117 endpoints)
+static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
 ## Config

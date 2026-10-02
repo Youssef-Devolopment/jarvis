@@ -443,6 +443,8 @@ var SLASH_CMDS=[
   {cmd:'/ports',desc:'List listening ports'},
   {cmd:'/kill',desc:'Kill process by pid — /kill <pid>'},
   {cmd:'/mode',desc:'Switch UI mode — /mode dev|life'},
+  {cmd:'/clip',desc:'Clip an idea to Obsidian — /clip <text>'},
+  {cmd:'/vault',desc:'Show recent Obsidian notes'},
   {cmd:'/dream',desc:'Run Dream Mode now'},
   {cmd:'/dream-dry',desc:'Preview Dream Mode (no changes)'},
   {cmd:'/dream-last',desc:'Show last Dream report'},
@@ -512,7 +514,26 @@ function handleSlash(cmd){
   else if(cmd==='/ports'){runSlashPorts();}
   else if(cmd.indexOf('/kill ')===0){killPort(cmd.slice(6).trim().split(/\s+/)[0],0);renderPorts();}
   else if(cmd.indexOf('/mode')===0){var _m=cmd.slice(5).trim();setMode(_m==='dev'?'dev':'life');addLog('UI mode: '+getMode(),'system');}
+  else if(cmd.indexOf('/clip ')===0){runClip(cmd.slice(6).trim());}
+  else if(cmd==='/clip'){addLog('Usage: /clip <text>','warn');}
+  else if(cmd==='/vault'){runVault();}
   else sendCommand(cmd);
+}
+async function runClip(text){
+  if(!text){addLog('Usage: /clip <text>','warn');return;}
+  try{
+    var r=await fetch('/api/obsidian/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:text})}).then(function(x){return x.json();});
+    if(r.ok)addLog('Clipped to vault: '+(r.path||'note saved'),'system');
+    else addLog('Clip failed: '+(r.error||'vault not configured'),'warn');
+  }catch(e){addLog('Clip error: '+e.message,'warn');}
+}
+async function runVault(){
+  try{
+    var r=await fetch('/api/obsidian').then(function(x){return x.json();});
+    if(!r.available){addLog('Vault not configured (set OBSIDIAN_VAULT).','warn');return;}
+    addLog('Vault: '+r.vault,'system');
+    (r.notes||[]).forEach(function(n){addLog('  • '+(n.title||n.path||'?'),'system');});
+  }catch(e){addLog('Vault error: '+e.message,'warn');}
 }
 async function runSlashTerm(arg){
   if(!arg){addLog('Usage: /term <command>','warn');return;}

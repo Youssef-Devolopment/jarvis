@@ -1,4 +1,4 @@
-"""Global hotkey — Ctrl+Alt+J brings JARVIS to focus."""
+"""Global hotkeys — Ctrl+Alt+J opens JARVIS, Alt+Space shows the overlay."""
 from __future__ import annotations
 import webbrowser
 from logger import get_logger
@@ -6,12 +6,14 @@ from logger import get_logger
 log = get_logger(__name__)
 
 _HOTKEY = "ctrl+alt+j"
-_URL = "http://127.0.0.1:5000"
 
 
 def _on_trigger():
     try:
-        webbrowser.open(_URL)
+        from config import get_settings
+        s = get_settings()
+        import webbrowser
+        webbrowser.open(f"http://{s.host}:{s.port}")
         log.info("Hotkey %s triggered", _HOTKEY)
     except Exception as exc:
         log.warning("Hotkey action failed: %s", exc)
@@ -107,5 +109,50 @@ def start_open_jarvis():
         log.warning("Hotkey setup failed: %s", exc)
 
 
+def start_overlay_hotkey():
+    """Register Alt+Space -> floating HUD overlay (non-blocking)."""
+    try:
+        try:
+            from memory import get_pref
+            if not get_pref("overlay_enabled", True):
+                log.info("Overlay hotkey disabled in prefs")
+                return
+        except Exception:
+            pass
+
+        def _fire():
+            from system import overlay
+            overlay.toggle()
+
+        try:
+            import keyboard
+            keyboard.add_hotkey("alt+space", _fire, suppress=False)
+            log.info("Hotkey registered: alt+space -> overlay (keyboard)")
+            return
+        except ImportError:
+            pass
+        from pynput import keyboard as pk
+        current = set()
+
+        def on_press(key):
+            current.add(key)
+            if key == pk.Key.space and pk.Key.alt_l in current:
+                _fire()
+
+        def on_release(key):
+            try:
+                current.discard(key)
+            except Exception:
+                pass
+
+        listener = pk.Listener(on_press=on_press, on_release=on_release)
+        listener.daemon = True
+        listener.start()
+        log.info("Hotkey registered: alt+space -> overlay (pynput)")
+    except Exception as exc:
+        log.warning("Overlay hotkey setup failed: %s", exc)
+
+
 def start():
     start_open_jarvis()
+    start_overlay_hotkey()
