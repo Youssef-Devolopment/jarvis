@@ -97,6 +97,17 @@ def _setup_hotkey():
     except Exception as exc:
         log.warning("Hotkey setup failed: %s", exc)
 
+    # Pre-warm the overlay HUD so the first Alt+Space is instant.
+    def _prewarm_overlay():
+        try:
+            from system import overlay
+            if overlay.ensure_started():
+                log.info("Overlay HUD pre-warmed")
+        except Exception as exc:
+            log.warning("Overlay pre-warm failed: %s", exc)
+    threading.Thread(target=_prewarm_overlay, name="overlay-prewarm",
+                     daemon=True).start()
+
 
 def _setup_tray():
     """Start the system tray icon."""

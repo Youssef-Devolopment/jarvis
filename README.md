@@ -22,13 +22,20 @@ Or silent desktop mode (tray + `Ctrl+Alt+J`, opens a fresh browser tab):
 desktop.bat
 ```
 
-## Login autostart
+## Login autostart (power button)
 
-Settings → Autostart **on** (or `POST /autostart/enable`) creates a
-Startup shortcut: `pythonw desktop.py --open`. Every boot starts the
-server silently, opens JARVIS in a new browser window, and greets you
-with system uptime. Disable anytime via Settings or
-`POST /autostart/disable`.
+Settings → Autostart **on** (or `POST /autostart/enable`) arms up to
+**three independent triggers** so pressing the PC power button always
+brings JARVIS up:
+
+1. Startup shortcut `pythonw desktop.py --open`
+2. `HKCU\...\CurrentVersion\Run` registry key (no admin needed)
+3. Task Scheduler logon task, +15s (created when elevated)
+
+Every boot starts the server silently, opens JARVIS in a new browser
+window, and greets you with system uptime. The single-instance guard
+makes a double-fire harmless. `GET /autostart/status` reports which
+mechanisms are armed; disable via Settings or `POST /autostart/disable`.
 
 ## What it does
 
@@ -59,9 +66,13 @@ JARVIS runs as an invisible background OS layer, not just a chat tab:
 - **Single-instance guard** — `logs/jarvis.lock` holds the live PID;
   a second boot refuses cleanly (exit 2, logged warning). No forks.
 - **Alt+Space floating overlay** — a transparent, always-on-top HUD
-  over any window (game, IDE, browser): type or dictate a command,
-  get the reply in-place. Auto-hides on blur / Esc / second press.
-  (`system/overlay.py`, pref `overlay_enabled`)
+  over any window (game, IDE, browser): glass panel with glow border,
+  hexagon logo, live mood/model header, typewriter reply area,
+  quick chips (SCREEN / TIMER / TIME / NOTE), command history
+  (↑↓), mic dictation, drag-by-header, fade-in, status-dot pulse
+  while thinking. Auto-hides on blur / Esc / second press; pre-warmed
+  at boot so the first press is instant. (`system/overlay.py`,
+  pref `overlay_enabled`)
 - **LIFE / DEV mode switcher** — top-bar toggle, persisted in
   localStorage. LIFE shows briefing/vault/notes; DEV reveals the
   terminal drawer, port sentinel and file editor without reload.

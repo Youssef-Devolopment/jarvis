@@ -924,8 +924,8 @@ def code_mode_audit():
 @bp.get("/autostart/status")
 def autostart_status():
     try:
-        from system.autostart import is_enabled
-        return jsonify({"enabled": is_enabled()})
+        from system.autostart import status
+        return jsonify(status())
     except Exception as exc:
         return jsonify({"enabled": False, "error": str(exc)[:120]})
 
@@ -933,9 +933,9 @@ def autostart_status():
 @bp.post("/autostart/enable")
 def autostart_enable():
     try:
-        from system.autostart import enable
+        from system.autostart import enable, status
         ok = enable()
-        return jsonify({"ok": ok, "enabled": ok})
+        return jsonify({"ok": ok, **status()})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)[:120]}), 500
 

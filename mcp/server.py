@@ -63,31 +63,14 @@ def _command_reply(text: str) -> str:
     """POST /api/command and stitch the SSE stream into one reply."""
     import urllib.request
     from config import get_settings
+    from system.overlay import stitch_sse
     s = get_settings()
     req = urllib.request.Request(
         f"http://{s.host}:{s.port}/api/command",
         data=json.dumps({"text": text, "session": "mcp"}).encode("utf-8"),
         headers={"Content-Type": "application/json"})
-    parts: list[str] = []
     with urllib.request.urlopen(req, timeout=90) as r:
-        for raw in r:
-            line = raw.decode("utf-8", "replace").strip()
-            if not line.startswith("data:"):
-                continue
-            payload = line[5:].strip()
-            if payload == "[DONE]":
-                break
-            try:
-                obj = json.loads(payload)
-            except Exception:
-                parts.append(payload)
-                continue
-            if isinstance(obj, dict):
-                for key in ("delta", "reply", "text"):
-                    if obj.get(key):
-                        parts.append(str(obj[key]))
-                        break
-    return "".join(parts).strip() or "(no reply)"
+        return stitch_sse(r) or "(no reply)"
 
 
 # ---------------------------------------------------------------- tools
