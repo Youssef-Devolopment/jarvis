@@ -1,14 +1,37 @@
+# --- secrets & env ---
 .env
+.env.local
+
+# --- python ---
 __pycache__/
 *.pyc
 .venv/
+venv/
+
+# --- runtime data (never commit) ---
 logs/
-.browser_profile/
-.voice_cache/
 memory/*.db
 memory/*.db-journal
+jarvis_data/
 skills_backup_*/
 voices/*.onnx
 voices/*.wav
 screencapture-*.png
-jarvis_data/
+
+# --- browser / speech caches ---
+.browser_profile/
+.headless_profile/
+.voice_cache/
+
+# --- personal / machine-local files ---
+jarvis 1.py
+jarvis_config.json
+MicaForEveryone.appinstaller
+https.txt
+
+# --- editors / OS junk ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+Thumbs.db
+.DS_Store

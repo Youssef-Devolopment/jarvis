@@ -1,12 +1,28 @@
 # JARVIS — Voice-first AI assistant for Windows
 
-JARVIS is a Flask + DeepSeek/OpenAI-compatible voice assistant with 112
+![version](https://img.shields.io/badge/version-v1.0.0-blue)
+![license](https://img.shields.io/badge/license-MIT-green)
+![tests](https://img.shields.io/badge/tests-66%20passing-brightgreen)
+![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
+
+JARVIS is a Flask + DeepSeek/OpenAI-compatible voice assistant with 119
 regex-dispatched skills, 30 LLM tools, hotword-free mic input (Groq),
 Edge/Piper speech output, multi-model councils, memory, and a desktop
-mode with tray icon, global hotkey, and Windows login autostart.
+mode with tray icon, global hotkeys (`Ctrl+Alt+J`, `Alt+Space` overlay),
+native MCP server, and triple power-button autostart.
 
 A slim **Lite** build (25 skills, port 5002) lives next to it in
 `../lite jarvis/`.
+
+## Repository status
+
+- `main` builds green: syntax-check every file + **66 unit tests**
+  on Windows runners (`.github/workflows/ci.yml`)
+- No secrets in the repo — `.env`, runtime data and browser caches
+  are gitignored; API keys live only in your local `.env`
+- Community-friendly: MIT license, issue/PR templates,
+  `CONTRIBUTING.md`, `ARCHITECTURE.md`, `CHANGELOG.md`, hot-reloadable
+  `plugins/` with a validated template
 
 ## Quickstart (Windows)
 
