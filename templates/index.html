@@ -20,11 +20,15 @@
   <div class="brand">
     <span class="brand-mark">&#9670;</span>
     <span class="brand-name">JARVIS</span>
-    <span class="brand-ver" id="brand-ver">v7.0</span>
+    <span class="brand-ver" id="brand-ver">v1.0.0</span>
     <button class="code-toggle" id="code-toggle" title="Code Mode (file + terminal control)">
       <span class="code-toggle-dot"></span>
       <span class="code-toggle-label">CODE</span>
     </button>
+    <span class="mode-switch" id="mode-switch" title="Interface mode">
+      <button class="mode-btn active" data-uimode-set="life">LIFE</button>
+      <button class="mode-btn" data-uimode-set="dev">DEV</button>
+    </span>
   </div>
   <div class="topbar-center">
     <span class="status-pill">
@@ -75,6 +79,10 @@
     <div class="side-label">UPTIME</div>
     <div class="side-value" id="side-uptime">00:00:00</div>
   </div>
+  <div class="side-block dev-only" id="block-ports">
+    <div class="side-label">PORTS <button id="ports-refresh" class="mini-btn" title="refresh">↻</button></div>
+    <div id="side-ports"><div class="side-value">&ndash;</div></div>
+  </div>
 </aside>
 
 <!-- Log panel (right) -->
@@ -123,6 +131,7 @@
     <button class="dbtn active" id="btn-voice">&#9673; VOICE</button>
     <button class="dbtn" id="btn-stop">&#9632; STOP</button>
     <button class="dbtn" id="btn-settings">&#9881; SETTINGS</button>
+    <button class="dbtn dev-only" id="btn-dev">&#9000; DEV</button>
     <button class="dbtn" id="btn-dev">&#9000; DEV</button>
   </div>
 </footer>
@@ -132,6 +141,7 @@
   <div class="drawer-title">DEV MODE <button id="dev-close" class="dbtn">CLOSE</button></div>
   <div class="dev-tabs">
     <button data-devtab="files" class="dbtn active">FILES</button>
+    <button data-devtab="term" class="dbtn">TERM</button>
     <button data-devtab="call" class="dbtn">CALL</button>
     <button data-devtab="logs" class="dbtn">LOGS</button>
   </div>
@@ -145,8 +155,14 @@
     </div>
     <pre id="dev-diff"></pre>
   </div>
-  <div class="dev-panel hidden" data-devpanel="call">
+  <div class="dev-panel hidden" data-devpanel="term">
     <div class="dev-row">
+      <input id="term-cmd" type="text" placeholder="dir / git status / python --version" spellcheck="false">
+      <button id="term-run" class="dbtn">RUN</button>
+    </div>
+    <pre id="term-out">Sandboxed to project root. Destructive commands are blocked server-side.</pre>
+  </div>
+  <div class="dev-panel hidden" data-devpanel="call">    <div class="dev-row">
       <select id="dev-method"><option>GET</option><option>POST</option></select>
       <input id="dev-path" type="text" placeholder="/api/skills" value="/api/skills">
     </div>

@@ -1,4 +1,4 @@
-﻿/* JARVIS v7.0 - app.js (full rewrite, defensive) */
+﻿/* JARVIS v1.0.0 - app.js (full rewrite, defensive) */
 (function(){
 'use strict';
 
@@ -439,6 +439,10 @@ var SLASH_CMDS=[
   {cmd:'/outcomes',desc:'Show outcome memory stats'},
   {cmd:'/verify',desc:'Cross-check the last answer'},
   {cmd:'/agents',desc:'Run parallel multi-agent session'},
+  {cmd:'/term',desc:'Run a terminal command'},
+  {cmd:'/ports',desc:'List listening ports'},
+  {cmd:'/kill',desc:'Kill process by pid — /kill <pid>'},
+  {cmd:'/mode',desc:'Switch UI mode — /mode dev|life'},
   {cmd:'/dream',desc:'Run Dream Mode now'},
   {cmd:'/dream-dry',desc:'Preview Dream Mode (no changes)'},
   {cmd:'/dream-last',desc:'Show last Dream report'},
@@ -503,7 +507,27 @@ function handleSlash(cmd){
   else if(cmd==='/layouts'){showLayouts();}
   else if(cmd==='/cleanurl'){runCleanUrl();}
   else if(cmd==='/timesum'){showTimeSum();}
+  else if(cmd.indexOf('/term ')===0){runSlashTerm(cmd.slice(6).trim());}
+  else if(cmd==='/term'){addLog('Usage: /term <command>','warn');}
+  else if(cmd==='/ports'){runSlashPorts();}
+  else if(cmd.indexOf('/kill ')===0){killPort(cmd.slice(6).trim().split(/\s+/)[0],0);renderPorts();}
+  else if(cmd.indexOf('/mode')===0){var _m=cmd.slice(5).trim();setMode(_m==='dev'?'dev':'life');addLog('UI mode: '+getMode(),'system');}
   else sendCommand(cmd);
+}
+async function runSlashTerm(arg){
+  if(!arg){addLog('Usage: /term <command>','warn');return;}
+  try{
+    var r=await fetch('/api/terminal/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:arg})}).then(function(x){return x.json();});
+    addLog('$ '+arg,'system');addLog((r.output||'(no output)').slice(0,800),'bot');
+  }catch(e){addLog('Term error: '+e.message,'warn');}
+}
+async function runSlashPorts(){
+  try{
+    var r=await fetch('/api/ports').then(function(x){return x.json();});
+    var items=(r.ports||[]).filter(function(p){return p.port;}).slice(0,10);
+    addLog('Listening ('+(r.count||items.length)+'):', 'system');
+    items.forEach(function(p){addLog('  :'+p.port+' '+(p.process||'?')+' pid '+p.pid,'system');});
+  }catch(e){addLog('Ports error: '+e.message,'warn');}
 }
 async function showClipboard(){
   try{
@@ -903,7 +927,7 @@ function prefToggle(key,on,label,sub){
   }
   if(name==='about'){
     return '<div class="set-list">'+
-      '<div class="set-row"><div class="label">Version<small>v7.0</small></div></div>'+
+      '<div class="set-row"><div class="label">Version<small>v1.0.0</small></div></div>'+
       '<div class="set-row"><div class="label">Model<small>'+esc(data.model||'--')+'</small></div></div>'+
       '<div class="set-row"><div class="label">Skills<small>'+esc(String((data.skills||[]).length))+'</small></div></div>'+
       '<div class="set-row"><div class="label">Voice<small>'+esc(data.voice&&data.voice.label?data.voice.label:'--')+'</small></div></div>'+
@@ -1327,6 +1351,55 @@ async function devLogs(){
     out.scrollTop=out.scrollHeight;
   }catch(e){out.textContent='✗ '+e.message;}
 }
+/* ---------- UI MODE (life/dev, persisted, no reload) ---------- */
+function getMode(){try{return localStorage.getItem('jarvis-uimode')==='dev'?'dev':'life';}catch(e){return 'life';}}
+function setMode(m){
+  m=(m==='dev')?'dev':'life';
+  document.body.setAttribute('data-uimode',m);
+  try{localStorage.setItem('jarvis-uimode',m);}catch(e){}
+  document.querySelectorAll('[data-uimode-set]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-uimode-set')===m);});
+  if(m==='dev')renderPorts();
+}
+function applyMode(){setMode(getMode());}
+
+/* ---------- PORTS ---------- */
+async function renderPorts(){
+  var box=$('side-ports');if(!box)return;
+  try{
+    var r=await fetch('/api/ports').then(function(x){return x.json();});
+    var items=(r.ports||[]).filter(function(p){return p.port;}).slice(0,8);
+    if(!items.length){box.innerHTML='<div class="side-value">&ndash;</div>';return;}
+    box.innerHTML=items.map(function(p){
+      return '<div class="port-row"><span class="'+(p.mine?'mine':'')+'">:'+p.port+' '+
+        esc(p.process||'?')+'</span>'+
+        '<button class="pkill" data-pid="'+p.pid+'" data-port="'+p.port+'" title="kill">✕</button></div>';
+    }).join('')+'<div class="port-row"><span style="color:var(--dim)">'+(r.count||items.length)+' listening</span></div>';
+    box.querySelectorAll('.pkill').forEach(function(b){
+      b.addEventListener('click',function(){killPort(b.getAttribute('data-pid'),b.getAttribute('data-port'));});
+    });
+  }catch(e){box.innerHTML='<div class="side-value">err</div>';}
+}
+async function killPort(pid,port){
+  if(!pid)return;
+  if(!confirm('Kill pid '+pid+' (port '+port+')?'))return;
+  try{
+    var r=await fetch('/api/ports/kill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pid:parseInt(pid),port:parseInt(port)})}).then(function(x){return x.json();});
+    addLog(r.ok?('Killed pid '+pid):('Kill failed: '+(r.error||'unknown')),r.ok?'system':'warn');
+  }catch(e){addLog('Kill error: '+e.message,'warn');}
+  renderPorts();
+}
+
+/* ---------- DEV TERMINAL ---------- */
+async function runTerm(){
+  var inp=$('term-cmd'),out=$('term-out');if(!inp||!out)return;
+  var cmd=inp.value.trim();if(!cmd)return;
+  out.textContent='$ '+cmd+'\n…';
+  try{
+    var r=await fetch('/api/terminal/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:cmd})}).then(function(x){return x.json();});
+    out.textContent='$ '+cmd+'\n'+(r.output||'(no output)');
+  }catch(e){out.textContent='$ '+cmd+'\n✗ '+e.message;}
+  out.scrollTop=out.scrollHeight;
+}
 (function devWire(){
   var b=$('btn-dev');if(b)b.addEventListener('click',function(){devToggle();});
   var c=$('dev-close');if(c)c.addEventListener('click',function(){devToggle(false);});
@@ -1336,6 +1409,11 @@ async function devLogs(){
   var a=$('dev-apply');if(a)a.addEventListener('click',devApply);
   var se=$('dev-send');if(se)se.addEventListener('click',devSend);
   var l=$('dev-logs');if(l)l.addEventListener('click',devLogs);
+  var tr=$('term-run');if(tr)tr.addEventListener('click',runTerm);
+  var tc=$('term-cmd');if(tc)tc.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();runTerm();}});
+  var pr=$('ports-refresh');if(pr)pr.addEventListener('click',renderPorts);
+  document.querySelectorAll('[data-uimode-set]').forEach(function(b){b.addEventListener('click',function(){setMode(b.getAttribute('data-uimode-set'));});});
+  applyMode();
 })();
 
 function updateCodeToggle(enabled){

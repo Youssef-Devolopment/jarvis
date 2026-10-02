@@ -8,6 +8,9 @@ from logger import get_logger
 log = get_logger(__name__)
 load_dotenv()
 
+# Single source of truth for the app version. Bump on major releases.
+VERSION = "1.0.0"
+
 
 @dataclass(frozen=True)
 class Provider:

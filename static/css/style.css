@@ -1037,3 +1037,23 @@ button:focus-visible,input:focus-visible{outline:1px solid var(--theme-accent);o
     justify-content: flex-end;
   }
 }
+
+/* ---------- UI MODE (life/dev) ---------- */
+.mode-switch{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-left:8px}
+.mode-btn{background:transparent;border:0;color:var(--dim);font-family:var(--mono);font-size:9px;letter-spacing:2px;padding:6px 10px;cursor:pointer;transition:all .2s}
+.mode-btn.active{background:var(--theme-accent);color:#000;font-weight:700}
+.dev-only{display:none!important}
+body[data-uimode="dev"] .dev-only{display:revert!important}
+body[data-uimode="dev"] .dev-only.side-block{display:block!important}
+
+/* ---------- PORTS BLOCK ---------- */
+.port-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-family:var(--mono);font-size:10px;color:var(--text)}
+.port-row .pkill{background:transparent;border:1px solid var(--border);color:var(--dim);font-size:9px;padding:2px 8px;border-radius:3px;cursor:pointer;font-family:var(--mono)}
+.port-row .pkill:hover{color:#ff5c7a;border-color:#ff5c7a}
+.port-row .mine{color:var(--theme-accent)}
+.mini-btn{background:transparent;border:0;color:var(--dim);cursor:pointer;font-size:11px;padding:0 2px}
+.mini-btn:hover{color:var(--theme-accent)}
+
+/* ---------- DEV TERMINAL ---------- */
+#term-out{min-height:120px}
+#term-cmd{flex:1}

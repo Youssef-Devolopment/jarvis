@@ -15,6 +15,11 @@ except Exception as exc:
 
 
 def main():
+    from system import singleton
+    if not singleton.acquire():
+        print("\n[!] JARVIS is already running "
+              "(see logs/jarvis.lock). Not starting a second copy.\n")
+        sys.exit(2)
     s = get_settings()
     import moods, memory
     print(f"\n  JARVIS online  ->  http://{s.host}:{s.port}")

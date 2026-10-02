@@ -142,6 +142,10 @@ def run_desktop_mode(open_browser: bool = False):
     server is up (used for Windows login autostart).
     """
     log.info("Starting JARVIS in desktop mode")
+    from system import singleton
+    if not singleton.acquire():
+        log.warning("Duplicate desktop boot refused — already running.")
+        return
     start_background()
 
     _setup_hotkey()

@@ -4,7 +4,7 @@ import sys
 from flask import Blueprint, Response, jsonify, request
 from ai import get_client, get_store, extract_memory_async
 from ai.tools import TOOL_SCHEMAS
-from config import get_settings
+from config import get_settings, VERSION
 from errors import AIError, ValidationError
 from logger import get_logger
 from skills import dispatch as dispatch_skill, all_skills, toggle_skill
@@ -41,6 +41,7 @@ def info():
     s = get_settings()
     active = get_active() or "auto"
     return jsonify({
+        "version": VERSION,
         "model": active,
         "model_label": "Auto" if active == "auto" else label_for(active),
         "default_model": s.model,
@@ -573,6 +574,40 @@ def format_ep():
 def time_summary_ep():
     hours = int(request.args.get("hours", 24))
     return jsonify({"entries": time_tracker.summary(hours=hours)})
+
+
+# ---------- TERMINAL ----------
+@bp.post("/terminal/run")
+def terminal_run():
+    from ai import tools_terminal
+    d = request.get_json(silent=True) or {}
+    cmd = (d.get("command") or "").strip()
+    if not cmd:
+        raise ValidationError("Missing 'command'.")
+    try:
+        timeout = int(d.get("timeout", 30))
+    except Exception:
+        timeout = 30
+    timeout = max(1, min(120, timeout))
+    return jsonify({"output": tools_terminal.term_run(cmd, timeout)})
+
+
+# ---------- PORTS ----------
+@bp.get("/ports")
+def ports_list():
+    from ai import ports
+    items = ports.list_listeners()
+    return jsonify({"count": len(items), "ports": items[:60]})
+
+
+@bp.post("/ports/kill")
+def ports_kill():
+    from ai import ports
+    d = request.get_json(silent=True) or {}
+    r = ports.kill_listener(d.get("pid", 0), d.get("port", 0) or 0)
+    if not r.get("ok"):
+        raise ValidationError(r.get("error") or "Kill failed.")
+    return jsonify(r)
 
 
 # ---------- APP INDEX ----------
