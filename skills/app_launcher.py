@@ -59,4 +59,25 @@ def skill_launch(text, m):
     if r["status"] == "candidates":
         return ("Did you mean: "
                 + ", ".join(r["candidates"]) + "?")
+    # Fallback: exact path from the auto-discovered app index
+    # (taskbar, running apps, desktop shortcuts the resolver misses).
+    try:
+        from ai import app_index
+        hit = app_index.find(app)
+        if hit and hit.get("path"):
+            target = hit["path"]
+            if L.is_instant(target):
+                out = L.launch_target(target)
+            elif _ask(hit.get("name") or app):
+                out = L.launch_target(target)
+            else:
+                return "OK, not opening it."
+            try:
+                from memory import context as ctx
+                ctx.log_event("app", f"launched {app} via index")
+            except Exception:
+                pass
+            return out
+    except Exception:
+        pass
     return f"Could not find an app called '{app}'."

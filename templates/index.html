@@ -123,8 +123,48 @@
     <button class="dbtn active" id="btn-voice">&#9673; VOICE</button>
     <button class="dbtn" id="btn-stop">&#9632; STOP</button>
     <button class="dbtn" id="btn-settings">&#9881; SETTINGS</button>
+    <button class="dbtn" id="btn-dev">&#9000; DEV</button>
   </div>
 </footer>
+
+<!-- Dev drawer -->
+<div class="drawer" id="dev-drawer">
+  <div class="drawer-title">DEV MODE <button id="dev-close" class="dbtn">CLOSE</button></div>
+  <div class="dev-tabs">
+    <button data-devtab="files" class="dbtn active">FILES</button>
+    <button data-devtab="call" class="dbtn">CALL</button>
+    <button data-devtab="logs" class="dbtn">LOGS</button>
+  </div>
+  <div class="dev-panel" data-devpanel="files">
+    <select id="dev-file"></select>
+    <textarea id="dev-editor" rows="16" spellcheck="false"></textarea>
+    <input id="dev-reason" type="text" placeholder="change reason">
+    <div class="dev-row">
+      <button id="dev-propose" class="dbtn">PROPOSE</button>
+      <button id="dev-apply" class="dbtn" disabled>APPLY</button>
+    </div>
+    <pre id="dev-diff"></pre>
+  </div>
+  <div class="dev-panel hidden" data-devpanel="call">
+    <div class="dev-row">
+      <select id="dev-method"><option>GET</option><option>POST</option></select>
+      <input id="dev-path" type="text" placeholder="/api/skills" value="/api/skills">
+    </div>
+    <textarea id="dev-body" rows="4" spellcheck="false" placeholder='{"key": "value"}'></textarea>
+    <div class="dev-row"><button id="dev-send" class="dbtn">SEND</button></div>
+    <pre id="dev-result"></pre>
+  </div>
+  <div class="dev-panel hidden" data-devpanel="logs">
+    <div class="dev-row">
+      <select id="dev-logfile">
+        <option>jarvis.log</option><option>dream_mode.log</option>
+        <option>auto_skills.log</option><option>clipboard_history.log</option>
+      </select>
+      <button id="dev-logs" class="dbtn">REFRESH</button>
+    </div>
+    <pre id="dev-logout"></pre>
+  </div>
+</div>
 
 <!-- Settings modal -->
 <div class="modal" id="modal-settings">

@@ -67,4 +67,40 @@ def status() -> dict:
     }
 
 
+def install_plugin(name: str, code: str) -> dict:
+    """One-click plugin install: validate → save → load. No restart."""
+    import re as _re
+    name = (name or "").strip().lower()
+    if not _re.fullmatch(r"[a-z][a-z0-9_]{1,30}", name):
+        return {"error": f"bad plugin name: {name!r}"}
+    try:
+        from skills.auto_generator import _validate
+        meta = _validate(code)
+    except Exception as exc:
+        return {"error": f"validation failed: {exc}"}
+    try:
+        import plugins as _pkg
+        dest = Path(_pkg.__path__[0]) / f"{name}.py"
+    except Exception as exc:
+        return {"error": f"plugin dir missing: {exc}"}
+    if dest.exists():
+        return {"error": f"plugin '{name}' already exists"}
+    try:
+        dest.write_text(code, encoding="utf-8")
+    except Exception as exc:
+        return {"error": f"write failed: {exc}"}
+    full = f"plugins.{name}"
+    try:
+        importlib.import_module(full)
+        _loaded.append(full)
+    except Exception as exc:
+        try:
+            dest.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return {"error": f"load failed: {str(exc)[:160]}"}
+    log.info("plugin installed: %s (%s)", name, meta["name"])
+    return {"ok": True, "file": name, "skill": meta["name"]}
+
+
 load_plugins()

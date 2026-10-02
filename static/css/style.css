@@ -345,6 +345,20 @@ input[type="range"].range::-webkit-slider-thumb{-webkit-appearance:none;width:14
 .drawer-btn:hover{color:var(--theme-accent);border-color:var(--theme-accent)}
 .drawer-body{flex:1;overflow-y:auto;padding:14px}
 
+/* ---------- DEV DRAWER ---------- */
+.hidden{display:none!important}
+#dev-drawer{width:440px;padding:18px;gap:12px;overflow-y:auto}
+#dev-drawer .drawer-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.dev-tabs{display:flex;gap:6px}
+.dev-tabs .dbtn.active{background:var(--theme-accent);color:#000;border-color:var(--theme-accent)}
+.dev-panel{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.dev-row{display:flex;gap:8px}
+#dev-drawer select,#dev-drawer textarea,#dev-drawer input[type="text"]{font-family:var(--mono);font-size:11px;padding:8px 10px;background:rgba(0,0,0,.4);border:1px solid var(--border);color:#fff;border-radius:5px;outline:none;width:100%;box-sizing:border-box}
+#dev-drawer select:focus,#dev-drawer textarea:focus,#dev-drawer input:focus{border-color:var(--theme-accent);box-shadow:0 0 0 2px rgba(179,0,255,.15)}
+#dev-drawer textarea{resize:vertical;line-height:1.5}
+#dev-diff,#dev-result,#dev-logout{font-family:var(--mono);font-size:10px;line-height:1.5;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:10px 12px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0}
+#dev-apply:disabled{opacity:.35;cursor:default}
+
 /* ── Focus visible ───────────────────────────────────────── */
 button:focus-visible,input:focus-visible{outline:1px solid var(--theme-accent);outline-offset:2px}
 

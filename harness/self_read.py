@@ -6,7 +6,8 @@ from logger import get_logger
 log = get_logger(__name__)
 _ROOT = Path(__file__).resolve().parent.parent
 
-_ALLOWED_DIRS = {"ai", "skills", "voice", "routes", "moods", "memory", "harness"}
+_ALLOWED_DIRS = {"ai", "skills", "voice", "routes", "moods", "memory", "harness",
+                 "system", "plugins", "static", "templates"}
 _ALLOWED_FILES = {"config.py", "logger.py", "errors.py", "server.py", "run.py"}
 
 

@@ -24,6 +24,16 @@ def skill(text, match):
     out = L.open_url(t)
     if out:
         return out
+    # Bare name? Try the user's own bookmarks/history first (exact).
+    if re.fullmatch(r"[\w\s\-]{2,60}", t):
+        try:
+            from ai import site_index
+            hit = site_index.find(t)
+            if hit and hit.get("url"):
+                return (L.open_url(hit["url"])
+                        or f"Top hit: {hit['url']}")
+        except Exception:
+            pass
     # Not a url at all -> silent headless search, then open top hit.
     try:
         from skills.browser_agent import get_agent

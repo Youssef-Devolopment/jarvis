@@ -1261,6 +1261,83 @@ function openDrawer(){
 }
 function closeDrawer(){rmCls('drawer-history','open');}
 
+/* ---------- DEV MODE (drawer: live files, endpoint calls, logs) ---------- */
+var devPid=null,devOrig='';
+function devToggle(force){
+  var d=$('dev-drawer');if(!d)return;
+  var open=(typeof force==='boolean')?force:!d.classList.contains('open');
+  d.classList.toggle('open',open);
+  if(open)devLoadFiles();
+}
+function devTab(name){
+  document.querySelectorAll('#dev-drawer [data-devtab]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-devtab')===name);});
+  document.querySelectorAll('#dev-drawer [data-devpanel]').forEach(function(p){p.classList.toggle('hidden',p.getAttribute('data-devpanel')!==name);});
+  if(name==='logs')devLogs();
+}
+async function devLoadFiles(){
+  var sel=$('dev-file');if(!sel)return;
+  try{
+    var r=await fetch('/api/harness/files').then(function(x){return x.json();});
+    var files=r.files||[];
+    sel.innerHTML=files.map(function(f){return '<option>'+esc(f)+'</option>';}).join('');
+    if(files.length)devRead();
+  }catch(e){}
+}
+async function devRead(){
+  var sel=$('dev-file'),ed=$('dev-editor');if(!sel||!ed||!sel.value)return;
+  try{
+    var r=await fetch('/api/harness/file?path='+encodeURIComponent(sel.value)).then(function(x){return x.json();});
+    devOrig=r.content||'';ed.value=devOrig;
+    $('dev-diff').textContent='';$('dev-apply').disabled=true;devPid=null;
+  }catch(e){}
+}
+async function devPropose(){
+  var sel=$('dev-file'),ed=$('dev-editor');if(!sel||!ed)return;
+  if(!ed.value||ed.value===devOrig){$('dev-diff').textContent='No changes.';return;}
+  try{
+    var r=await fetch('/api/harness/propose',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:sel.value,old:devOrig,new:ed.value,reason:$('dev-reason').value||'dev drawer edit'})}).then(function(x){return x.json();});
+    if(r.error){$('dev-diff').textContent='✗ '+r.error;return;}
+    devPid=r.id;$('dev-diff').textContent=r.diff||'(no diff)';$('dev-apply').disabled=false;
+  }catch(e){$('dev-diff').textContent='✗ '+e.message;}
+}
+async function devApply(){
+  if(!devPid)return;
+  try{
+    var r=await fetch('/api/harness/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:devPid})}).then(function(x){return x.json();});
+    $('dev-diff').textContent=r.ok?('✓ applied, backup: '+(r.backup||'')):('✗ '+(r.error||'failed'));
+    if(r.ok){devPid=null;$('dev-apply').disabled=true;devRead();}
+  }catch(e){$('dev-diff').textContent='✗ '+e.message;}
+}
+async function devSend(){
+  var m=$('dev-method').value,p=$('dev-path').value.trim()||'/api/skills',b=$('dev-body').value.trim();
+  var out=$('dev-result');out.textContent='…';
+  try{
+    var opt={method:m,headers:{'Content-Type':'application/json'}};
+    if(m==='POST')opt.body=b||'{}';
+    var r=await fetch(p,opt);var t=await r.text();
+    try{t=JSON.stringify(JSON.parse(t),null,1);}catch(e){}
+    out.textContent=r.status+'\n'+t.slice(0,3000);
+  }catch(e){out.textContent='✗ '+e.message;}
+}
+async function devLogs(){
+  var f=$('dev-logfile').value,out=$('dev-logout');out.textContent='…';
+  try{
+    var r=await fetch('/api/logs/tail?file='+encodeURIComponent(f)+'&lines=120').then(function(x){return x.json();});
+    out.textContent=(r.lines||[]).join('\n')||'(empty)';
+    out.scrollTop=out.scrollHeight;
+  }catch(e){out.textContent='✗ '+e.message;}
+}
+(function devWire(){
+  var b=$('btn-dev');if(b)b.addEventListener('click',function(){devToggle();});
+  var c=$('dev-close');if(c)c.addEventListener('click',function(){devToggle(false);});
+  document.querySelectorAll('#dev-drawer [data-devtab]').forEach(function(t){t.addEventListener('click',function(){devTab(t.getAttribute('data-devtab'));});});
+  var s=$('dev-file');if(s)s.addEventListener('change',devRead);
+  var p=$('dev-propose');if(p)p.addEventListener('click',devPropose);
+  var a=$('dev-apply');if(a)a.addEventListener('click',devApply);
+  var se=$('dev-send');if(se)se.addEventListener('click',devSend);
+  var l=$('dev-logs');if(l)l.addEventListener('click',devLogs);
+})();
+
 function updateCodeToggle(enabled){
   var btn=document.getElementById('code-toggle');
   if(!btn)return;

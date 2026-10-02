@@ -282,6 +282,20 @@ def plugins_reload():
     return jsonify(load_plugins())
 
 
+@bp.post("/plugins/install")
+def plugins_install():
+    from plugins import install_plugin
+    d = request.get_json(silent=True) or {}
+    name = (d.get("name") or "").strip()
+    code = d.get("code") or ""
+    if not name or not code:
+        raise ValidationError("Missing 'name' or 'code'.")
+    r = install_plugin(name, code)
+    if r.get("error"):
+        raise ValidationError(r["error"])
+    return jsonify(r)
+
+
 # ---------- COUNCIL ----------
 @bp.post("/council/run")
 def council_run():
@@ -561,6 +575,46 @@ def time_summary_ep():
     return jsonify({"entries": time_tracker.summary(hours=hours)})
 
 
+# ---------- APP INDEX ----------
+@bp.get("/apps")
+def apps_list():
+    from ai import app_index
+    q = request.args.get("q", "").strip()
+    apps = app_index.load_index()
+    if q:
+        hit = app_index.find(q)
+        apps = [hit] if hit else []
+    return jsonify({"count": len(apps), "apps": apps[:100]})
+
+
+@bp.post("/apps/refresh")
+def apps_refresh():
+    from ai import app_index
+    apps = app_index.refresh()
+    return jsonify({"ok": True, "count": len(apps)})
+
+
+# ---------- SITE INDEX ----------
+@bp.get("/sites")
+def sites_list():
+    from ai import site_index
+    data = site_index.load_index()
+    return jsonify({"bookmarks": len(data.get("bookmarks", [])),
+                    "history": len(data.get("history", [])),
+                    "top": sorted(data.get("history", []),
+                                  key=lambda h: h.get("visits", 0),
+                                  reverse=True)[:20]})
+
+
+@bp.post("/sites/refresh")
+def sites_refresh():
+    from ai import site_index
+    data = site_index.refresh()
+    return jsonify({"ok": True,
+                    "bookmarks": len(data.get("bookmarks", [])),
+                    "history": len(data.get("history", []))})
+
+
 # ---------- TOOLS ----------
 @bp.get("/tools")
 def tools_list():
@@ -583,6 +637,45 @@ def tool_toggle():
 @bp.get("/mcp")
 def mcp_all():
     return jsonify({"servers": mcp_list()})
+
+
+@bp.get("/mcp/setup")
+def mcp_setup():
+    from mcp import presets
+    return jsonify({"toolchain": presets.toolchain(),
+                    "presets": presets.list_presets(),
+                    "servers": mcp_list()})
+
+
+@bp.post("/mcp/preset")
+def mcp_preset_install():
+    from mcp import presets
+    d = request.get_json(silent=True) or {}
+    pid = (d.get("preset") or "").strip()
+    if not pid:
+        raise ValidationError("Missing 'preset'.")
+    r = presets.install_preset(pid, args=d.get("args", "") or "",
+                               env=d.get("env") or None)
+    if r.get("error"):
+        raise ValidationError(r["error"])
+    return jsonify(r)
+
+
+@bp.post("/mcp/import")
+def mcp_import():
+    from mcp import presets
+    d = request.get_json(silent=True) or {}
+    cfg = d.get("config", d)
+    if isinstance(cfg, str):
+        import json as _json
+        try:
+            cfg = _json.loads(cfg)
+        except Exception:
+            raise ValidationError("config is not valid JSON.")
+    r = presets.import_claude_config(cfg)
+    if r.get("error"):
+        raise ValidationError(r["error"])
+    return jsonify(r)
 
 
 @bp.post("/mcp")
@@ -816,6 +909,32 @@ def harness_reject():
 @bp.get("/harness/pending")
 def harness_pending():
     return jsonify({"pending": harness.self_edit.pending()})
+
+
+# ---------- LOGS ----------
+_LOG_ALLOW = {"jarvis.log", "dream_mode.log", "auto_skills.log",
+              "clipboard_history.log"}
+
+
+@bp.get("/logs/tail")
+def logs_tail():
+    from pathlib import Path
+    name = (request.args.get("file", "jarvis.log") or "").strip()
+    if "/" in name or "\\" in name or name not in _LOG_ALLOW:
+        raise ValidationError("Log not allowed.")
+    try:
+        lines = int(request.args.get("lines", 80))
+    except Exception:
+        lines = 80
+    lines = max(1, min(500, lines))
+    p = Path(__file__).resolve().parent.parent / "logs" / name
+    if not p.exists():
+        return jsonify({"file": name, "lines": []})
+    try:
+        data = p.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception as exc:
+        raise ValidationError(f"Cannot read log: {exc}")
+    return jsonify({"file": name, "lines": data[-lines:]})
 
 
 # ---------- VOICE ROUTES ----------
