@@ -52,6 +52,15 @@ def start_background():
             log.warning("Screen context failed to start: %s", exc)
     threading.Thread(target=_screen_context, name="screen-context",
                      daemon=True).start()
+    # Warm the autonomous app learner so "open X" resolves instantly
+    def _app_warm():
+        try:
+            from system import app_learner
+            app_learner.warm()
+        except Exception as exc:
+            log.warning("App learner warm failed: %s", exc)
+    threading.Thread(target=_app_warm, name="app-learner-warm",
+                     daemon=True).start()
     # Give it a moment to bind the port
     time.sleep(1.5)
 

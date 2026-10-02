@@ -1,5 +1,6 @@
 from skills.base import Skill
-from skills.registry import (all_skills, dispatch, get_skill, toggle_skill)
+from skills.registry import (all_skills, dispatch, get_skill, toggle_skill,
+                             unregister)
 
 from skills import web_search      # noqa: F401
 from skills import clock           # noqa: F401
@@ -50,4 +51,5 @@ from skills import snippets_skill          # noqa: F401
 from skills import auto_generated  # noqa: F401
 from plugins import load_plugins as _load_community_plugins  # noqa: F401
 
-__all__ = ["Skill", "all_skills", "dispatch", "get_skill", "toggle_skill"]
+__all__ = ["Skill", "all_skills", "dispatch", "get_skill", "toggle_skill",
+           "unregister"]

@@ -460,39 +460,52 @@ def _run() -> None:
                                                  else DIM))
 
         def pump():
+            # NEVER dies: one poisoned action must not disable the HUD
+            # (the thread stays alive, so ensure_started would keep
+            # queueing into a pump that no longer runs — silent no-op).
             try:
                 while True:
                     kind, payload = _actions.get_nowait()
-                    if kind == "result":
-                        on_result(payload,
-                                  DANGER if payload.startswith("[error]")
-                                  else TEXT)
-                    elif kind == "heard":
-                        set_reply(f"🎙 heard: {payload}", DIM)
-                    elif kind == "info":
-                        ver.configure(text=f"v{payload.get('version','')}")
-                        hdr.configure(
-                            text=f"{payload.get('mood','?')} · "
-                                 f"{payload.get('model','?')}")
-                    elif kind == "show":
-                        fade_in()
-                        threading.Thread(target=_pull_info,
-                                         daemon=True).start()
-                    elif kind == "hide":
-                        hide()
-                    elif kind == "toggle":
-                        if _state["visible"]:
-                            hide()
-                        else:
+                    try:
+                        if kind == "result":
+                            on_result(payload,
+                                      DANGER if payload.startswith("[error]")
+                                      else TEXT)
+                        elif kind == "heard":
+                            set_reply(f"🎙 heard: {payload}", DIM)
+                        elif kind == "info":
+                            ver.configure(
+                                text=f"v{payload.get('version','')}")
+                            hdr.configure(
+                                text=f"{payload.get('mood','?')} · "
+                                     f"{payload.get('model','?')}")
+                        elif kind == "show":
                             fade_in()
                             threading.Thread(target=_pull_info,
                                              daemon=True).start()
-                    elif kind == "quit":
-                        root.destroy()
-                        return
+                        elif kind == "hide":
+                            hide()
+                        elif kind == "toggle":
+                            if _state["visible"]:
+                                hide()
+                            else:
+                                fade_in()
+                                threading.Thread(target=_pull_info,
+                                                 daemon=True).start()
+                        elif kind == "quit":
+                            root.destroy()
+                            return
+                    except Exception as exc:
+                        log.warning("overlay action %r failed: %s",
+                                    kind, exc)
             except queue.Empty:
                 pass
-            root.after(80, pump)
+            except Exception as exc:
+                log.warning("overlay pump error: %s", exc)
+            try:
+                root.after(80, pump)
+            except Exception:
+                pass        # root destroyed — stop rescheduling
 
         def _pull_info():
             try:
@@ -504,10 +517,19 @@ def _run() -> None:
         mic_btn.configure(command=mic)
 
         _state["root"] = root
+        # Tk callback errors normally go to stderr — invisible under
+        # pythonw and fatal to mainloop. Log them instead.
+        root.report_callback_exception = (
+            lambda *a: log.warning("overlay tk callback error: %s", a[1]))
         _ready.set()
         pulse()
         pump()
-        root.mainloop()
+        try:
+            root.mainloop()
+        except Exception as exc:
+            log.warning("overlay mainloop ended: %s", exc)
+        finally:
+            _state["visible"] = False
     except Exception as exc:
         log.warning("Overlay thread failed: %s", exc)
         _ready.set()

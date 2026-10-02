@@ -641,6 +641,17 @@ def ports_kill():
 
 
 # ---------- OVERLAY (Alt+Space HUD) ----------
+@bp.get("/overlay/state")
+def overlay_state():
+    from system import overlay
+    st = overlay._state
+    th = st.get("thread")
+    return jsonify({"ready": bool(overlay._ready.is_set()),
+                    "visible": bool(st.get("visible")),
+                    "thread_alive": bool(th and th.is_alive()),
+                    "root": bool(st.get("root"))})
+
+
 @bp.post("/overlay/toggle")
 def overlay_toggle():
     from system import overlay
@@ -665,6 +676,59 @@ def apps_refresh():
     from ai import app_index
     apps = app_index.refresh()
     return jsonify({"ok": True, "count": len(apps)})
+
+
+# ---------- APP LEARNER (autonomous skill generation) ----------
+@bp.get("/apps/learned")
+def apps_learned():
+    from system import app_learner
+    return jsonify({"count": len(app_learner.learned_list()),
+                    "apps": app_learner.learned_list()})
+
+
+@bp.post("/apps/learn")
+def apps_learn():
+    """Learn an app NOW (scan + write skill) without launching it."""
+    from system import app_learner
+    d = request.get_json(silent=True) or {}
+    name = (d.get("name") or "").strip()
+    path = (d.get("path") or "").strip()
+    query = (d.get("query") or "").strip()
+    try:
+        if name and path:
+            skill, created = app_learner.ensure_skill(name, path)
+        elif query:
+            hit = app_learner.find(query)
+            if not hit:
+                apps = app_learner.scan(force=True)
+                from system.app_learner import _norm
+                hit = apps.get(_norm(query))
+            if not hit:
+                return jsonify({"ok": False,
+                                "error": f"no executable found for '{query}'"}), 404
+            skill, created = app_learner.ensure_skill(hit["name"], hit["path"])
+            name, path = hit["name"], hit["path"]
+        else:
+            raise ValidationError("Provide 'query' or 'name' + 'path'.")
+        return jsonify({"ok": True, "skill": skill, "created": created,
+                        "name": name, "path": path})
+    except ValueError as exc:
+        raise ValidationError(str(exc))
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)[:160]}), 500
+
+
+@bp.post("/apps/forget")
+def apps_forget():
+    from system import app_learner
+    d = request.get_json(silent=True) or {}
+    q = (d.get("query") or "").strip()
+    if not q:
+        raise ValidationError("Missing 'query'.")
+    ok = app_learner.forget(q)
+    if not ok:
+        raise ValidationError(f"Nothing learned called '{q}'.")
+    return jsonify({"ok": True, "forgotten": q})
 
 
 # ---------- SITE INDEX ----------

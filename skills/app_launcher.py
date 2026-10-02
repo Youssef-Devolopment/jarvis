@@ -80,4 +80,19 @@ def skill_launch(text, m):
             return out
     except Exception:
         pass
+    # Fallback: autonomous app learner — deep-scans Program Files,
+    # LocalAppData, Start Menu and %PATH%; on a hit it launches the
+    # app AND writes a permanent skill for it.
+    try:
+        from system import app_learner
+        res = app_learner.learn_and_launch(app, ask_fn=_ask)
+        if res:
+            if res.get("declined"):
+                return "OK, not opening it."
+            out = res.get("output") or f"Opened {app}."
+            if res.get("created"):
+                out += f"  [learned: '{res['name']}' is now a skill]"
+            return out
+    except Exception as exc:
+        log.warning("app learner fallback failed: %s", exc)
     return f"Could not find an app called '{app}'."
