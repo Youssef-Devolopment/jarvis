@@ -50,6 +50,22 @@ First GitHub-ready release.
 - GitHub packaging: CI, issue templates, PR template, MIT license,
   CONTRIBUTING, ARCHITECTURE.
 
+### Changed
+- **Full UI refresh — dashboard**: premium glass rebuild (gradient
+  hairline panels, blurred topbar strip, pill dock), accent system now
+  derived from `--theme-hue` so every glow follows the active mood,
+  state-driven colors for the status pill / tagline / input ring
+  (boot · idle · listening · thinking · speaking · tool · error),
+  entrance choreography, hover micro-interactions, accent scrollbars,
+  text selection and `prefers-reduced-motion` support.
+- **Full UI refresh — overlay HUD**: bezel + accent edge with glowing
+  hex emblem and halo status dot, letterspaced header with mood/model
+  pill, readable Segoe UI reply well with accent bar, hover-reactive
+  chips and buttons, focus-lit input border, slide+fade entrance and a
+  proper fade-out dismissal.
+- Layout pass: scroll-safe sidebar, richer log-entry styling (user
+  messages get an accent stripe), sharper typography throughout.
+
 ### Fixed
 - Overlay "(no reply)": SSE `error` payloads now surfaced; bytes
   stream lines decoded; `/api` prefix restored on header fetch.
@@ -64,6 +80,9 @@ First GitHub-ready release.
   when Python has the module cached.
 - The `auto_approve_skills` voice command now reports the persisted
   state instead of flipping an in-memory flag that died on restart.
+- Duplicate `btn-dev` id in the dock: the visible DEV button had no
+  listener (the id resolved to a hidden copy), so the drawer would not
+  open — one button now works in both UI modes.
 
 ### Community
 - README live overlay screenshot (`docs/overlay.png`), HUD demo callout

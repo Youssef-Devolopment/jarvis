@@ -84,6 +84,10 @@ mechanisms are armed; disable via Settings or `POST /autostart/disable`.
   default, `dream_enabled` pref)
 - **Morning briefing** (`GET /api/briefing`): greeting + pending
   reminders + things you told it to remember
+- **Premium UI**: glassmorphism dashboard with mood-reactive accent,
+  state-driven status colors, entrance choreography and
+  reduced-motion support; redesigned Alt+Space HUD with bezel edge,
+  focus-lit input and fade/slide animation
 - **MEGA utilities**: clipboard watcher, quick capture, contacts,
   snippets vault, window layouts, URL cleaner, auto-format, time
   tracking, focus lock, screen OCR, cross-app bridge
