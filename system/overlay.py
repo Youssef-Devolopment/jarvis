@@ -32,13 +32,16 @@ log = get_logger(__name__)
 
 # ----- geometry / palette -------------------------------------------------
 W, H = 760, 404
-TRANSPARENT = "#ff00ff"      # transparentcolor key
-PANEL = "#0B1220"
-PANEL2 = "#0E1626"
-EDGE = "#00E5FF"
-GLOW = "#0A2A3A"
-TEXT = "#D6E2F5"
-DIM = "#5B6B82"
+TRANSPARENT = "#ff00ff"      # transparent color key
+PANEL = "#0A101C"       # base surface (deep navy)
+PANEL2 = "#0D1526"      # raised surface (reply well / bezel)
+EDGE = "#00E5FF"            # primary accent (cyan)
+EDGE_DIM = "#0E4A5E"        # dim accent ring
+GLOW = "#123246"            # hairline / busy blink
+TRACK = "#101B2E"       # chips + secondary buttons
+SURF = "#0A0F1C"        # input well
+TEXT = "#DCE7FA"
+DIM = "#64748C"
 GOOD = "#3DFFA2"
 BUSY = "#FFB020"
 DANGER = "#FF5C7A"
@@ -176,11 +179,17 @@ def _run() -> None:
                    x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
             return cv.create_polygon(pts, smooth=True, **kw)
 
-        round_rect(3, 3, W - 3, H - 3, 16, fill=PANEL2, outline=GLOW, width=3)
-        round_rect(1, 1, W - 1, H - 1, 16, fill=PANEL, outline=EDGE, width=1)
-        # hexagon logo
+        # ---------- backdrop: bezel ring + accent edge
+        round_rect(6, 6, W - 6, H - 6, 16, fill=PANEL2, outline=GLOW, width=1)
+        round_rect(3, 3, W - 3, H - 3, 16, fill=PANEL, outline=EDGE, width=2)
+        # hexagon logo (glow ring + solid mark)
         import math
         cx, cy, rr = 26, 23, 11
+        outer = []
+        for i in range(6):
+            a = math.radians(60 * i - 30)
+            outer += [cx + (rr + 3) * math.cos(a), cy + (rr + 3) * math.sin(a)]
+        cv.create_polygon(outer, fill="", outline=EDGE_DIM, width=1)
         hexpts = []
         for i in range(6):
             a = math.radians(60 * i - 30)
@@ -191,11 +200,14 @@ def _run() -> None:
             a = math.radians(60 * i - 30)
             inner += [cx + 5 * math.cos(a), cy + 5 * math.sin(a)]
         cv.create_polygon(inner, fill=PANEL)
-        # header divider + status dot + close glyph
-        cv.create_line(12, HEADER_H, W - 12, HEADER_H, fill=GLOW)
+        # header divider: dim track + bright accent segment
+        cv.create_line(14, HEADER_H, W - 14, HEADER_H, fill=GLOW, width=1)
+        cv.create_line(14, HEADER_H, 154, HEADER_H, fill=EDGE, width=1)
+        # status dot with halo + close glyph
+        cv.create_oval(W - 35, 15, W - 17, 33, outline=GLOW, width=1)
         dot = cv.create_oval(W - 32, 18, W - 20, 30, fill=GOOD, outline="")
         close_id = cv.create_text(W - 56, 23, text="✕", fill=DIM,
-                                  font=("Consolas", 11))
+                                  font=("Segoe UI", 11))
         cv.tag_bind(close_id, "<Button-1>", lambda e: hide())
         cv.tag_bind(close_id, "<Enter>",
                     lambda e: cv.itemconfig(close_id, fill=DANGER))
@@ -204,25 +216,28 @@ def _run() -> None:
 
         # ---------- header labels
         def label(x, y, anchor, **kw):
-            w = tk.Label(cv, bg=PANEL, **kw)
+            w = tk.Label(cv, bg=kw.pop("bg", PANEL), **kw)
             cv.create_window(x, y, window=w, anchor=anchor)
             return w
 
-        title = label(46, 23, "w", text="JARVIS", fg=EDGE,
-                      font=("Consolas", 12, "bold"))
-        ver = label(120, 23, "w", text="", fg=DIM,
-                    font=("Consolas", 9))
+        title = label(48, 23, "w", text="J A R V I S", fg="#FFFFFF",
+                      font=("Bahnschrift", 12, "bold"))
+        ver = label(152, 23, "w", text="", fg=DIM,
+                    font=("Bahnschrift", 9))
         hdr = label(W - 76, 23, "e", text="", fg=TEXT,
-                    font=("Consolas", 9))
+                    font=("Bahnschrift", 9), bg="#101B2E", padx=9, pady=3,
+                    highlightthickness=1, highlightbackground=EDGE_DIM)
 
-        # ---------- reply area
+        # ---------- reply area (accent bar + readable prose font)
         reply_wrap = tk.Frame(cv, bg=PANEL2, highlightbackground=GLOW,
                               highlightthickness=1)
         cv.create_window(14, 50, window=reply_wrap, anchor="nw",
                          width=W - 28, height=218)
+        tk.Frame(reply_wrap, bg=EDGE, width=3).pack(side="left", fill="y")
         reply = tk.Text(reply_wrap, bg=PANEL2, fg=TEXT, relief="flat",
-                        font=("Consolas", 10), wrap="word", state="disabled",
-                        insertbackground=EDGE, padx=8, pady=6,
+                        font=("Segoe UI", 11), wrap="word", state="disabled",
+                        insertbackground=EDGE, padx=12, pady=8,
+                        spacing1=2, spacing3=2,
                         selectbackground=EDGE, selectforeground="#000")
         rscroll = tk.Scrollbar(reply_wrap, command=reply.yview,
                                bg=PANEL2, troughcolor=PANEL2,
@@ -244,47 +259,67 @@ def _run() -> None:
             reply.configure(state="disabled")
             reply.yview("end")
 
-        # ---------- chips
+        # ---------- chips (hover-reactive pills)
         chips = tk.Frame(cv, bg=PANEL)
         cv.create_window(14, 280, window=chips, anchor="nw")
 
         def chip(text, cmd):
-            b = tk.Button(chips, text=text, command=cmd, bg="#12203A",
-                          fg=TEXT, activebackground=EDGE,
+            b = tk.Button(chips, text=text, command=cmd, bg=TRACK,
+                          fg="#9FB6D8", activebackground=EDGE,
                           activeforeground="#000", relief="flat",
-                          font=("Consolas", 8, "bold"), padx=8, pady=3,
-                          cursor="hand2", bd=0)
+                          font=("Bahnschrift", 9, "bold"), padx=10, pady=3,
+                          cursor="hand2", bd=0,
+                          highlightthickness=1, highlightbackground="#1A2A44",
+                          disabledforeground=DIM)
             b.pack(side="left", padx=(0, 6))
+            b.bind("<Enter>", lambda e, w=b: w.configure(bg="#16283F",
+                                                         fg=EDGE))
+            b.bind("<Leave>", lambda e, w=b: w.configure(bg=TRACK,
+                                                         fg="#9FB6D8"))
             return b
 
-        hint = tk.Label(cv, bg=PANEL, fg=DIM, font=("Consolas", 8),
+        hint = tk.Label(cv, bg=PANEL, fg=DIM, font=("Bahnschrift", 8),
                         text="Enter ↵ send · ↑↓ history · Esc hide")
         cv.create_window(W - 14, 292, window=hint, anchor="e")
 
-        # ---------- input row
-        input_wrap = tk.Frame(cv, bg=EDGE)
+        # ---------- input row (border lights up on focus)
+        input_wrap = tk.Frame(cv, bg=EDGE_DIM)
         cv.create_window(14, 316, window=input_wrap, anchor="nw",
                          height=38, width=W - 28)
-        entry = tk.Entry(input_wrap, bg="#101A2E", fg=TEXT,
+        entry = tk.Entry(input_wrap, bg=SURF, fg=TEXT,
                          insertbackground=EDGE, relief="flat",
-                         font=("Consolas", 11), bd=4)
+                         font=("Consolas", 11), bd=4,
+                         insertwidth=2, highlightbackground=EDGE_DIM)
         entry.pack(side="left", fill="both", expand=True, ipady=4)
+        entry.bind("<FocusIn>",
+                   lambda e: input_wrap.configure(bg=EDGE))
+        entry.bind("<FocusOut>",
+                   lambda e: input_wrap.configure(bg=EDGE_DIM))
 
-        def button(parent, text, cmd, w=8):
-            b = tk.Button(parent, text=text, command=cmd, bg="#16233A",
-                          fg=TEXT, activebackground=EDGE,
+        def button(parent, text, cmd, w=8, primary=False):
+            b = tk.Button(parent, text=text, command=cmd,
+                          bg=("#0C2E44" if primary else TRACK),
+                          fg=("#CFFAFF" if primary else TEXT),
+                          activebackground=EDGE,
                           activeforeground="#000", relief="flat",
-                          font=("Consolas", 9, "bold"), width=w,
-                          cursor="hand2", bd=0)
+                          font=("Bahnschrift", 9, "bold"), width=w,
+                          cursor="hand2", bd=0,
+                          highlightthickness=1, highlightbackground="#1A2A44",
+                          disabledforeground=DIM)
             b.pack(side="left", padx=(8, 0), fill="y")
+            hot = "#12425C" if primary else "#16283F"
+            b.bind("<Enter>", lambda e, v=hot: b.configure(bg=v))
+            b.bind("<Leave>", lambda e: b.configure(
+                bg=("#0C2E44" if primary else TRACK)))
             return b
 
-        send_btn = button(input_wrap, "SEND", lambda: None, w=7)
+        send_btn = button(input_wrap, "SEND", lambda: None, w=7,
+                          primary=True)
         mic_btn = button(input_wrap, "MIC", lambda: None, w=5)
 
         # ---------- footer / status line
         status_lbl = label(14, 372, "nw", text="ready · Alt+Space",
-                           fg=DIM, font=("Consolas", 8))
+                           fg=DIM, font=("Bahnschrift", 8))
 
         # ---------- state
         busy = {"n": 0}
@@ -292,10 +327,23 @@ def _run() -> None:
         drag = {"x": 0, "y": 0}
 
         def hide():
+            if not _state["visible"]:
+                return
             _state["visible"] = False
             try:
-                root.attributes("-alpha", 0.0)
-                root.withdraw()
+                def out(a=0.97):
+                    try:
+                        if _state["visible"]:
+                            return      # re-shown mid-fade: abort
+                        a = max(0.0, a - 0.19)
+                        root.attributes("-alpha", a)
+                        if a > 0:
+                            root.after(15, lambda: out(a))
+                        else:
+                            root.withdraw()
+                    except Exception:
+                        pass
+                out()
             except Exception:
                 pass
 
@@ -304,15 +352,24 @@ def _run() -> None:
             root.lift()
             root.attributes("-topmost", True)
             _state["visible"] = True
+            try:
+                x, y = root.winfo_x(), root.winfo_y()
+            except Exception:
+                x = y = 0
+            slide = x >= 0 and y >= 0
 
             def step(a=0.0):
                 try:
                     if not _state["visible"]:
                         return
-                    a = min(0.97, a + 0.14)
+                    a = min(0.97, a + 0.16)
                     root.attributes("-alpha", a)
+                    off = int(12 * (1 - a / 0.97)) if slide else 0
+                    root.geometry(f"{W}x{H}+{x}+{y + off}")
                     if a < 0.97:
                         root.after(16, lambda: step(a))
+                    else:
+                        root.geometry(f"{W}x{H}+{x}+{y}")
                 except Exception:
                     pass
             step()
