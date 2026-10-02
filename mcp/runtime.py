@@ -11,6 +11,58 @@ from mcp.manager import all_servers
 
 log = get_logger(__name__)
 
+
+def _sdk():
+    """Import the real MCP SDK despite our local mcp/ shadow.
+
+    Our own package is named mcp/, so plain `from mcp import X` finds
+    us first and the SDK import fails. Here we briefly evict the local
+    shadow (modules + project root on sys.path), import the SDK from
+    site-packages, then restore everything. Already-bound names
+    (manager, runtime) are unaffected.
+
+    Returns (ClientSession, StdioServerParameters, stdio_client,
+    TextContent). Raises ImportError when the SDK is missing.
+    """
+    import site
+    import sys
+    from pathlib import Path as _P
+
+    root = _P(__file__).resolve().parent.parent
+    sdk_found = False
+    for base in site.getsitepackages():
+        try:
+            cand = _P(base) / "mcp" / "__init__.py"
+            if cand.is_file() and (cand.parent / "client").is_dir():
+                sdk_found = True
+                break
+        except Exception:
+            continue
+    if not sdk_found:
+        raise ImportError("mcp SDK not installed")
+    saved_modules = {k: v for k, v in sys.modules.items()
+                     if k == "mcp" or k.startswith("mcp.")}
+    saved_path = sys.path[:]
+
+    def _is_root(p):
+        try:
+            return _P(p or ".").resolve() == root
+        except Exception:
+            return False
+
+    sys.path = [p for p in saved_path if not _is_root(p)]
+    for k in saved_modules:
+        del sys.modules[k]
+    try:
+        from mcp import ClientSession, StdioServerParameters
+        from mcp.client.stdio import stdio_client
+        from mcp.types import TextContent
+        return ClientSession, StdioServerParameters, stdio_client, TextContent
+    finally:
+        sys.modules.update(saved_modules)
+        sys.path = saved_path
+
+
 # Per-server state
 _servers: dict[str, dict] = {}
 _lock = threading.Lock()
@@ -53,8 +105,7 @@ def _resolve_command(server: dict) -> tuple[str, list[str]] | None:
 async def _start_server(server: dict) -> dict | None:
     """Launch an MCP server, list its tools, return a handle dict."""
     try:
-        from mcp import ClientSession, StdioServerParameters
-        from mcp.client.stdio import stdio_client
+        ClientSession, StdioServerParameters, stdio_client, _ = _sdk()
     except ImportError:
         log.error("mcp package not installed. Run: pip install mcp")
         return None
@@ -181,7 +232,6 @@ def call_tool(server_name: str, tool_name: str, arguments: dict,
 
     async def _call():
         try:
-            from mcp.types import TextContent
             resp = await h["session"].call_tool(tool_name, arguments=arguments)
             parts = []
             for c in (resp.content or []):

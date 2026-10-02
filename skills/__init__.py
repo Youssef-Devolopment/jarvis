@@ -40,6 +40,8 @@ from skills import web_screenshot  # noqa: F401
 from skills import folder_sentinel # noqa: F401
 from skills import win_target      # noqa: F401
 from skills import bridge_skill    # noqa: F401
+from skills import app_finder      # noqa: F401
+from skills import site_finder     # noqa: F401
 from skills import quick_capture_skill     # noqa: F401
 from skills import screen_ocr_skill        # noqa: F401
 from skills import focus_lock_skill        # noqa: F401
