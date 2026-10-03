@@ -30,8 +30,11 @@ A slim **Lite** build (25 skills, port 5002) lives next to it in
 **One-line install** — paste into PowerShell *or* cmd:
 
 ```bat
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (iwr https://raw.githubusercontent.com/Youssef-Devolopment/jarvis/main/setup.ps1 -UseBasicParsing).Content"
+powershell -c "iex (irm https://raw.githubusercontent.com/Youssef-Devolopment/jarvis/main/setup.ps1)"
 ```
+
+(In PowerShell itself the wrapper is optional: the part inside the
+quotes is the whole command.)
 
 It clones the repo to `%USERPROFILE%\jarvis`, builds `.venv`,
 installs every requirement group + Playwright Chromium, and creates
