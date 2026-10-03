@@ -4,6 +4,24 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [Unreleased]
+
+### Added
+- **Skills-only mode**: JARVIS now boots without `DEEPSEEK_API_KEY`.
+  Local skills (time, math, notes, timers, opening apps, 100+ more)
+  answer normally; only LLM chat degrades, returning a setup hint
+  (`no_key` flag) instead of refusing to start. The dashboard shows
+  an amber "Skills-only mode" banner (dismissible, links to
+  Settings), `/api/info` reports `key` / `no_key_mode`, and
+  `config` gains `Settings.load(require_key=False)`, `has_key`,
+  `try_settings()` and `key_status()`. A dead speaker can no longer
+  turn a good text reply into a failed request (chat TTS is
+  best-effort).
+- Known limitation: mic/speaker features stay unavailable until a
+  key is set (`voice/output.py` reads settings at import and is
+  intentionally untouched) — voice endpoints fail with a clear
+  error while text chat and skills are unaffected.
+
 ## [1.0.0] — 2026-10-02
 
 First GitHub-ready release.

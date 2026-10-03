@@ -50,6 +50,11 @@ desktop.bat         :: tray + Ctrl+Alt+J  (start.bat = console server)
 Already have the repo? Run `.\setup.ps1` from its folder — it reuses
 your existing `.venv` and `.env`.
 
+No API key yet? JARVIS still boots in **skills-only mode**: 100+
+local skills (time, math, notes, timers, opening apps...) answer
+normally, and the dashboard shows a banner telling you where to add
+`DEEPSEEK_API_KEY` for full AI chat.
+
 Manual equivalent (from a cloned repo):
 
 ```bat
