@@ -27,6 +27,28 @@ A slim **Lite** build (25 skills, port 5002) lives next to it in
 
 ## Quickstart (Windows)
 
+**One-line install** — paste into PowerShell *or* cmd:
+
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (iwr https://raw.githubusercontent.com/Youssef-Devolopment/jarvis/main/setup.ps1 -UseBasicParsing).Content"
+```
+
+It clones the repo to `%USERPROFILE%\jarvis`, builds `.venv`,
+installs every requirement group + Playwright Chromium, and creates
+`.env` from the template (existing files are never touched). Then
+add your keys and launch:
+
+```bat
+cd %USERPROFILE%\jarvis
+notepad .env        :: fill DEEPSEEK_API_KEY / GROQ_API_KEY
+desktop.bat         :: tray + Ctrl+Alt+J  (start.bat = console server)
+```
+
+Already have the repo? Run `.\setup.ps1` from its folder — it reuses
+your existing `.venv` and `.env`.
+
+Manual equivalent (from a cloned repo):
+
 ```bat
 install.bat
 copy .env.example .env   :: then fill in DEEPSEEK_API_KEY / GROQ_API_KEY

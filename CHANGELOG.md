@@ -47,6 +47,11 @@ First GitHub-ready release.
 - Health surface: `GET /api/info` reports `facts` + `auto_approve`,
   `/api/auto_skills/pending` reports the gate state, `check.py` runs
   11 preflight checks (memory store + approval gate added).
+- **One-line installer** (`setup.ps1`): a single copy/paste command
+  (PowerShell or cmd) clones the repo to `%USERPROFILE%\jarvis`,
+  builds `.venv`, installs every requirement group + Playwright
+  Chromium and seeds `.env` from the template; run from inside an
+  existing checkout it reuses the current `.venv` / `.env` untouched.
 - GitHub packaging: CI, issue templates, PR template, MIT license,
   CONTRIBUTING, ARCHITECTURE.
 
@@ -67,6 +72,15 @@ First GitHub-ready release.
   messages get an accent stripe), sharper typography throughout.
 
 ### Fixed
+- Fresh installs (`install.bat` / `pip install -r requirements.txt`)
+  crashed on a dependency deadlock: `open-interpreter==0.4.3` pins
+  `tiktoken<0.8` while every modern `litellm<2` needs `>=0.8`, sending
+  pip through an unsatisfiable backtrack into a source-only build that
+  needs Rust. Integrations now declare open-interpreter's real runtime
+  dependencies with bounds that resolve (and match the shipped
+  environment), the package itself installs with `--no-deps`, and a
+  `setuptools<82` pin keeps the `pkg_resources` module open-interpreter
+  still imports (removed in setuptools 82).
 - Overlay "(no reply)": SSE `error` payloads now surfaced; bytes
   stream lines decoded; `/api` prefix restored on header fetch.
 - Overlay queue pump could die silently after one failed action (HUD
