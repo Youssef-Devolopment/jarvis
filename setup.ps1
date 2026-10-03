@@ -1,7 +1,7 @@
 # JARVIS one-line installer
 # ---------------------------------------------------------------
 # Run from anywhere (PowerShell or cmd):
-#   powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (iwr https://raw.githubusercontent.com/Youssef-Devolopment/jarvis/main/setup.ps1 -UseBasicParsing).Content"
+#   powershell -c "iex (irm https://raw.githubusercontent.com/Youssef-Devolopment/jarvis/main/setup.ps1)"
 #
 # What it does:
 #   1. finds Python 3.10+ (py -3.10, py -3, or python)
