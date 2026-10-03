@@ -827,6 +827,27 @@ input[type="range"].range::-moz-range-thumb{
   background:rgba(255,184,77,.1);border-color:rgba(255,184,77,.45);
   color:var(--amber);text-shadow:0 0 6px rgba(255,184,77,.5);
 }
+/* no-API-key banner: slim strip under the topbar, amber warning tone */
+.key-banner{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:7px 14px;margin:0;
+  font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--amber);
+  background:linear-gradient(180deg,rgba(255,184,77,.12),rgba(255,184,77,.04));
+  border-bottom:1px solid rgba(255,184,77,.35);
+  text-shadow:0 0 6px rgba(255,184,77,.4);
+}
+.key-banner[hidden]{display:none}
+.key-banner code{color:var(--text);background:rgba(255,255,255,.06);
+  padding:1px 5px;border-radius:4px;font-size:9.5px}
+.key-banner-dot{width:6px;height:6px;border-radius:50%;background:var(--amber);
+  box-shadow:0 0 8px var(--amber);animation:blink 1.6s ease-in-out infinite;flex:none}
+.key-banner-btn{
+  font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--amber);background:transparent;border:1px solid rgba(255,184,77,.45);
+  border-radius:999px;padding:3px 12px;cursor:pointer;transition:all .2s;flex:none;
+}
+.key-banner-btn:hover{background:rgba(255,184,77,.15);box-shadow:0 0 10px rgba(255,184,77,.35)}
+.key-banner-x{border-color:transparent;padding:3px 8px}
 .empty-state{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:10px;padding:34px 16px;color:var(--dim);

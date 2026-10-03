@@ -25,10 +25,12 @@ def _start_flask():
         return
     try:
         from server import app
-        from config import get_settings
-        s = get_settings()
-        log.info("Starting Flask on %s:%d", s.host, s.port)
-        app.run(host=s.host, port=s.port, debug=False,
+        from config import try_settings
+        s = try_settings()
+        host = s.host if s else "127.0.0.1"
+        port = s.port if s else 5000
+        log.info("Starting Flask on %s:%d", host, port)
+        app.run(host=host, port=port, debug=False,
                 threaded=True, use_reloader=False)
         _flask_started = True
     except Exception as exc:
@@ -72,9 +74,11 @@ def open_jarvis_window(new_window: bool = False):
     of that window) — used for login autostart.
     """
     try:
-        from config import get_settings
-        s = get_settings()
-        url = f"http://{s.host}:{s.port}/"
+        from config import try_settings
+        s = try_settings()
+        host = s.host if s else "127.0.0.1"
+        port = s.port if s else 5000
+        url = f"http://{host}:{port}/"
         # webbrowser: new=0 same window, new=1 new window, new=2 new tab.
         webbrowser.open(url, new=1 if new_window else 0, autoraise=True)
     except Exception as exc:

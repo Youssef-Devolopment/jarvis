@@ -7,6 +7,7 @@ log = get_logger("run")
 
 try:
     from config import get_settings
+    from errors import ConfigError
     from server import app
 except Exception as exc:
     log.critical("Startup failed: %s", exc, exc_info=True)
@@ -20,10 +21,18 @@ def main():
         print("\n[!] JARVIS is already running "
               "(see logs/jarvis.lock). Not starting a second copy.\n")
         sys.exit(2)
-    s = get_settings()
+    try:
+        s = get_settings()
+        skills_only = False
+    except ConfigError:
+        from config import Settings
+        s = Settings.load(require_key=False)
+        skills_only = True
+        print("\n  [!] No API key — skills-only mode "
+              "(local skills work, LLM chat needs DEEPSEEK_API_KEY).")
     import moods, memory
     print(f"\n  JARVIS online  ->  http://{s.host}:{s.port}")
-    print(f"  Model   : {s.model}")
+    print(f"  Model   : {s.model}{'  (skills-only)' if skills_only else ''}")
     print(f"  Voice   : {s.voice_name}  (British)")
     print(f"  Mood    : {moods.current_name()}")
     print(f"  Memory  : {len(memory.all_facts())} facts on file")

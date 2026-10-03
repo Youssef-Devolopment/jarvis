@@ -187,9 +187,27 @@ async function loadInfo(){
     setText('side-voice',v&&v.label?v.label:(typeof v==='string'?v:'--'));
     setText('side-mood',info.mood||'--');
     if(info.theme)applyTheme(info.theme.hue,info.theme.accent);
+    updateKeyBanner(info);
     return info;
   }catch(e){console.warn('loadInfo',e);return null;}
 }
+
+var keyBannerDismissed=false;
+function updateKeyBanner(info){
+  var b=$('key-banner');if(!b)return;
+  var show=info&&(info.key===false||info.no_key_mode===true)&&!keyBannerDismissed;
+  if(show)b.removeAttribute('hidden');else b.setAttribute('hidden','');
+}
+(function wireKeyBanner(){
+  document.addEventListener('DOMContentLoaded',function(){
+    var s=$('key-banner-settings');
+    if(s)s.addEventListener('click',function(){openSettings();});
+    var x=$('key-banner-hide');
+    if(x)x.addEventListener('click',function(){
+      keyBannerDismissed=true;updateKeyBanner(null);
+    });
+  });
+})();
 
 async function loadMemory(){
   try{

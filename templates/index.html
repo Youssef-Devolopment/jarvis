@@ -47,6 +47,16 @@
   </div>
 </header>
 
+<!-- No-API-key banner (hidden unless /api/info reports key:false) -->
+<div class="key-banner" id="key-banner" hidden>
+  <span class="key-banner-dot"></span>
+  <span>Skills-only mode &mdash; no API key.
+    Local skills work; add <code>DEEPSEEK_API_KEY</code> in
+    <code>.env</code> (or Settings) and restart for full AI chat.</span>
+  <button class="key-banner-btn" id="key-banner-settings">Open Settings</button>
+  <button class="key-banner-btn key-banner-x" id="key-banner-hide" title="Dismiss">&times;</button>
+</div>
+
 <!-- Left sidebar -->
 <aside class="sidebar">
   <div class="side-block">

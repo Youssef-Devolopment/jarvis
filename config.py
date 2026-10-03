@@ -55,12 +55,19 @@ class Settings:
     groq_stt_language: str
     obsidian_vault: str
 
+    @property
+    def has_key(self) -> bool:
+        return bool(self.api_key and not self.api_key.startswith("sk-paste"))
+
     @classmethod
-    def load(cls) -> "Settings":
+    def load(cls, require_key: bool = True) -> "Settings":
         key = (os.getenv("DEEPSEEK_API_KEY") or "").strip()
-        if not key or key.startswith("sk-paste"):
+        if require_key and (not key or key.startswith("sk-paste")):
             raise ConfigError("DEEPSEEK_API_KEY is missing or placeholder.",
-                              detail="Edit .env and set a valid key.")
+                              detail="Edit .env and set a valid key. "
+                              "Without a key JARVIS still boots in "
+                              "skills-only mode (local skills work, "
+                              "LLM chat answers with a setup hint).")
         try:
             port = int(os.getenv("PORT", "5000"))
             temp = float(os.getenv("DEEPSEEK_TEMPERATURE", "0.2"))
@@ -141,3 +148,24 @@ def get_settings() -> Settings:
     if _settings is None:
         _settings = Settings.load()
     return _settings
+
+
+def try_settings() -> Settings | None:
+    """Lenient settings for boot paths: None instead of raising."""
+    global _settings
+    if _settings is None:
+        try:
+            _settings = Settings.load()
+        except ConfigError:
+            return None
+    return _settings
+
+
+def key_status() -> dict:
+    """Machine-readable API-key state for banners and diagnostics."""
+    key = (os.getenv("DEEPSEEK_API_KEY") or "").strip()
+    ok = bool(key and not key.startswith("sk-paste"))
+    return {"ok": ok,
+            "error": "" if ok else
+            "DEEPSEEK_API_KEY is missing or placeholder. Edit .env and "
+            "set a valid key (or add one in Settings), then restart."}

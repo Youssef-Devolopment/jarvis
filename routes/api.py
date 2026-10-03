@@ -5,15 +5,41 @@ import threading
 from flask import Blueprint, Response, jsonify, request
 from ai import get_client, get_store, extract_memory_async
 from ai.tools import TOOL_SCHEMAS
-from config import get_settings, VERSION
-from errors import AIError, ValidationError
+from config import get_settings, try_settings, VERSION
+from errors import AIError, ConfigError, ValidationError, VoiceError
 from logger import get_logger
 from skills import dispatch as dispatch_skill, all_skills, toggle_skill
 from tools import all_tools, toggle_tool, filtered_schemas
 from mcp import all_servers as mcp_list, add_server as mcp_add, \
                 remove_server as mcp_remove, toggle_server as mcp_toggle
-from voice import (speak_async, listen_until_silence,
-                   set_voice as set_voice_impl, current_voice, all_voices)
+try:
+    from voice import (speak_async, listen_until_silence,
+                       set_voice as set_voice_impl, current_voice, all_voices)
+except Exception as _voice_import_exc:
+    # Skills-only (no-key) boot: voice/output.py reads settings at import.
+    # Stub the entry points so text endpoints stay up; voice endpoints
+    # fail loudly with a clear error instead of killing the import chain.
+    # (Copied to a plain module global: `except ... as` names are
+    # deleted when the block exits.)
+    _voice_import_detail = str(_voice_import_exc)[:120]
+    log = get_logger(__name__)
+    log.warning("Voice subsystem unavailable (%s). Text chat and skills "
+                "are unaffected.", _voice_import_detail)
+
+    def _voice_down(*_a, **_k):
+        raise VoiceError("Voice subsystem unavailable.",
+                         detail=_voice_import_detail)
+    speak_async = listen_until_silence = set_voice_impl = \
+        current_voice = all_voices = _voice_down
+
+
+def _speak_quiet(text: str) -> None:
+    """Best-effort TTS for chat replies: a dead speaker must never
+    turn a good text answer into a failed request."""
+    try:
+        speak_async(text)
+    except Exception as exc:
+        get_logger(__name__).warning("speak failed (reply kept): %s", exc)
 from moods.models import (get_active, set_active, set_cache, get_cache,
                            theme_for, label_for, build_fallback_list)
 from moods.router import needs_reasoning
@@ -39,7 +65,8 @@ def _theme_dict(model_name: str) -> dict:
 
 @bp.get("/info")
 def info():
-    s = get_settings()
+    s = try_settings()
+    key_ok = bool(s and s.has_key)
     active = get_active() or "auto"
     try:
         from memory import all_facts
@@ -48,12 +75,18 @@ def info():
         auto_approve = _ag.auto_approve_enabled()
     except Exception:
         facts, auto_approve = -1, None
+    try:
+        voice = current_voice()
+    except Exception:
+        voice = {"label": "Unavailable", "key": "none"}
     return jsonify({
         "version": VERSION,
         "model": active,
         "model_label": "Auto" if active == "auto" else label_for(active),
-        "default_model": s.model,
-        "voice": current_voice(),
+        "default_model": s.model if s else "deepseek-chat",
+        "key": key_ok,
+        "no_key_mode": not key_ok,
+        "voice": voice,
         "mood": moods.current_name(),
         "moods": moods.all_moods(),
         "skills": [sk.name for sk in all_skills()],
@@ -66,7 +99,12 @@ def info():
 # ---------- VOICES ----------
 @bp.get("/voices")
 def voices_list():
-    return jsonify({"voices": all_voices(), "active": current_voice()["key"]})
+    try:
+        return jsonify({"voices": all_voices(),
+                        "active": current_voice()["key"]})
+    except VoiceError:
+        return jsonify({"voices": [], "active": "none",
+                        "unavailable": True})
 
 
 @bp.post("/voice")
@@ -1240,7 +1278,7 @@ def command():
     if outcomes.detect_rejection(text):
         marked = outcomes.update_last(accepted=False, feedback=text)
         if marked:
-            speak_async("Understood. I'll avoid that approach, sir.")
+            _speak_quiet("Understood. I'll avoid that approach, sir.")
 
     # Check if this is a confirmation
     elif outcomes.detect_confirmation(text):
@@ -1255,7 +1293,7 @@ def command():
         def s():
             yield f"data: {json.dumps({'delta': skill_reply, 'source': 'skill'})}\n\n"
             yield "data: [DONE]\n\n"
-        speak_async(skill_reply)
+        _speak_quiet(skill_reply)
         return Response(s(), mimetype="text/event-stream", headers={
             "Cache-Control": "no-cache", "X-Accel-Buffering": "no",
             "Connection": "keep-alive"})
@@ -1275,7 +1313,7 @@ def command():
                     store0.record_reply(sid, _handled)
                 except Exception:
                     pass
-                speak_async(_handled)
+                _speak_quiet(_handled)
                 return Response(_sa(), mimetype="text/event-stream", headers={
                     "Cache-Control": "no-cache", "X-Accel-Buffering": "no",
                     "Connection": "keep-alive"})
@@ -1290,7 +1328,7 @@ def command():
                 store1.record_reply(sid, _prompt)
             except Exception:
                 pass
-            speak_async(_prompt)
+            _speak_quiet(_prompt)
 
             def _sp():
                 yield f"data: {json.dumps({'delta': _prompt, 'source': 'auto_skill'})}\n\n"
@@ -1301,8 +1339,22 @@ def command():
 
     route = "reasoning" if needs_reasoning(text) else "fast"
 
-    store = get_store()
-    client = get_client()
+    try:
+        store = get_store()
+        client = get_client()
+    except ConfigError:
+        msg = ("Skills-only mode: no API key set. Local skills (time, "
+               "math, notes, timers, opening apps...) all work — add "
+               "DEEPSEEK_API_KEY in .env (or Settings) and restart for "
+               "full AI chat.")
+
+        def _nok():
+            yield f"data: {json.dumps({'route': route, 'error': msg, 'no_key': True})}\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(_nok(), mimetype="text/event-stream", headers={
+            "Cache-Control": "no-cache", "X-Accel-Buffering": "no",
+            "Connection": "keep-alive"})
+
     messages = store.messages_for(sid, text)
     from ai.tools import mcp_schemas
     schemas = filtered_schemas(TOOL_SCHEMAS) + mcp_schemas()
@@ -1327,7 +1379,7 @@ def command():
             full = "".join(collected).strip()
             if full:
                 store.record_reply(sid, full)
-                speak_async(full)
+                _speak_quiet(full)
                 extract_memory_async(text, full)
                 try:
                     outcomes.record(text, full)
