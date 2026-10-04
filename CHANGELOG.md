@@ -22,6 +22,11 @@ bump MINOR for big feature batches, PATCH for fixes
 ## [Unreleased]
 
 ### Added
+- **Logon task with working directory**: the scheduled task is now
+  created from XML (`InteractiveToken`, 15s delay) with
+  `WorkingDirectory` set to the project root — the old form started
+  in System32 so `.env` never loaded. Legacy command kept as
+  fallback. Still needs one elevated run to apply.
 - **Overlay HUD 3.0 — command-deck rebuild**: the fixed panel is
   now a floating command bar (emblem + entry + mic/send + status
   dot) that expands into reply + chips + footer on submit.
