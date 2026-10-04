@@ -1525,15 +1525,32 @@ async function killPort(pid,port){
 }
 
 /* ---------- DEV TERMINAL ---------- */
+var termHist=[],termIdx=-1;
+var TERM_PLACEHOLDER='Sandboxed to project root. Destructive commands are blocked server-side. ↑↓ recalls history.';
 async function runTerm(){
   var inp=$('term-cmd'),out=$('term-out');if(!inp||!out)return;
   var cmd=inp.value.trim();if(!cmd)return;
-  out.textContent='$ '+cmd+'\n…';
+  termHist.push(cmd);termIdx=termHist.length;inp.value='';
+  if(out.textContent===TERM_PLACEHOLDER)out.textContent='';
+  out.textContent+='$ '+cmd+'\n…\n';
+  out.scrollTop=out.scrollHeight;
+  var t0=Date.now();
   try{
     var r=await fetch('/api/terminal/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:cmd})}).then(function(x){return x.json();});
-    out.textContent='$ '+cmd+'\n'+(r.output||'(no output)');
-  }catch(e){out.textContent='$ '+cmd+'\n✗ '+e.message;}
+    var secs=((Date.now()-t0)/1000).toFixed(1);
+    if(r.error)out.textContent+='✗ '+r.error+' ['+secs+'s]\n';
+    else out.textContent+=(r.output||'(no output)')+'\n✓ ['+secs+'s]\n';
+  }catch(e){out.textContent+='✗ '+e.message+'\n';}
   out.scrollTop=out.scrollHeight;
+}
+function termHistoryMove(delta){
+  if(!termHist.length)return;
+  var inp=$('term-cmd');if(!inp)return;
+  termIdx=Math.max(0,Math.min(termHist.length,termIdx+delta));
+  inp.value=termIdx<termHist.length?termHist[termIdx]:'';
+}
+function termClear(){
+  var out=$('term-out');if(out)out.textContent=TERM_PLACEHOLDER;
 }
 (function devWire(){
   var b=$('btn-dev');if(b)b.addEventListener('click',function(){devToggle();});
@@ -1545,7 +1562,12 @@ async function runTerm(){
   var se=$('dev-send');if(se)se.addEventListener('click',devSend);
   var l=$('dev-logs');if(l)l.addEventListener('click',devLogs);
   var tr=$('term-run');if(tr)tr.addEventListener('click',runTerm);
-  var tc=$('term-cmd');if(tc)tc.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();runTerm();}});
+  var tcl=$('term-clear');if(tcl)tcl.addEventListener('click',termClear);
+  var tc=$('term-cmd');if(tc)tc.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){e.preventDefault();runTerm();}
+    else if(e.key==='ArrowUp'){e.preventDefault();termHistoryMove(-1);}
+    else if(e.key==='ArrowDown'){e.preventDefault();termHistoryMove(1);}
+  });
   var pr=$('ports-refresh');if(pr)pr.addEventListener('click',renderPorts);
   document.querySelectorAll('[data-uimode-set]').forEach(function(b){b.addEventListener('click',function(){setMode(b.getAttribute('data-uimode-set'));});});
   applyMode();
