@@ -7,6 +7,10 @@ bump MINOR for big feature batches, PATCH for fixes
 ## [Unreleased]
 
 ### Added
+- **First-run onboarding card**: fresh installs (no key, or zero
+  memory facts) get a GETTING STARTED card atop the log — add key,
+  try a local skill, open an app — each one click, dismiss persists
+  in the new durable `onboarded` pref.
 - **Overlay HUD usefulness pass**: `＋ OPEN` / `✕ CLOSE` chips
   prefill `open `/`close ` (one tap + app name runs it), a `⧉ COPY`
   button copies the last answer, the header shows a `NO KEY`
