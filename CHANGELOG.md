@@ -4,6 +4,14 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [Unreleased]
+
+### Added
+- **Stable session secret**: first boot generates `FLASK_SECRET_KEY`
+  into `.env` (never logged, never committed) and reuses it —
+  sessions no longer reset on every restart. Falls back to
+  ephemeral only if `.env` is unwritable.
+
 ## [1.1.0] — 2026-10-04
 
 Big update: keyless-first onboarding, app open/close autonomy,
