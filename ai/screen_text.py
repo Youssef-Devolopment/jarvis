@@ -42,8 +42,9 @@ def ask_image(img, question: str) -> str:
             raw = buf.getvalue()
         b64 = base64.b64encode(raw).decode("ascii")
         c = get_client()
+        model = getattr(c, "model", None) or c.default_model
         r = c._client.chat.completions.create(
-            model="deepseek-v4.1-flash:free",
+            model=model,
             messages=[{"role": "user", "content": [
                 {"type": "text", "text": question},
                 {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},

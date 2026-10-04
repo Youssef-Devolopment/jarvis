@@ -101,8 +101,9 @@ def _ask_judge(question: str, primary: str, second: str) -> dict:
     try:
         from ai.client import get_client
         c = get_client()
+        model = getattr(c, "model", None) or c.default_model
         r = c._client.chat.completions.create(
-            model="deepseek-v4.1-flash:free",
+            model=model,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},

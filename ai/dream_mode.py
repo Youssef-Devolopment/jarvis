@@ -208,8 +208,9 @@ def summarize_day() -> str:
         try:
             from ai.client import get_client
             c = get_client()
+            model = getattr(c, "model", None) or c.default_model
             r = c._client.chat.completions.create(
-                model="deepseek-v4.1-flash:free",
+                model=model,
                 messages=[
                     {"role": "system",
                      "content": "Summarize the user's day in 2 sentences. "

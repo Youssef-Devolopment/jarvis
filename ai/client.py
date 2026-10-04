@@ -38,7 +38,10 @@ def _is_model_error(exc: Exception) -> bool:
     msg = str(exc).lower()
     keys = ["model not found", "does not exist", "invalid model",
             "no such model", "unsupported model", "not available",
-            "model_not_found", "permission", "unauthorized"]
+            "no longer available", "no longer supported",
+            "model_not_found", "permission", "unauthorized",
+            "has ended", "decommissioned", "retired", "sunset",
+            "discontinued"]
     return any(k in msg for k in keys)
 
 

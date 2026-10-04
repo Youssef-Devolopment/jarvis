@@ -24,14 +24,16 @@ def _plan_split(question: str) -> list:
     try:
         from ai.client import get_client
         c = get_client()
+        model = getattr(c, "model", None) or c.default_model
         r = c._client.chat.completions.create(
-            model="deepseek-v4.1-flash:free",
+            model=model,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": question},
             ],
             max_tokens=200,
             temperature=0.2,
+            timeout=30,
         )
         raw = (r.choices[0].message.content or "").strip()
         if raw.upper() == "SINGLE" or len(raw) < 5:
@@ -104,14 +106,16 @@ def _merge(question: str, results: list) -> str:
     try:
         from ai.client import get_client
         c = get_client()
+        model = getattr(c, "model", None) or c.default_model
         r = c._client.chat.completions.create(
-            model="deepseek-v4-pro",
+            model=model,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
             max_tokens=400,
             temperature=0.2,
+            timeout=45,
         )
         return (r.choices[0].message.content or "").strip()
     except Exception as exc:
