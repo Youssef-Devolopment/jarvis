@@ -11,23 +11,29 @@ from system import tidy
 
 
 class _TempHome:
-    """Redirect TEMP/TMP at a scratch dir."""
+    """Redirect TEMP/TMP at a scratch dir AND pin the dir list —
+    otherwise C:\\Windows\\Temp leaks the host's files into tests."""
 
     def __init__(self, root):
         self.root = root
 
     def __enter__(self):
+        from system import tidy
         self._old = {k: os.environ.get(k) for k in ("TEMP", "TMP")}
         os.environ["TEMP"] = self.root
         os.environ["TMP"] = self.root
+        self._dirs = tidy._temp_dirs
+        tidy._temp_dirs = lambda: [Path(self.root)]
         return self
 
     def __exit__(self, *exc):
+        from system import tidy
         for k, v in self._old.items():
             if v is None:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+        tidy._temp_dirs = self._dirs
         return False
 
 
