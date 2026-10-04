@@ -54,8 +54,91 @@ def _task_exists() -> bool:
         return False
 
 
+def _task_xml() -> str:
+    """Task XML with a real working directory.
+
+    The legacy `schtasks /create /tr ...` form starts the process in
+    %WINDIR%\\System32, so .env/logs resolve to the wrong place and
+    the app boots keyless. The XML form sets WorkingDirectory to the
+    project root. InteractiveToken = runs as the creating user.
+    """
+    from xml.sax.saxutils import escape
+    cmd = escape(str(_pythonw()))
+    workdir = escape(str(_PROJECT))
+    return f"""<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>JARVIS autostart (login +15s)</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+      <Delay>PT15S</Delay>
+    </LogonTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>{cmd}</Command>
+      <Arguments>desktop.py --open</Arguments>
+      <WorkingDirectory>{workdir}</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
+"""
+
+
 def _task_create() -> bool:
     """Logon task, delayed 15s so the desktop can settle first."""
+    import tempfile
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile("w", suffix=".xml",
+                                         delete=False,
+                                         encoding="utf-16") as f:
+            f.write(_task_xml())
+            tmp = f.name
+        r = subprocess.run(
+            ["schtasks", "/create", "/tn", _TASK_NAME,
+             "/xml", tmp, "/f"],
+            capture_output=True, timeout=20, text=True)
+        if r.returncode == 0:
+            log.info("Logon task created: %s (delay 15s, workdir set)",
+                     _TASK_NAME)
+            return True
+        log.warning("schtasks xml create failed: %s",
+                    (r.stderr or r.stdout or "").strip()[:200])
+    except Exception as exc:
+        log.warning("schtasks xml create error: %s", exc)
+    finally:
+        try:
+            if tmp:
+                Path(tmp).unlink(missing_ok=True)
+        except Exception:
+            pass
+    return _task_create_legacy()
+
+
+def _task_create_legacy() -> bool:
+    """Old schtasks form (no working directory). Fallback only."""
     cmd = f'"{_pythonw()}" desktop.py --open'
     try:
         r = subprocess.run(
@@ -66,7 +149,7 @@ def _task_create() -> bool:
             log.warning("schtasks create failed: %s",
                         (r.stderr or r.stdout or "").strip()[:200])
             return False
-        log.info("Logon task created: %s (delay 15s)", _TASK_NAME)
+        log.info("Logon task created (legacy): %s", _TASK_NAME)
         return True
     except Exception as exc:
         log.warning("schtasks create error: %s", exc)
