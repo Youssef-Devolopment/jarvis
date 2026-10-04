@@ -178,6 +178,9 @@ def normalize_url(text: str) -> str:
     if is_blocked_scheme(t):
         return ""
     low = t.lower()
+    for pinned, purl in custom_sites().items():
+        if low == pinned:
+            return purl
     for name, url in SHORTCUTS.items():
         import re
         if re.search(rf"\b{re.escape(name)}\b", low):
@@ -204,3 +207,67 @@ def open_url(text: str) -> str:
         return f"Opened {url} in your browser."
     except Exception as exc:
         return f"Could not open that: {exc}"
+
+
+_CUSTOM_SITES = Path(__file__).resolve().parent.parent / "logs" / "custom_sites.json"
+
+
+def custom_sites(path: Path | None = None) -> dict:
+    """User-pinned {name: url} shortcuts. Missing/corrupt -> {}."""
+    import json
+    p = Path(path) if path else _CUSTOM_SITES
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        return {str(k).strip().lower(): str(v)
+                for k, v in data.items() if v}
+    except Exception:
+        return {}
+
+
+def pin_site(name: str, url: str, path: Path | None = None) -> str:
+    """Pin a shortcut. http(s) only. Returns human reply."""
+    import json
+    import re as _re2
+    name = (name or "").strip().lower()
+    url = (url or "").strip().rstrip("?.!")
+    if not name:
+        return "Pin what? Give it a name."
+    if is_blocked_scheme(url):
+        return "Refused: only http(s) links can be pinned."
+    low = url.lower()
+    if not (low.startswith(("http://", "https://"))
+            and "." in low.split("://", 1)[1].split("/")[0]):
+        if _re2.match(r"^[\w\-]+(\.[\w\-]+)+([/?#].*)?$", url,
+                      _re2.IGNORECASE):
+            url = "https://" + url
+        else:
+            return f"'{url}' doesn't look like a web address."
+    p = Path(path) if path else _CUSTOM_SITES
+    try:
+        sites = custom_sites(p)
+        sites[name] = url
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(sites, indent=2), encoding="utf-8")
+    except Exception as exc:
+        log.warning("pin site failed: %s", exc)
+        return "Could not save that shortcut."
+    return f"Pinned '{name}' — 'open {name}' works from now on."
+
+
+def unpin_site(name: str, path: Path | None = None) -> str:
+    """Remove a pinned shortcut. Returns human reply."""
+    import json
+    name = (name or "").strip().lower()
+    if not name:
+        return "Unpin what? Give me the shortcut name."
+    p = Path(path) if path else _CUSTOM_SITES
+    sites = custom_sites(p)
+    if name not in sites:
+        return f"No pinned shortcut called '{name}'."
+    try:
+        del sites[name]
+        p.write_text(json.dumps(sites, indent=2), encoding="utf-8")
+    except Exception as exc:
+        log.warning("unpin site failed: %s", exc)
+        return "Could not remove that shortcut."
+    return f"Removed '{name}'."

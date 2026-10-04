@@ -815,6 +815,22 @@ def apps_close():
     return jsonify({"ok": bool(res.get("ok")), **res}), code
 
 
+# ---------- UNIVERSAL ADD (sites, MCP, apps, skills) ----------
+@bp.post("/add")
+def universal_add():
+    """One endpoint for every addable thing. Body: {"text": ...}."""
+    from system import adder
+    d = request.get_json(silent=True) or {}
+    text = (d.get("text") or "").strip()
+    if not text:
+        raise ValidationError("Missing 'text'.")
+    out = adder.add(text)
+    if out is None:
+        return jsonify({"ok": False,
+                        "error": "Not an add command."}), 404
+    return jsonify({"ok": True, "output": out})
+
+
 # ---------- SITE INDEX ----------
 @bp.get("/sites")
 def sites_list():

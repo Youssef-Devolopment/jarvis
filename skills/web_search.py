@@ -1,7 +1,9 @@
 """Unified web search + fetch (merged brave/fast/deep variants).
 
-Tiers, fastest first: duckduckgo_search library -> Brave API (key) ->
-DDG lite -> DDG html scrape -> Bing -> SearxNG. No browser needed.
+Tiers, fastest first: Tavily AI search (key) -> duckduckgo_search
+library -> Brave API (key) -> DDG lite -> DDG html scrape -> Bing ->
+SearxNG. No browser needed. Page fetch falls back to the Jina
+reader (keyless) when raw HTML yields nothing readable.
 Helper names (_http_get, _strip_html, _search_ddg_html) are kept stable:
 ai/search_agent.py imports them.
 """
@@ -200,7 +202,7 @@ def _search_searx(query: str) -> list[dict]:
 
 def search_all(query: str) -> list[dict]:
     """Try every provider until results. No browser needed."""
-    for fn in (_search_ddg_lib, _search_brave, _search_ddg_lite,
+    for fn in (_search_tavily, _search_ddg_lib, _search_brave, _search_ddg_lite,
                _search_ddg_html, _search_bing, _search_searx):
         try:
             results = fn(query)
@@ -212,14 +214,59 @@ def search_all(query: str) -> list[dict]:
     return []
 
 
+def _tavily_key() -> str:
+    k = (os.getenv("TAVILY_API_KEY") or "").strip()
+    if not k or k.startswith("tvly-paste") or len(k) < 8:
+        return ""
+    return k
+
+
+def _search_tavily(query: str, count: int = 5) -> list[dict]:
+    """Tavily AI search (keyed, fastest tier). Silent [] when keyless."""
+    key = _tavily_key()
+    if not key:
+        return []
+    try:
+        body = json.dumps({"query": query, "search_depth": "fast",
+                           "max_results": max(1, min(count, 10))}).encode()
+        req = urllib.request.Request(
+            "https://api.tavily.com/search", data=body,
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {key}"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = json.loads(r.read().decode("utf-8") or "{}")
+        out = []
+        for item in (data.get("results") or [])[:count]:
+            title = (item.get("title") or "").strip()
+            url = (item.get("url") or "").strip()
+            if title and url:
+                out.append({"title": title[:150], "url": url,
+                            "snippet": (item.get("content") or "")[:250]})
+        return out
+    except Exception as exc:
+        log.debug("Tavily failed: %s", exc)
+        return []
+
+
 def fetch_page(url: str, max_chars: int = 4000) -> str:
-    """Fetch and clean a web page. No browser."""
+    """Fetch and clean a web page. No browser. Falls back to the
+    keyless Jina reader when raw HTML yields nothing readable."""
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
     html = _http_get(url, timeout=12)
-    if not html:
-        return ""
-    return _strip_html(html)[:max_chars]
+    if html:
+        text = _strip_html(html)
+        if len(text) >= 200:
+            return text[:max_chars]
+    try:
+        md = _http_get("https://r.jina.ai/" + url, timeout=20)
+        if md and len(md.strip()) >= 200:
+            return md.strip()[:max_chars]
+    except Exception as exc:
+        log.debug("Jina reader failed: %s", exc)
+    if html:
+        return _strip_html(html)[:max_chars]
+    return ""
 
 
 @register("web_search", [
