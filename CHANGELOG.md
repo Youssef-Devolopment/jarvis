@@ -4,6 +4,21 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [Unreleased]
+
+### Added
+- **Deep Research Agent** (`system/research_agent.py`): multi-step
+  technical research — `search_all` finds candidates, top URLs are
+  fetched (same-host one level, capped), BeautifulSoup strips
+  layout noise and keeps code blocks, then LLM synthesis (or an
+  extractive digest when keyless). Reports land timestamped in
+  `docs/research/*.md` (gitignored vault) with TL;DR, key points,
+  code fences and links; a one-line summary is remembered for later
+  recall. Served as async `POST /api/research` + poll
+  `GET /api/research/<job>`, and as the `deep_research` skill
+  (`research <topic>` returns the report path). Verified live
+  end-to-end (3 sources → report → recall).
+
 ## [1.3.0] — 2026-10-04
 
 Add-anything + fast-web batch: one verb installs everything, search
