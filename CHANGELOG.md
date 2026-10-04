@@ -4,6 +4,37 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.2.0] — 2026-10-04
+
+Autonomy + self-care batch: the assistant opens, closes, cleans
+and tours on its own; skills can't break it; agents get a memory.
+
+### Added
+- **Self-cleaning tidy**: `tidy` reports stale temp files, `tidy
+  confirm` removes them (in-use skipped, MB reclaimed reported);
+  Dream runs tidy nightly while idle (`dream_tidy_temp` pref).
+- **Self-removing guided tour**: brand-new installs get a 4-step
+  spotlight tour (command bar → log → settings → HUD) that deletes
+  its own DOM on finish/skip and records `onboarded`; the
+  GETTING STARTED card offers re-tours.
+- **Windows theme control** (`win_theme` skill): dark/light mode
+  and transparency effects via HKCU + instant broadcast, verified
+  against the live registry both directions.
+- **Faster memory**: `count_facts()` replaces full-table pulls,
+  `idx_facts_status_id` covers the hot query (measured ms-range at
+  50k rows, so no migration was justified — numbers first).
+- **Voice pre-warmed**: TTS engine primes in a background thread
+  at boot (console + desktop paths); first reply skips the cold
+  model/network hit.
+- **Skill-maker hijack guards**: catch-all, empty-matching, broad
+  (2+ everyday utterances) and clone-of-another-skill patterns are
+  rejected at validation; same-name refreshes and trusted system
+  templates still pass.
+- **Agent continuity files**: `.agent-state.md` (gitignored live
+  session memory, updated every unit) and `AGENTS.md` (the full
+  developer loop for any AI continuing this repo, linked from
+  README).
+
 ## [Unreleased]
 
 ### Added

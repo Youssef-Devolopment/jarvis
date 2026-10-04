@@ -1,11 +1,11 @@
 # JARVIS — Voice-first AI assistant for Windows
 
-![version](https://img.shields.io/badge/version-v1.1.0-blue)
+![version](https://img.shields.io/badge/version-v1.2.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-144%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-164%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
-Talk to your PC and it obeys: **125 skills, 30 LLM tools, 126 API
+Talk to your PC and it obeys: **128 skills, 30 LLM tools, 126 API
 endpoints.** Open and close apps by name, dictate notes into
 Obsidian, search and read the web, run VSCode and terminal tasks —
 by voice, hotkey, or the `Alt+Space` HUD over any window. No API key?
@@ -63,6 +63,9 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
   prompt to save), force only leftovers, verified gone. System
   processes and JARVIS itself are always refused.
   `POST /api/apps/close`
+- **Tidy** — *"tidy"* reports stale temp files, *"tidy confirm"*
+  removes them (in-use files skipped); nightly Dream runs clean
+  automatically while you're away
 - **Auto mode** — turn on *"auto approve skills"* and open/close
   run with zero prompts. Off = voice + toast confirm every time.
 - **VSCode + terminal** — open files at line N, run sandboxed
@@ -74,11 +77,14 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
 - **Web** — tiered search, fetch-and-read pages, summaries,
   screenshots, WhatsApp / Gmail / Todoist
 - **System + voice** — volume, brightness, lock, timers, todos,
-  reminders, focus lock, Edge/Piper speech, multi-model councils,
+  reminders, focus lock, Windows dark/light/transparency, Edge/Piper
+  speech (engine pre-warmed at boot), multi-model councils,
   outcome memory, Dream Mode summaries, morning briefing
 - **HUD + dashboard** — glassmorphism UI with mood-reactive accent;
   `Alt+Space` deck with SCREEN / TIMER / TIME / OPEN / CLOSE /
-  NOTE chips, history, mic, copy-answer, drag, fade
+  NOTE chips, history, mic, copy-answer, drag, fade. First boot
+  gives a self-removing guided tour; a GETTING STARTED card stays
+  until dismissed
 
 ## Login autostart (power button)
 
@@ -113,7 +119,7 @@ a double-fire harmless. Status: `GET /autostart/status`.
 ```
 run.py / server.py / config.py      entry points + settings (.env)
 ai/          LLM client, tools, agents, council backends, integrations
-skills/      125 @register skills (+ skills/auto_generated/)
+skills/      128 @register skills (+ skills/auto_generated/)
 voice/       Groq mic input, Piper/edge-tts output (Ryan)
 memory/      SQLite facts, messages, prefs, outcomes, contacts, …
 moods/       personalities, router, escalation levels, classifier
@@ -125,7 +131,7 @@ routes/      Flask blueprints (126 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
-- `main` builds green: syntax-check every file + **144 unit tests**
+- `main` builds green: syntax-check every file + **164 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -136,6 +142,9 @@ static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
   `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
   `ARCHITECTURE.md`, `CHANGELOG.md`, hot-reloadable `plugins/`
   with a validated template
+- AI-continuable: `AGENTS.md` holds the full developer loop
+  (layout, commands, constraints, verification) so any coding
+  agent can pick up exactly here
 
 ## Config
 
@@ -148,5 +157,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 144 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 164 tests
 ```
