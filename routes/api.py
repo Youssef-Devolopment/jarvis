@@ -854,6 +854,22 @@ def research_poll(job_id):
     return jsonify({"ok": True, **st})
 
 
+# ---------- BACKUP ----------
+@bp.post("/backup")
+def backup_now():
+    from system import backup as _b
+    res = _b.create_backup()
+    code = 200 if res.get("ok") else 500
+    return jsonify(res), code
+
+
+@bp.get("/backups")
+def backups_list():
+    from system import backup as _b
+    items = _b.list_backups()
+    return jsonify({"count": len(items), "backups": items})
+
+
 # ---------- SITE INDEX ----------
 @bp.get("/sites")
 def sites_list():

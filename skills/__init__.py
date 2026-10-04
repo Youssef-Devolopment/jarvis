@@ -23,7 +23,7 @@ _CORE_SKILLS = [
     "site_finder", "quick_capture_skill", "screen_ocr_skill",
     "screen_context_skill", "focus_lock_skill", "snippets_skill",
     "tidy_skill", "win_theme", "add_anything", "deep_research",
-    "auto_generated",
+    "backup_skill", "auto_generated",
 ]
 
 

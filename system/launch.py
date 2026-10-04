@@ -37,8 +37,29 @@ ALIASES = {
     "firefox": "firefox.exe", "whatsapp": "WhatsApp.exe",
     "telegram": "Telegram.exe", "steam": "steam.exe", "obs": "obs64.exe",
     "vlc": "vlc.exe", "cmd": "cmd.exe", "terminal": "wt.exe",
-    "powershell": "powershell.exe",
+    "powershell": "powershell.exe", "notepad++": "notepad++.exe",
+    "notion": "Notion.exe", "slack": "slack.exe", "zoom": "Zoom.exe",
+    "obsidian": "obsidian.exe", "everything": "Everything.exe",
+    "snipping tool": "snippingtool.exe", "snip": "snippingtool.exe",
 }
+
+
+def _obsidian_target() -> str:
+    """Vault-aware deep link when a vault is configured, else exe."""
+    try:
+        from config import try_settings
+        s = try_settings()
+        vault = (s.obsidian_vault if s else "") or ""
+        vault = vault.strip().rstrip("/\\")
+        if vault:
+            import urllib.parse
+            name = vault.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+            if name:
+                return ("obsidian://open?vault="
+                        + urllib.parse.quote(name))
+    except Exception:
+        pass
+    return ""
 
 SHORTCUTS = {
     "youtube": "https://www.youtube.com", "google": "https://www.google.com",
@@ -114,6 +135,10 @@ def resolve_app(name: str) -> dict:
     key = (name or "").strip().lower()
     if not key:
         return {"status": "unknown", "candidates": []}
+    if key == "obsidian":
+        uri = _obsidian_target()
+        if uri:
+            return {"status": "found", "target": uri, "display": name}
     if key in ALIASES:
         return {"status": "found", "target": ALIASES[key], "display": name}
     idx = _start_menu_index()

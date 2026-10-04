@@ -36,6 +36,32 @@ class LaunchTest(unittest.TestCase):
     def test_open_junk_returns_empty(self):
         self.assertEqual(L.open_url("not a url at all"), "")
 
+    def test_new_aliases_resolve(self):
+        for app, exe in [("zoom", "Zoom.exe"), ("notion", "Notion.exe"),
+                         ("slack", "slack.exe"),
+                         ("notepad++", "notepad++.exe"),
+                         ("everything", "Everything.exe"),
+                         ("snipping tool", "snippingtool.exe")]:
+            r = L.resolve_app(app)
+            self.assertEqual(r["status"], "found", app)
+            self.assertEqual(r["target"], exe, app)
+
+    def test_obsidian_uri_when_vault_set(self):
+        from unittest import mock
+        fake = mock.MagicMock()
+        fake.obsidian_vault = "C:\\notes\\Brain"
+        with mock.patch("config.try_settings", return_value=fake):
+            r = L.resolve_app("obsidian")
+        self.assertEqual(r["status"], "found")
+        self.assertTrue(r["target"].startswith("obsidian://open?vault="))
+        self.assertIn("Brain", r["target"])
+
+    def test_obsidian_exe_without_vault(self):
+        from unittest import mock
+        with mock.patch("config.try_settings", return_value=None):
+            r = L.resolve_app("obsidian")
+        self.assertEqual(r["target"], "obsidian.exe")
+
 
 if __name__ == "__main__":
     unittest.main()
