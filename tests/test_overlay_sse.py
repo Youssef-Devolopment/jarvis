@@ -1,8 +1,10 @@
 """Tests for the overlay's SSE stitching (the '(no reply)' fix)."""
 from __future__ import annotations
+import os
 import unittest
 
-from system.overlay import stitch_sse
+import config
+from system.overlay import _base_url, _header_text, stitch_sse
 
 
 class StitchSseTests(unittest.TestCase):
@@ -64,6 +66,44 @@ class StitchSseTests(unittest.TestCase):
             b"data: [DONE]",
         ]
         self.assertEqual(stitch_sse(lines), "byte reply")
+
+
+class HeaderTextTests(unittest.TestCase):
+    def test_normal_header(self):
+        self.assertEqual(
+            _header_text({"mood": "fast", "model": "Auto"}),
+            "fast · Auto")
+
+    def test_no_key_suffix(self):
+        out = _header_text({"mood": "fast", "model": "Auto",
+                            "no_key": True})
+        self.assertIn("NO KEY", out)
+        self.assertIn("fast", out)
+
+    def test_missing_keys_default(self):
+        self.assertEqual(_header_text({}), "? · ?")
+
+
+class BaseUrlTests(unittest.TestCase):
+    def test_matches_settings_with_key(self):
+        s = config.Settings.load()
+        self.assertEqual(_base_url(), f"http://{s.host}:{s.port}")
+
+    def test_no_key_still_resolves(self):
+        had = "DEEPSEEK_API_KEY" in os.environ
+        old = os.environ.get("DEEPSEEK_API_KEY")
+        saved = config._settings
+        os.environ["DEEPSEEK_API_KEY"] = "sk-paste-test"
+        config._settings = None
+        try:
+            url = _base_url()  # must not raise: HUD works skills-only
+        finally:
+            if had:
+                os.environ["DEEPSEEK_API_KEY"] = old
+            else:
+                os.environ.pop("DEEPSEEK_API_KEY", None)
+            config._settings = saved
+        self.assertTrue(url.startswith("http://127.0.0.1:"))
 
 
 if __name__ == "__main__":

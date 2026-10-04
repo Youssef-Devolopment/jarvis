@@ -6,11 +6,14 @@ A transparent, always-on-top command deck that works over any window
   * glass-panel look: rounded glow border, hexagon logo, status dot
     that pulses while JARVIS is thinking, fade-in animation;
   * live header: version · mood · model (fetched from /api/info on
-    every show);
-  * typewriter reply area (scrollable) instead of a one-line label;
-  * quick chips: SCREEN / TIMER / TIME / NOTE — one click, one answer;
+    every show), plus a NO KEY suffix in skills-only mode;
+  * typewriter reply area (scrollable) instead of a one-line label,
+    with a COPY button for the last answer;
+  * quick chips: SCREEN / TIMER / TIME / OPEN / CLOSE / NOTE — the
+    app chips prefill "open "/"close " so one tap + name runs it;
   * command history (Up/Down), mic dictation → auto-send;
-  * drag by the header, Esc / blur / Alt+Space to hide.
+  * drag by the header; Esc / ✕ / Alt+Space hide outright, while
+    click-away only dismisses an idle, empty HUD — never mid-answer.
 
 Thread model: hotkey threads and Flask handlers only push actions on
 a queue; the Tk thread drains it (Tkinter is not thread-safe).
@@ -98,9 +101,14 @@ def stitch_sse(lines) -> str:
 
 # ----- server I/O (worker threads only) -----------------------------------
 def _base_url() -> str:
-    from config import get_settings
-    s = get_settings()
-    return f"http://{s.host}:{s.port}"
+    try:
+        from config import Settings
+        s = Settings.load(require_key=False)
+        return f"http://{s.host}:{s.port}"
+    except Exception:
+        import os
+        return (f"http://{os.getenv('HOST', '127.0.0.1')}:"
+                f"{os.getenv('PORT', '5000')}")
 
 
 def _post_json(path: str, body: dict, timeout: int = 60) -> dict:
@@ -137,7 +145,13 @@ def _info() -> dict:
     d = _http_get("/info")
     return {"mood": d.get("mood", "?"),
             "model": d.get("model_label") or d.get("model") or "?",
-            "version": d.get("version", "")}
+            "version": d.get("version", ""),
+            "no_key": bool(d.get("no_key_mode"))}
+
+
+def _header_text(info: dict) -> str:
+    base = f"{info.get('mood', '?')} · {info.get('model', '?')}"
+    return base + (" · NO KEY" if info.get("no_key") else "")
 
 
 def _http_get(path: str, timeout: int = 15) -> dict:
@@ -321,6 +335,30 @@ def _run() -> None:
         status_lbl = label(14, 372, "nw", text="ready · Alt+Space",
                            fg=DIM, font=("Bahnschrift", 8))
 
+        def copy_reply():
+            try:
+                text = reply.get("1.0", "end").strip()
+            except Exception:
+                text = ""
+            if not text:
+                return
+            try:
+                root.clipboard_clear()
+                root.clipboard_append(text)
+                status_lbl.configure(text="copied · Alt+Space", fg=GOOD)
+            except Exception as exc:
+                log.warning("overlay copy failed: %s", exc)
+
+        copy_btn = tk.Button(cv, text="⧉ COPY", command=copy_reply,
+                             bg=TRACK, fg=DIM, activebackground=EDGE,
+                             activeforeground="#000", relief="flat",
+                             font=("Bahnschrift", 8, "bold"), padx=8, pady=1,
+                             cursor="hand2", bd=0, highlightthickness=1,
+                             highlightbackground="#1A2A44")
+        copy_btn.bind("<Enter>", lambda e: copy_btn.configure(fg=EDGE))
+        copy_btn.bind("<Leave>", lambda e: copy_btn.configure(fg=DIM))
+        cv.create_window(W - 14, 372, window=copy_btn, anchor="e")
+
         # ---------- state
         busy = {"n": 0}
         type_job = {"id": None}
@@ -479,6 +517,12 @@ def _run() -> None:
         chip("▣ SCREEN", lambda: _quick("what's on my screen"))
         chip("◷ TIMER 5M", lambda: _quick("set a timer for 5 minutes"))
         chip("◷ TIME", lambda: _quick("what time is it"))
+        chip("＋ OPEN", lambda: (entry.delete(0, "end"),
+                                entry.insert(0, "open "),
+                                entry.focus_set()))
+        chip("✕ CLOSE", lambda: (entry.delete(0, "end"),
+                                 entry.insert(0, "close "),
+                                 entry.focus_set()))
         chip("✎ NOTE", lambda: (entry.delete(0, "end"),
                                 entry.insert(0, "remember: "),
                                 entry.focus_set()))
@@ -490,6 +534,17 @@ def _run() -> None:
         root.bind("<Escape>", lambda e: hide())
 
         def on_focus_out(event):
+            # Click-away hides an untouched HUD, but never yanks it
+            # mid-thought: a pending answer or half-typed command keeps
+            # the window up (Esc / ✕ / Alt+Space still hide outright).
+            if busy["n"]:
+                return
+            try:
+                composing = bool(entry.get().strip())
+            except Exception:
+                composing = False
+            if composing:
+                return
             root.after(250, lambda: (root.focus_displayof() is None)
                        and _state["visible"] and hide())
         root.bind("<FocusOut>", on_focus_out)
@@ -533,9 +588,7 @@ def _run() -> None:
                         elif kind == "info":
                             ver.configure(
                                 text=f"v{payload.get('version','')}")
-                            hdr.configure(
-                                text=f"{payload.get('mood','?')} · "
-                                     f"{payload.get('model','?')}")
+                            hdr.configure(text=_header_text(payload))
                         elif kind == "show":
                             fade_in()
                             threading.Thread(target=_pull_info,
