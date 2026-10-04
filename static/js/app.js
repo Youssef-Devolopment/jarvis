@@ -929,6 +929,7 @@ function loadTab(name){
   var endpoints={model:'/api/models',voice:'/api/voices',mood:'/api/info',
     personality:'/api/personality',skills:'/api/skills',tools:'/api/tools',
     mcp:'/api/mcp',appearance:'/api/prefs',audio:'/api/prefs',
+    market:'/api/market',
     general:'/api/prefs',about:'/api/info',council:'/api/council/levels',
     capture:'/api/contacts',workspace:'/api/layouts',
     clipboard:'/api/clipboard/recent',dream:'/api/dream/status'};
@@ -982,6 +983,63 @@ function renderTab(name,data){
       return '<div class="set-row"><div class="label">'+esc(t.name||t)+
         '<small>'+esc(t.description||'')+'</small></div></div>';
     }).join('')+'</div>';
+  }
+  if(name==='market'){
+    var html='';
+    var pend=data.pending||[];
+    if(pend.length){
+      html+='<div style="margin:4px 0 8px;color:var(--amber);font-size:9px;letter-spacing:2px">PENDING APPROVAL ('+pend.length+')</div><div class="set-list" style="margin-bottom:12px">';
+      html+=pend.map(function(p){
+        return '<div class="set-row"><div class="label">'+esc(p.name||'?')+
+          '<small>'+esc(p.source||'')+(p.test_ok?' · test passed':' · needs review')+'</small></div>'+
+          '<div class="actions"><button class="dbtn" data-action="mkt-approve" data-name="'+esc(p.name||'')+'">OK</button>'+
+          '<button class="dbtn" data-action="mkt-reject" data-name="'+esc(p.name||'')+'">NO</button></div></div>';
+      }).join('')+'</div>';
+    }
+    var mskills=data.skills||[];
+    html+='<div style="margin:4px 0 8px;color:var(--dim);font-size:9px;letter-spacing:2px">SKILLS ('+mskills.length+')</div><div class="set-list" style="margin-bottom:12px">';
+    html+=mskills.map(function(s){
+      return '<div class="set-row"><div class="label">'+esc(s.name)+
+        '<small>'+esc((s.description||'').slice(0,80))+' · '+esc(s.source||'')+'</small></div>'+
+        '<div class="actions"><button class="dbtn'+(s.enabled?' on':'')+'" data-action="mkt-toggle-skill" data-name="'+esc(s.name)+
+        '" data-enabled="'+(!s.enabled)+'">'+(s.enabled?'ON':'OFF')+'</button></div></div>';
+    }).join('')+'</div>';
+    var plug=data.plugins||{};
+    html+='<div style="margin:4px 0 8px;color:var(--dim);font-size:9px;letter-spacing:2px">PLUGINS ('+((plug.loaded||[]).length)+')</div><div class="set-list" style="margin-bottom:12px">';
+    html+='<div class="set-row"><div class="label">Community plugins<small>'+esc((plug.failed||[]).length+' failed')+'</small></div>'+
+      '<div class="actions"><button class="dbtn" data-action="mkt-plugins-reload">RELOAD</button></div></div>';
+    html+='<div class="set-row"><div class="label" style="flex:1"><input id="mkt-plugin-name" placeholder="plugin_name" style="width:110px;background:#000;color:#fff;border:1px solid var(--border);border-radius:4px;padding:6px;font-family:var(--mono);font-size:11px;">'+
+      '<input id="mkt-plugin-file" type="file" accept=".py" style="margin-left:6px;font-size:10px;color:var(--dim)"></div>'+
+      '<div class="actions"><button class="dbtn" data-action="mkt-plugin-install">INSTALL</button></div></div>';
+    html+='<div class="set-row"><div class="label"><small id="mkt-plugin-msg"></small></div></div></div>';
+    var presets=data.mcp_presets||[];
+    html+='<div style="margin:4px 0 8px;color:var(--dim);font-size:9px;letter-spacing:2px">MCP PRESETS</div><div class="set-list" style="margin-bottom:12px">';
+    html+=presets.map(function(p){
+      return '<div class="set-row"><div class="label">'+esc(p.name||p.id)+
+        '<small>'+esc((p.description||'').slice(0,80))+'</small></div>'+
+        '<div class="actions"><button class="dbtn" data-action="mkt-preset" data-id="'+esc(p.id)+'">INSTALL</button></div></div>';
+    }).join('')+'</div>';
+    var servers=data.mcp_servers||[];
+    html+='<div style="margin:4px 0 8px;color:var(--dim);font-size:9px;letter-spacing:2px">MCP SERVERS ('+servers.length+')</div><div class="set-list" style="margin-bottom:12px">';
+    if(!servers.length)html+='<div class="set-row"><div class="label">None yet<small>Install a preset above</small></div></div>';
+    html+=servers.map(function(s){
+      var sid=s.id||s.name||'';
+      return '<div class="set-row"><div class="label">'+esc(s.name||sid)+
+        '<small>'+esc(s.command||'')+' '+(s.enabled===false?'· disabled':'· live config')+'</small></div>'+
+        '<div class="actions"><button class="dbtn" data-action="mkt-server-start" data-name="'+esc(s.name||'')+'">START</button></div></div>';
+    }).join('');
+    html+='<div class="set-row"><div class="label">All servers<small>start/stop everything</small></div>'+
+      '<div class="actions"><button class="dbtn" data-action="mkt-server-start" data-name="">START</button>'+
+      '<button class="dbtn" data-action="mkt-server-stop">STOP</button></div></div></div>';
+    var sites=data.sites||[];
+    html+='<div style="margin:4px 0 8px;color:var(--dim);font-size:9px;letter-spacing:2px">PINNED SITES ('+sites.length+')</div><div class="set-list">';
+    if(!sites.length)html+='<div class="set-row"><div class="label">None yet<small>Chat: remember &lt;url&gt; as &lt;name&gt;</small></div></div>';
+    html+=sites.map(function(s){
+      return '<div class="set-row"><div class="label">'+esc(s.name)+
+        '<small>'+esc(s.url)+'</small></div>'+
+        '<div class="actions"><button class="dbtn" data-action="mkt-unpin" data-name="'+esc(s.name)+'">REMOVE</button></div></div>';
+    }).join('')+'</div>';
+    return html;
   }
   if(name==='mcp'){
     var servers=data.servers||[];
@@ -1806,6 +1864,54 @@ document.addEventListener('DOMContentLoaded',function(){
           if(m){m.style.color='var(--red)';m.textContent=(d.detail||d.error||'Save failed.');}
         }
       }).catch(function(){var m=document.getElementById('key-msg');if(m){m.style.color='var(--red)';m.textContent='Request failed.';}});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mkt-toggle-skill'){
+      var sk=target.getAttribute('data-name'),se=target.getAttribute('data-enabled')==='true';
+      fetch('/api/skill',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:sk,enabled:se})}).then(function(){loadTab('market');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mkt-approve'){
+      fetch('/api/auto_skills/approve',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:target.getAttribute('data-name')})}).then(function(){loadTab('market');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mkt-reject'){
+      fetch('/api/auto_skills/reject',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:target.getAttribute('data-name')})}).then(function(){loadTab('market');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mkt-preset'){
+      fetch('/api/mcp/preset',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({preset:target.getAttribute('data-id')})}).then(function(){loadTab('market');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mkt-server-start'){
+      fetch('/api/mcp/start',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:target.getAttribute('data-name')||''})}).then(function(){loadTab('market');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mkt-server-stop'){
+      fetch('/api/mcp/stop',{method:'POST'}).then(function(){loadTab('market');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mkt-unpin'){
+      fetch('/api/sites/unpin',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:target.getAttribute('data-name')})}).then(function(){loadTab('market');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mkt-plugins-reload'){
+      fetch('/api/plugins/reload',{method:'POST'}).then(function(){loadTab('market');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mkt-plugin-install'){
+      var pn=document.getElementById('mkt-plugin-name'),pf=document.getElementById('mkt-plugin-file'),pm=document.getElementById('mkt-plugin-msg');
+      var pname=pn?(pn.value||'').trim().toLowerCase():'';
+      if(!pname||!pf||!pf.files||!pf.files[0]){if(pm)pm.textContent='Name + .py file required.';}
+      else{
+        if(pm)pm.textContent='Installing...';
+        var fr=new FileReader();
+        fr.onload=function(){
+          fetch('/api/plugins/install',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({name:pname,code:String(fr.result||'')})}).then(function(r){return r.json();}).then(function(d){
+            if(pm)pm.textContent=d.ok?('Installed: '+(d.skill||pname)):('✗ '+(d.detail||d.error||'failed'));
+            loadTab('market');
+          }).catch(function(){if(pm)pm.textContent='Request failed.';});
+        };
+        fr.readAsText(pf.files[0]);
+      }
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='set-hour'){      var inp=document.getElementById('input-briefing-hour');
       var h=inp?parseInt(inp.value,10):8;

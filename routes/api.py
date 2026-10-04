@@ -359,6 +359,62 @@ def plugins_install():
     return jsonify(r)
 
 
+# ---------- MARKETPLACE (unified catalog) ----------
+@bp.get("/market")
+def market_catalog():
+    """One catalog for everything installable: skills, pending
+    drafts, plugins, MCP presets/servers, pinned sites."""
+    from skills import all_skills
+    from skills import auto_generator as _ag
+    from plugins import status as plugins_status
+    from mcp.presets import list_presets
+    from mcp.manager import all_servers
+    from system import launch as L
+    skills = []
+    for s in all_skills():
+        mod = getattr(getattr(s, "handler", None), "__module__", "") or ""
+        if mod.startswith("plugins."):
+            source = "plugin"
+        elif "auto_generated" in mod:
+            source = "learned"
+        else:
+            source = "builtin"
+        skills.append({"name": s.name, "description": s.description or "",
+                       "enabled": bool(s.enabled), "source": source})
+    try:
+        pending = [{"name": p.get("name"), "source": p.get("source", ""),
+                    "test_ok": bool(p.get("test_ok"))}
+                   for p in _ag.list_pending()]
+    except Exception:
+        pending = []
+    try:
+        sites = [{"name": n, "url": u}
+                 for n, u in sorted(L.custom_sites().items())]
+    except Exception:
+        sites = []
+    return jsonify({
+        "skills": skills,
+        "pending": pending,
+        "plugins": plugins_status(),
+        "mcp_presets": list_presets(),
+        "mcp_servers": all_servers(),
+        "sites": sites,
+    })
+
+
+@bp.post("/sites/unpin")
+def sites_unpin():
+    from system import launch as L
+    d = request.get_json(silent=True) or {}
+    name = (d.get("name") or "").strip()
+    if not name:
+        raise ValidationError("Missing 'name'.")
+    out = L.unpin_site(name)
+    if out.startswith("No pinned"):
+        raise ValidationError(out)
+    return jsonify({"ok": True, "output": out})
+
+
 # ---------- COUNCIL ----------
 @bp.post("/council/run")
 def council_run():
