@@ -262,6 +262,20 @@ def run_dream(dry_run: bool = False) -> dict:
 
     report["folders"] = folders_report
 
+    # 2.5 Tidy temp files (self-cleaning while the user is away)
+    if not dry_run:
+        try:
+            from memory import get_pref
+            if get_pref("dream_tidy_temp", True):
+                from system import tidy as _tidy
+                t = _tidy.clean(dry_run=False)
+                t.update(_tidy.prune_dream_reports())
+                report["tidy"] = t
+                _audit("TIDY", f"removed={t['removed']} "
+                               f"reclaimed={t['reclaimed_mb']}MB")
+        except Exception as exc:
+            log.warning("Dream tidy failed: %s", exc)
+
     # 3. Backup memory
     if not dry_run:
         try:

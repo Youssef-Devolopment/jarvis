@@ -1,4 +1,4 @@
-﻿/* JARVIS v1.1.0 - app.js (full rewrite, defensive) */
+﻿/* JARVIS v1.2.0 - app.js (full rewrite, defensive) */
 (function(){
 'use strict';
 
@@ -226,7 +226,7 @@ function maybeOnboard(info,prefs){
     div.id='onboard-card';
     div.innerHTML='<div class="set-list" style="margin:8px 0;border-color:hsl(var(--theme-hue) 100% 64% / .4)">'+
       '<div class="set-row"><div class="label">GETTING STARTED<small>Dismiss any time</small></div>'+
-      '<div class="actions"><button class="dbtn" id="onboard-hide">DISMISS</button></div></div>'+steps+'</div>';
+      '<div class="actions"><button class="dbtn" id="onboard-tour">TAKE TOUR</button><button class="dbtn" id="onboard-hide">DISMISS</button></div></div>'+steps+'</div>';
     logEl.insertBefore(div,logEl.firstChild);
     var kb=$('onboard-key');if(kb)kb.addEventListener('click',function(){openSettings();loadTab('general');});
     var tt=$('onboard-try-time');if(tt)tt.addEventListener('click',function(){sendCommand('tell me the time');});
@@ -235,7 +235,59 @@ function maybeOnboard(info,prefs){
       savePref('onboarded',true).catch(function(){});
       var c=$('onboard-card');if(c)c.remove();
     });
+    var tb=$('onboard-tour');if(tb)tb.addEventListener('click',function(){startTour();});
   }catch(e){}
+}
+
+var tourStep=-1;
+var TOUR_STEPS=[
+  {sel:'cmd',title:'1 · Command bar',text:'Type anything — skills answer instantly, the AI fills the gaps. Try "tell me the time".'},
+  {sel:'log',title:'2 · Answers land here',text:'Replies stream in live. Mic, history and slash commands ride along.'},
+  {sel:'btn-settings',title:'3 · Settings',text:'API keys, models, voices, autostart — everything configurable lives behind this button.'},
+  {sel:null,title:'4 · Alt+Space HUD',text:'Press Alt+Space over any window — game, IDE, browser — for the floating deck with chips, mic and copy.'}
+];
+function startTour(){
+  try{
+    endTour(true);
+    tourStep=0;
+    var veil=document.createElement('div');veil.id='tour-veil';
+    var ring=document.createElement('div');ring.id='tour-ring';
+    var card=document.createElement('div');card.id='tour-card';
+    document.body.appendChild(veil);document.body.appendChild(ring);document.body.appendChild(card);
+    veil.addEventListener('click',function(){endTour();});
+    _showTourStep();
+  }catch(e){}
+}
+function _showTourStep(){
+  var s=TOUR_STEPS[tourStep];if(!s){endTour();return;}
+  var ring=$('tour-ring'),card=$('tour-card');
+  var r=null;
+  if(s.sel){var el=document.getElementById(s.sel);if(el)r=el.getBoundingClientRect();}
+  if(ring){
+    if(r){ring.style.display='block';
+      ring.style.left=(r.left-6+window.scrollX)+'px';ring.style.top=(r.top-6+window.scrollY)+'px';
+      ring.style.width=(r.width+12)+'px';ring.style.height=(r.height+12)+'px';
+    }else ring.style.display='none';
+  }
+  if(card){
+    card.innerHTML='<div class="tour-title">'+s.title+'</div><div class="tour-text">'+s.text+'</div>'+
+      '<div class="tour-nav"><button class="dbtn" id="tour-skip">SKIP</button>'+
+      '<span class="tour-count">'+(tourStep+1)+' / '+TOUR_STEPS.length+'</span>'+
+      '<button class="dbtn" id="tour-next">'+(tourStep===TOUR_STEPS.length-1?'FINISH':'NEXT')+'</button></div>';
+    var nx=$('tour-next');if(nx)nx.addEventListener('click',function(){tourStep++;_showTourStep();});
+    var sk=$('tour-skip');if(sk)sk.addEventListener('click',function(){endTour();});
+    var cw=300;
+    var cx=(r?(r.left+r.width/2):window.innerWidth/2)+window.scrollX-cw/2;
+    cx=Math.max(12,Math.min(cx,window.innerWidth-cw-12));
+    var cy=r?r.bottom+window.scrollY+14:window.innerHeight/2-80;
+    if(r&&cy+170>window.innerHeight+window.scrollY)cy=r.top+window.scrollY-184;
+    card.style.left=cx+'px';card.style.top=Math.max(12,cy)+'px';
+  }
+}
+function endTour(silent){
+  tourStep=-1;
+  ['tour-veil','tour-ring','tour-card'].forEach(function(id){var e=$(id);if(e)e.remove();});
+  if(!silent)savePref('onboarded',true).catch(function(){});
 }
 
 async function loadMemory(){
@@ -1608,6 +1660,10 @@ async function boot(){
   startStatsLoop();startUptime();startClock();initWaveform();
   addLog('JARVIS online. Type / for commands.','system');
   maybeOnboard(bootInfo,bootPrefs||{});
+  try{
+    if(!bootPrefs.onboarded&&bootInfo&&(bootInfo.facts||0)===0)
+      setTimeout(function(){startTour();},1600);
+  }catch(e){}
   setTimeout(function(){setState(STATE.IDLE);},1200);
   fetch('/api/greeting').then(function(r){return r.json();}).then(function(d){
     if(d.greeting)addLog(d.greeting,'bot');
