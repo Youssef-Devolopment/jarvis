@@ -4,7 +4,10 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
-## [Unreleased]
+## [1.4.0] — 2026-10-04
+
+Autonomy + resilience batch: research agent, HUD rebuild, loops
+that survive dead models, native apps, backups.
 
 ### Added
 - **Deep Research Agent** (`system/research_agent.py`): multi-step
@@ -19,9 +22,6 @@ bump MINOR for big feature batches, PATCH for fixes
   (`research <topic>` returns the report path). Verified live
   end-to-end (3 sources → report → recall).
 
-## [Unreleased]
-
-### Added
 - **DEV terminal upgrades**: output appends per run (no more
   overwrite), elapsed time on every command, Up/Down history,
   one-click CLEAR.
@@ -37,15 +37,18 @@ bump MINOR for big feature batches, PATCH for fixes
   displays), bigger readable type, data-driven chips, live header
   refresh while visible, idle-only click-away still intact.
 
-## [Unreleased]
-
-### Added
 - **Agent loop that survives dead models**: split/merge/vision/
   dream/reality-check all use the configured default model instead
   of hardcoded IDs, plan/merge calls have timeouts, and expired /
   retired / sunset offers now trigger the fallback chain instead
   of failing chat (the exact Qwen-expiry 404 seen live is covered
   by test).
+- **More native apps**: Zoom, Notion, Slack, Obsidian, Notepad++,
+  Everything and Snipping Tool resolve instantly; Obsidian opens
+  straight into your vault via deep link when one is configured.
+- **One-click backup** (`backup` / `POST /api/backup`): memory DB
+  + `.env` zipped to `logs/backups` (last 5 kept), list via
+  `GET /api/backups`. Verified live (209 KB).
 
 ## [1.3.0] — 2026-10-04
 
