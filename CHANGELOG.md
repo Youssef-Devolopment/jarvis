@@ -7,6 +7,13 @@ bump MINOR for big feature batches, PATCH for fixes
 ## [Unreleased]
 
 ### Added
+- **Overlay HUD usefulness pass**: `＋ OPEN` / `✕ CLOSE` chips
+  prefill `open `/`close ` (one tap + app name runs it), a `⧉ COPY`
+  button copies the last answer, the header shows a `NO KEY`
+  suffix in skills-only mode, click-away only dismisses an idle
+  empty HUD (never mid-answer or mid-typing — Esc/✕/Alt+Space
+  still hide outright), and the HUD now resolves the server URL
+  without requiring an API key.
 - **Auto mode for apps**: the durable `auto_approve_skills` pref
   ("enable auto approve skills") is now a standing yes for app
   open/close gates — open and close run with zero prompts while
