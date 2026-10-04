@@ -795,6 +795,25 @@ def apps_forget():
     return jsonify({"ok": True, "forgotten": q})
 
 
+@bp.post("/apps/close")
+def apps_close():
+    """Close a running app by name. Graceful first, verified after.
+
+    Body: {"query": "notepad", "confirm": true}. Non-instant targets
+    need confirm:true (dashboard/voice confirm passes ask_fn=True).
+    """
+    from system import app_close
+    d = request.get_json(silent=True) or {}
+    q = (d.get("query") or "").strip()
+    if not q:
+        raise ValidationError("Missing 'query'.")
+    confirmed = bool(d.get("confirm"))
+    res = app_close.close_by_name(
+        q, ask_fn=(lambda _d: True) if confirmed else None)
+    code = 200 if (res.get("ok") or res.get("declined")) else 404
+    return jsonify({"ok": bool(res.get("ok")), **res}), code
+
+
 # ---------- SITE INDEX ----------
 @bp.get("/sites")
 def sites_list():

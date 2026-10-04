@@ -12,6 +12,7 @@ from skills import desktop_keyboard   # noqa: F401
 from skills import desktop_mouse      # noqa: F401
 from skills import vision             # noqa: F401
 from skills import app_launcher       # noqa: F401
+from skills import app_closer         # noqa: F401
 from skills import weather      # noqa: F401
 from skills import wiki         # noqa: F401
 from skills import crypto       # noqa: F401
