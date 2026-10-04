@@ -7,6 +7,15 @@ bump MINOR for big feature batches, PATCH for fixes
 ## [Unreleased]
 
 ### Added
+- **In-app API key setup** (Settings → GENERAL): paste
+  `DEEPSEEK_API_KEY`, SAVE+TEST verifies it live against the
+  provider (model count shown) and persists it to `.env` (with a
+  `.env.bak` backup, now gitignored) preserving every other line;
+  chat works immediately, the banner clears, and only voice features
+  still ask for a restart. `GET /api/settings/key` reports a masked
+  key (`thk•••d_hv` style — the secret is never sent to the page),
+  and `config` gains `masked_key()`, `validate_key_format()` and
+  `write_env_key()`.
 - **Skills-only mode**: JARVIS now boots without `DEEPSEEK_API_KEY`.
   Local skills (time, math, notes, timers, opening apps, 100+ more)
   answer normally; only LLM chat degrades, returning a setup hint

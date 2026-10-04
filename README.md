@@ -53,7 +53,8 @@ your existing `.venv` and `.env`.
 No API key yet? JARVIS still boots in **skills-only mode**: 100+
 local skills (time, math, notes, timers, opening apps...) answer
 normally, and the dashboard shows a banner telling you where to add
-`DEEPSEEK_API_KEY` for full AI chat.
+`DEEPSEEK_API_KEY` for full AI chat. Fastest way, no files touched:
+Settings → GENERAL → paste key → SAVE+TEST (verified live).
 
 Manual equivalent (from a cloned repo):
 
