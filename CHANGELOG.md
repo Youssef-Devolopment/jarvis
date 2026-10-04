@@ -4,6 +4,30 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.3.0] — 2026-10-04
+
+Add-anything + fast-web batch: one verb installs everything, search
+grows a keyed AI tier with a keyless reader fallback, sessions go
+stable.
+
+### Added
+- **Universal add** (`add ...` / `POST /api/add`): sites
+  (`remember <url> as <name>`, pinned to `logs/custom_sites.json`,
+  `open <name>` resolves them, `forget site <name>` removes),
+  MCP presets (`install mcp fetch`) and servers, apps
+  (learn-without-launch), forced skill drafts — one router over the
+  existing validated backends, unknown shapes fall through.
+- **Tavily AI search tier** (fast depth, `TAVILY_API_KEY` optional):
+  verified against the live API docs; silent skip when keyless.
+- **Jina reader fallback**: pages raw HTML can't see resolve to
+  readable markdown (verified live, no key).
+- **Stable session secret**: first boot generates `FLASK_SECRET_KEY`
+  into `.env` (never logged, never committed) and reuses it —
+  sessions no longer reset on every restart. Falls back to
+  ephemeral only if `.env` is unwritable.
+- `mcp_servers.json` is now gitignored (it can hold server env
+  secrets) — found by audit before it ever landed with any.
+
 ## [1.2.0] — 2026-10-04
 
 Autonomy + self-care batch: the assistant opens, closes, cleans
@@ -34,14 +58,6 @@ and tours on its own; skills can't break it; agents get a memory.
   session memory, updated every unit) and `AGENTS.md` (the full
   developer loop for any AI continuing this repo, linked from
   README).
-
-## [Unreleased]
-
-### Added
-- **Stable session secret**: first boot generates `FLASK_SECRET_KEY`
-  into `.env` (never logged, never committed) and reuses it —
-  sessions no longer reset on every restart. Falls back to
-  ephemeral only if `.env` is unwritable.
 
 ## [1.1.0] — 2026-10-04
 

@@ -1,11 +1,11 @@
 # JARVIS — Voice-first AI assistant for Windows
 
-![version](https://img.shields.io/badge/version-v1.2.0-blue)
+![version](https://img.shields.io/badge/version-v1.3.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-164%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-189%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
-Talk to your PC and it obeys: **128 skills, 30 LLM tools, 126 API
+Talk to your PC and it obeys: **129 skills, 30 LLM tools, 127 API
 endpoints.** Open and close apps by name, dictate notes into
 Obsidian, search and read the web, run VSCode and terminal tasks —
 by voice, hotkey, or the `Alt+Space` HUD over any window. No API key?
@@ -74,8 +74,13 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
 - **Files + Obsidian** — explorer, folders, snippets, layouts;
   notes land in your Obsidian vault (or SQLite fallback),
   `/clip` and `/vault` from chat
-- **Web** — tiered search, fetch-and-read pages, summaries,
-  screenshots, WhatsApp / Gmail / Todoist
+- **Add anything** — *"remember https://x as docs"* pins sites
+  (`open docs` works after), *"install mcp fetch"*, *"add frob
+  as an app"*, *"add a skill that..."* — one router
+  (`POST /api/add`) over every installer
+- **Web** — tiered search (Tavily AI tier when keyed, Brave, DDG,
+  Bing, SearxNG), fetch-and-read pages with Jina fallback,
+  summaries, screenshots, WhatsApp / Gmail / Todoist
 - **System + voice** — volume, brightness, lock, timers, todos,
   reminders, focus lock, Windows dark/light/transparency, Edge/Piper
   speech (engine pre-warmed at boot), multi-model councils,
@@ -119,7 +124,7 @@ a double-fire harmless. Status: `GET /autostart/status`.
 ```
 run.py / server.py / config.py      entry points + settings (.env)
 ai/          LLM client, tools, agents, council backends, integrations
-skills/      128 @register skills (+ skills/auto_generated/)
+skills/      129 @register skills (+ skills/auto_generated/)
 voice/       Groq mic input, Piper/edge-tts output (Ryan)
 memory/      SQLite facts, messages, prefs, outcomes, contacts, …
 moods/       personalities, router, escalation levels, classifier
@@ -131,7 +136,7 @@ routes/      Flask blueprints (126 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
-- `main` builds green: syntax-check every file + **164 unit tests**
+- `main` builds green: syntax-check every file + **189 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -157,5 +162,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 164 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 189 tests
 ```

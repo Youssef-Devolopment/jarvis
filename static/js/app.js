@@ -1,4 +1,4 @@
-﻿/* JARVIS v1.2.0 - app.js (full rewrite, defensive) */
+﻿/* JARVIS v1.3.0 - app.js (full rewrite, defensive) */
 (function(){
 'use strict';
 

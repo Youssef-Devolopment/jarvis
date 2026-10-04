@@ -80,3 +80,16 @@ code trick). Quote exe paths containing spaces.
   a `no_key` setup hint, dashboard banner + HUD show the state.
 - Skill modules load isolated; broken patterns/handlers fall
   through instead of failing requests.
+
+## Scale rule (big work finishes fast)
+
+If a request spans 3+ files or 2+ independent workstreams, split it
+and delegate: spawn one `explore` subagent per investigation area
+(read-only maps with file:line refs) and/or one `general` subagent
+per independent build part, all in the same turn. You keep the
+critical path (edits, tests, live verification, commits); never
+duplicate a subagent's assigned files while it runs. Foreground for
+decisions you need now, background (`background=true`) when you can
+do useful work meanwhile. A subagent starts with fresh context —
+every prompt must carry full paths, constraints, and the exact
+shape of the report or diff you expect back.
