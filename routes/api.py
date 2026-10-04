@@ -831,6 +831,29 @@ def universal_add():
     return jsonify({"ok": True, "output": out})
 
 
+# ---------- DEEP RESEARCH (async jobs) ----------
+@bp.post("/research")
+def research_start():
+    """Trigger a research job. Body: {"topic": "..."}. Poll status."""
+    from system import research_agent as ra
+    d = request.get_json(silent=True) or {}
+    topic = (d.get("topic") or "").strip()
+    if not topic:
+        raise ValidationError("Missing 'topic'.")
+    if len(topic) > 300:
+        raise ValidationError("Topic too long.")
+    return jsonify({"ok": True, **ra.start_research(topic)})
+
+
+@bp.get("/research/<job_id>")
+def research_poll(job_id):
+    from system import research_agent as ra
+    st = ra.job_status((job_id or "").strip())
+    if st is None:
+        return jsonify({"ok": False, "error": "Unknown job."}), 404
+    return jsonify({"ok": True, **st})
+
+
 # ---------- SITE INDEX ----------
 @bp.get("/sites")
 def sites_list():

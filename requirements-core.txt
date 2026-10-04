@@ -10,5 +10,6 @@ numpy>=1.24
 apscheduler>=3.10
 watchdog>=3.0
 duckduckgo-search>=8.0
+beautifulsoup4>=4.12
 gunicorn>=21.2 ; sys_platform != "win32"
 waitress>=3.0 ; sys_platform == "win32"
