@@ -19,6 +19,16 @@ bump MINOR for big feature batches, PATCH for fixes
   (`research <topic>` returns the report path). Verified live
   end-to-end (3 sources → report → recall).
 
+## [Unreleased]
+
+### Added
+- **Overlay HUD 3.0 — command-deck rebuild**: the fixed panel is
+  now a floating command bar (emblem + entry + mic/send + status
+  dot) that expands into reply + chips + footer on submit.
+  DPI-aware native rendering (the actual blur cure on scaled
+  displays), bigger readable type, data-driven chips, live header
+  refresh while visible, idle-only click-away still intact.
+
 ## [1.3.0] — 2026-10-04
 
 Add-anything + fast-web batch: one verb installs everything, search
