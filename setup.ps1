@@ -137,6 +137,32 @@ try {
     Pop-Location
 }
 
+# ---------- post-install health ------------------------------------------
+# check.py is REPORT-ONLY here: a fresh install has a placeholder API
+# key by design, so some checks fail until Settings gets a real key.
+# Never fail the install over it — print what to do next instead.
+Step 'Running post-install health check (informational)'
+Push-Location $root
+try {
+    & $venvPy check.py
+    if ($LASTEXITCODE -eq 0) {
+        Ok 'All preflight checks passed - JARVIS is ready.'
+    } else {
+        Warn 'Some checks need attention (normal on first install).'
+        $content = Get-Content (Join-Path $root '.env') -Raw -ErrorAction SilentlyContinue
+        if (-not $content -or $content.Contains('sk-paste')) {
+            Write-Host '  Next: add your API key with ZERO file editing:' -ForegroundColor Yellow
+            Write-Host '    1. Start JARVIS once:  desktop.bat'
+            Write-Host '    2. Open Settings (gear) -> GENERAL -> paste key -> SAVE+TEST'
+            Write-Host '  ...or edit .env by hand:  notepad .env'
+        } else {
+            Write-Host '  Re-run check.py after fixing the items above.' -ForegroundColor Yellow
+        }
+    }
+} finally {
+    Pop-Location
+}
+
 # ---------- summary --------------------------------------------------------
 Write-Host ''
 Ok "JARVIS installed at $root"
