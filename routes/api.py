@@ -800,7 +800,8 @@ def apps_close():
     """Close a running app by name. Graceful first, verified after.
 
     Body: {"query": "notepad", "confirm": true}. Non-instant targets
-    need confirm:true (dashboard/voice confirm passes ask_fn=True).
+    need confirm:true, unless auto mode is on (auto_approve_skills
+    pref) which counts as a standing yes. System/self refusals apply.
     """
     from system import app_close
     d = request.get_json(silent=True) or {}

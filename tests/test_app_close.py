@@ -88,6 +88,9 @@ class CloseEngineTests(unittest.TestCase):
         FakeProc.reset()
         self._learned = app_close._learned_map
         app_close._learned_map = lambda: {}
+        from system import app_learner as _AL
+        self._auto = mock.patch.object(_AL, "auto_mode", return_value=False)
+        self._auto.start()
         p1, p2 = _fake_psutil()
         self._pp1 = p1
         self._pp2 = p2
@@ -98,6 +101,7 @@ class CloseEngineTests(unittest.TestCase):
 
     def tearDown(self):
         app_close._learned_map = self._learned
+        self._auto.stop()
         self._pp1.stop()
         self._pp2.stop()
         self._sleep.stop()

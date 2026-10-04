@@ -17,15 +17,10 @@ CLOSE_PATTERNS = [
 
 
 def _ask_close(display: str) -> bool:
-    """Voice announcement + toast buttons. Default NO."""
+    """Voice announcement + toast buttons. Standing yes in auto mode."""
     try:
-        from voice import speak_async
-        speak_async(f"Close {display}? Say yes, or press Approve.")
-    except Exception:
-        pass
-    try:
-        from system.notify import confirm
-        return bool(confirm(f"Close {display}?", timeout=60))
+        from system.app_learner import ask_user
+        return bool(ask_user(display, verb="Close"))
     except Exception:
         return False
 

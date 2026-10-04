@@ -53,6 +53,36 @@ _warm_thread: threading.Thread | None = None
 _misses: set[str] = set()        # negative cache (per session)
 
 
+def auto_mode() -> bool:
+    """True when the user switched on full autonomy.
+
+    Backed by the durable `auto_approve_skills` pref ("enable auto
+    approve skills" by voice). Open/close gates treat it as a standing
+    yes; system-critical and self-process refusals still apply.
+    """
+    try:
+        from skills import auto_generator as ag
+        return bool(ag.auto_approve_enabled())
+    except Exception:
+        return False
+
+
+def ask_user(display: str, verb: str = "Open") -> bool:
+    """Voice + toast confirm. Standing yes when auto mode is on."""
+    if auto_mode():
+        return True
+    try:
+        from voice import speak_async
+        speak_async(f"{verb} {display}? Say yes, or press Approve.")
+    except Exception:
+        pass
+    try:
+        from system.notify import confirm
+        return bool(confirm(f"{verb} {display}?", timeout=60))
+    except Exception:
+        return False
+
+
 # ---------------------------------------------------------------- helpers
 def _norm(s: str) -> str:
     """'Visual Studio Code.exe' -> 'visualstudiocode'"""
@@ -269,8 +299,8 @@ def _skill_source(display: str, path: str) -> str:
         f"          [{pattern!r}],\n"
         f"          \"Open {display} (learned app)\", front=True)\n"
         f"def {module}(text, match):\n"
-        "    from system.app_learner import launch_learned\n"
-        f"    return launch_learned({path!r}, {display!r}) \\\n"
+        "    from system.app_learner import launch_learned, ask_user\n"
+        f"    return launch_learned({path!r}, {display!r}, ask_fn=ask_user) \\\n"
         "        or \"OK, not opening it.\"\n"
     )
 
@@ -287,7 +317,7 @@ def ensure_skill(display: str, path: str) -> tuple[str, bool]:
     working while the skill waits for approval.
     """
     display = (display or "").strip()
-    path = str(path)
+    path = str(Path(str(path)))  # canonical separators (no \\ doubles)
     if not display or not path:
         raise ValueError("display and path are required")
     p = Path(path)
@@ -379,6 +409,10 @@ def launch_learned(path: str, display: str, ask_fn=None) -> str | None:
     if not Path(path).exists():
         return f"{display} moved or was uninstalled — relearn it."
     if L.is_instant(path):
+        out = L.launch_target(path)
+    elif auto_mode():
+        # Standing yes: learned/auto-approved skill re-opens, first
+        # opens through callers that already vetted the target.
         out = L.launch_target(path)
     else:
         approved = False

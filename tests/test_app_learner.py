@@ -251,6 +251,8 @@ class AppLearnerTests(unittest.TestCase):
         self.assertIn("soloapp", store["apps"])
 
     def test_learn_and_launch_declined(self):
+        from memory import set_pref
+        set_pref("auto_approve_skills", False)  # manual mode: asker decides
         L.is_instant = lambda p: False               # gate must ask
         res = AL.learn_and_launch("soloapp", ask_fn=lambda d: False)
         self.assertIsNotNone(res)

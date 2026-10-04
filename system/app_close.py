@@ -206,7 +206,13 @@ def close_by_name(name: str, ask_fn=None) -> dict:
                 "output": f"Nothing I can safely close for '{display}'."}
     if not r.get("instant"):
         ok = False
-        if ask_fn is not None:
+        try:
+            from system.app_learner import auto_mode
+            if auto_mode():
+                ok = True  # standing yes; refusals already handled above
+        except Exception:
+            pass
+        if not ok and ask_fn is not None:
             try:
                 ok = bool(ask_fn(display))
             except Exception:

@@ -23,6 +23,17 @@ def _ask(display: str) -> bool:
         return False
 
 
+def _auto_ask(display: str) -> bool:
+    """Standing yes when auto mode is on, otherwise voice+toast."""
+    try:
+        from system.app_learner import auto_mode
+        if auto_mode():
+            return True
+    except Exception:
+        pass
+    return _ask(display)
+
+
 @register("launch_app", [
     r"^(?:open|launch|start|run)\s+(?:the\s+)?(?:app\s+)?(?P<app>.+?)[\?\.\!]?$",
 ], "Launch a desktop application")
@@ -41,7 +52,7 @@ def skill_launch(text, m):
         target = r["target"]
         if L.is_instant(target):
             out = L.launch_target(target)
-        elif _ask(r.get("display") or app):
+        elif _auto_ask(r.get("display") or app):
             out = L.launch_target(target)
         else:
             return "OK, not opening it."
@@ -68,7 +79,7 @@ def skill_launch(text, m):
             target = hit["path"]
             if L.is_instant(target):
                 out = L.launch_target(target)
-            elif _ask(hit.get("name") or app):
+            elif _auto_ask(hit.get("name") or app):
                 out = L.launch_target(target)
             else:
                 return "OK, not opening it."
@@ -85,7 +96,7 @@ def skill_launch(text, m):
     # app AND writes a permanent skill for it.
     try:
         from system import app_learner
-        res = app_learner.learn_and_launch(app, ask_fn=_ask)
+        res = app_learner.learn_and_launch(app, ask_fn=_auto_ask)
         if res:
             if res.get("declined"):
                 return "OK, not opening it."
