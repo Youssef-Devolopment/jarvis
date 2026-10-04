@@ -7,6 +7,14 @@ bump MINOR for big feature batches, PATCH for fixes
 ## [Unreleased]
 
 ### Added
+- **Auto mode for apps**: the durable `auto_approve_skills` pref
+  ("enable auto approve skills") is now a standing yes for app
+  open/close gates — open and close run with zero prompts while
+  system-critical and self-process refusals still apply. Also fixes
+  repeat-`open` of learned non-safe apps, which previously dead-ended
+  at "OK, not opening it." (generated skills had no asker); they now
+  share one `ask_user` helper, paths are canonicalized on learn, and
+  `POST /api/apps/close` honors auto mode too.
 - **Close any app by voice** (`close`/`kill <app>`): companion to
   the universal opener. Resolves through the learner store, curated
   aliases and running processes; refuses Windows-critical processes
