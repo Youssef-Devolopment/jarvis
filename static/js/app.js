@@ -209,6 +209,34 @@ function updateKeyBanner(info){
   });
 })();
 
+function maybeOnboard(info,prefs){
+  try{
+    if(prefs&&prefs.onboarded)return;
+    var noKey=!info||info.key===false||info.no_key_mode===true;
+    var noFacts=!info||!info.facts||info.facts<=0;
+    if(!noKey&&!noFacts)return;
+    if(document.getElementById('onboard-card'))return;
+    var logEl=$('log');if(!logEl)return;
+    var steps='';
+    if(noKey)steps+='<div class="set-row"><div class="label">1 · Add your API key<small>Unlocks full AI chat</small></div><div class="actions"><button class="dbtn" id="onboard-key">SET KEY</button></div></div>';
+    steps+='<div class="set-row"><div class="label">'+(noKey?'2':'1')+' · Try a local skill<small>Works even without a key</small></div><div class="actions"><button class="dbtn" id="onboard-try-time">TRY TIME</button></div></div>';
+    steps+='<div class="set-row"><div class="label">'+(noKey?'3':'2')+' · Open an app<small>Opens Notepad on this PC</small></div><div class="actions"><button class="dbtn" id="onboard-try-open">TRY OPEN</button></div></div>';
+    var div=document.createElement('div');
+    div.id='onboard-card';
+    div.innerHTML='<div class="set-list" style="margin:8px 0;border-color:hsl(var(--theme-hue) 100% 64% / .4)">'+
+      '<div class="set-row"><div class="label">GETTING STARTED<small>Dismiss any time</small></div>'+
+      '<div class="actions"><button class="dbtn" id="onboard-hide">DISMISS</button></div></div>'+steps+'</div>';
+    logEl.insertBefore(div,logEl.firstChild);
+    var kb=$('onboard-key');if(kb)kb.addEventListener('click',function(){openSettings();loadTab('general');});
+    var tt=$('onboard-try-time');if(tt)tt.addEventListener('click',function(){sendCommand('tell me the time');});
+    var to=$('onboard-try-open');if(to)to.addEventListener('click',function(){sendCommand('open notepad');});
+    var hb=$('onboard-hide');if(hb)hb.addEventListener('click',function(){
+      savePref('onboarded',true).catch(function(){});
+      var c=$('onboard-card');if(c)c.remove();
+    });
+  }catch(e){}
+}
+
 async function loadMemory(){
   try{
     var r=await fetch('/api/memory');var d=await r.json();
@@ -1569,15 +1597,16 @@ async function loadCodeMode(){
 async function boot(){
   addLog('Initializing JARVIS kernel...','system');
   initCanvas();
-  await loadPrefs();
+  var bootPrefs=await loadPrefs();
   await loadCodeMode();
-  await loadInfo();
+  var bootInfo=await loadInfo();
   await loadMemory();
   await loadModels();
   await loadVoices();
   await loadMoods();
   startStatsLoop();startUptime();startClock();initWaveform();
   addLog('JARVIS online. Type / for commands.','system');
+  maybeOnboard(bootInfo,bootPrefs||{});
   setTimeout(function(){setState(STATE.IDLE);},1200);
   fetch('/api/greeting').then(function(r){return r.json();}).then(function(d){
     if(d.greeting)addLog(d.greeting,'bot');

@@ -57,6 +57,7 @@ _DEFAULTS = {
     "dream_organize_downloads": True,
     "dream_backup_memory": True,
     "dream_summarize_day": True,
+    "onboarded": False,
 }
 
 
