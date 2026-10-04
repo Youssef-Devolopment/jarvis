@@ -22,6 +22,9 @@ bump MINOR for big feature batches, PATCH for fixes
 ## [Unreleased]
 
 ### Added
+- **DEV terminal upgrades**: output appends per run (no more
+  overwrite), elapsed time on every command, Up/Down history,
+  one-click CLEAR.
 - **Logon task with working directory**: the scheduled task is now
   created from XML (`InteractiveToken`, 15s delay) with
   `WorkingDirectory` set to the project root — the old form started
