@@ -7,6 +7,16 @@ bump MINOR for big feature batches, PATCH for fixes
 ## [Unreleased]
 
 ### Added
+- **Close any app by voice** (`close`/`kill <app>`): companion to
+  the universal opener. Resolves through the learner store, curated
+  aliases and running processes; refuses Windows-critical processes
+  and JARVIS's own interpreters; asks before closing anything that
+  wasn't explicitly learned or aliased; closes gracefully first
+  (apps may prompt to save), forces only leftovers, verifies gone,
+  and audits like launches. Served also as `POST /api/apps/close`
+  (`{query, confirm}`). Tab/window phrases stay with the
+  browser/desktop hotkey skills (pattern-level guard plus dispatch
+  order).
 - **In-app API key setup** (Settings → GENERAL): paste
   `DEEPSEEK_API_KEY`, SAVE+TEST verifies it live against the
   provider (model count shown) and persists it to `.env` (with a
