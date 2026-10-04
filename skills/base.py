@@ -18,7 +18,11 @@ class Skill:
 
     def match(self, text: str):
         for p in self.patterns:
-            m = p.search(text)
+            try:
+                m = p.search(text)
+            except Exception:
+                log.warning("skill '%s': broken pattern skipped", self.name)
+                continue
             if m:
                 return m
         return None
