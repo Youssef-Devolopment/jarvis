@@ -267,6 +267,107 @@ def s_confirm(text, m):
         return f"Run failed: {str(exc)[:80]}"
 
 
+def _ask_admin(cmd: str) -> bool:
+    """Elevation ALWAYS asks — auto mode is deliberately ignored.
+
+    Windows UAC is the final guard: declining the prompt aborts.
+    """
+    try:
+        from voice import speak_async
+        speak_async(f"Run as administrator: {cmd[:120]}? "
+                    f"Say yes, or press Approve.")
+    except Exception:
+        pass
+    try:
+        from system.notify import confirm
+        return bool(confirm(f"Run as ADMIN: {cmd[:120]}?", timeout=60))
+    except Exception:
+        return False
+
+
+def _run_elevated(cmd: str, timeout: int = 120, tmpdir=None) -> tuple:
+    """Run cmd elevated via a UAC prompt. Returns (rc, output).
+
+    Denying the UAC prompt raises OSError (mapped to a friendly
+    message by the caller). Never silent: no prompt, no elevation.
+    """
+    import tempfile
+    import uuid
+    workdir = Path(tmpdir) if tmpdir else Path(tempfile.gettempdir())
+    tag = uuid.uuid4().hex[:8]
+    bat = workdir / f"jarvis-admin-{tag}.bat"
+    out = workdir / f"jarvis-admin-{tag}.out"
+    try:
+        bat.write_text(f"@echo off\r\n{cmd} > \"{out}\" 2>&1\r\n",
+                       encoding="utf-8")
+    except Exception as exc:
+        return -1, f"Could not stage elevated run: {exc}"[:120]
+    ps = (f"Start-Process -FilePath '{bat}' -Verb RunAs -Wait")
+    try:
+        r = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive",
+             "-Command", ps],
+            capture_output=True, text=True, timeout=timeout + 30)
+    except subprocess.TimeoutExpired:
+        return -1, "Elevated run timed out."
+    except OSError as exc:
+        return -1, f"Elevation refused: {exc}"[:160]
+    except Exception as exc:
+        return -1, f"Elevation failed: {exc}"[:160]
+    finally:
+        try:
+            bat.unlink(missing_ok=True)
+        except Exception:
+            pass
+    if r.returncode != 0:
+        err = (r.stderr or "").strip()[:160]
+        if "canceled" in err.lower() or "denied" in err.lower():
+            return -1, "UAC prompt declined — nothing ran."
+        return -1, f"Launcher failed: {err or r.returncode}"
+    try:
+        text = out.read_text(encoding="utf-8", errors="replace").strip()
+    except Exception:
+        text = ""
+    finally:
+        try:
+            out.unlink(missing_ok=True)
+        except Exception:
+            pass
+    return 0, text
+
+
+@register("code_run_admin", [
+    r"^code\s+run-admin\s+(?P<cmd>.+)$",
+    r"^code\s+run\s+(?:as\s+admin|elevated)\s+(?P<cmd>.+)$",
+    r"^run\s+(?P<cmd>.+?)\s+as\s+(?:admin|administrator)[\?\.\!]?$",
+], "Run shell command elevated (always confirms)")
+def s_run_admin(text, m):
+    if not _code_mode_on():
+        return "OVERRIDE is locked."
+    cmd = (m.group("cmd") or "").strip()
+    if not cmd:
+        return None
+    low = cmd.lower()
+    for bad in _FORBIDDEN:
+        if bad in low:
+            _audit("run-admin", cmd, False, "forbidden")
+            return f"Blocked: '{bad}' never allowed, even elevated."
+    safe, reason = _cmd_safe(cmd)
+    if not safe:
+        _audit("run-admin", cmd[:80], False, reason)
+        return f"Blocked: {reason}"
+    if not _ask_admin(cmd):
+        _audit("run-admin", cmd[:80], False, "declined")
+        return "OK, not running it elevated."
+    rc, output = _run_elevated(cmd)
+    _audit("run-admin", cmd, rc == 0, f"rc={rc}")
+    if rc != 0:
+        return output or "Elevated run failed."
+    if len(output) > 2000:
+        output = output[:2000] + "\n... (truncated)"
+    return output or "(no output)"
+
+
 @register("code_status", [
     r"^code\s+(?:mode\s+)?status$",
 ], "Code Mode status")

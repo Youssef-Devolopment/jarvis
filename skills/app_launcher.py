@@ -42,6 +42,10 @@ def skill_launch(text, m):
     app = (m.group("app") or "").strip()
     if not app:
         return None
+    import re as _re
+    if _re.search(r"\bas\s+admin(istrator)?[\?\.\!]?$", app,
+                  _re.IGNORECASE):
+        return None  # elevation belongs to code_run_admin
     if any(x in app.lower() for x in _SITE_HINTS):
         return None  # websites belong to web_open
     if "://" in app or app.lower().split(":", 1)[0] in (
