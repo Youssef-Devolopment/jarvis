@@ -148,5 +148,32 @@ class KeyEndpointTests(unittest.TestCase):
         self.assertFalse(tmp.exists())
 
 
+class FlaskSecretTests(unittest.TestCase):
+    def test_existing_env_secret_respected(self):
+        with _EnvGuard():
+            os.environ["FLASK_SECRET_KEY"] = "preset-secret"
+            tmp = Path(tempfile.mkdtemp()) / ".env"
+            self.assertEqual(config.ensure_flask_secret(tmp),
+                             "preset-secret")
+            self.assertFalse(tmp.exists())
+
+    def test_generates_persists_and_stabilizes(self):
+        with _EnvGuard():
+            os.environ.pop("FLASK_SECRET_KEY", None)
+            tmp = Path(tempfile.mkdtemp()) / ".env"
+            tmp.write_text("HOST=127.0.0.1\n", encoding="utf-8")
+            first = config.ensure_flask_secret(tmp)
+            self.assertEqual(len(first), 64)
+            text = tmp.read_text(encoding="utf-8")
+            self.assertIn(f"FLASK_SECRET_KEY={first}", text)
+            self.assertIn("HOST=127.0.0.1", text)
+            os.environ.pop("FLASK_SECRET_KEY", None)
+            self.assertEqual(config.ensure_flask_secret(tmp), first)
+            lines = [ln for ln in
+                     tmp.read_text(encoding="utf-8").splitlines()
+                     if ln.startswith("FLASK_SECRET_KEY=")]
+            self.assertEqual(len(lines), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,8 +1,6 @@
 from __future__ import annotations
-import os
-import secrets
 from flask import Flask
-from config import get_settings, Settings
+from config import get_settings, Settings, ensure_flask_secret
 from errors import register_error_handlers, ConfigError
 from logger import get_logger, setup_logging
 from routes import api_bp, views_bp
@@ -19,12 +17,7 @@ def create_app() -> Flask:
                     "LLM chat needs DEEPSEEK_API_KEY in .env.")
     setup_logging(s.log_level)
     app = Flask(__name__, static_folder="static", template_folder="templates")
-    secret = (os.getenv("FLASK_SECRET_KEY") or "").strip()
-    if not secret:
-        secret = secrets.token_hex(32)
-        log.warning("FLASK_SECRET_KEY unset — ephemeral key generated "
-                    "(sessions reset on restart). Set it in .env.")
-    app.config["SECRET_KEY"] = secret
+    app.config["SECRET_KEY"] = ensure_flask_secret()
     if s.host not in ("127.0.0.1", "localhost", "::1"):
         log.warning("Listening on %s — the API has no auth. "
                     "Prefer 127.0.0.1 unless you know what you are doing.",

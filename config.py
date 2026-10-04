@@ -231,3 +231,41 @@ def write_env_key(key: str, path: Path | None = None) -> Path:
     except OSError as exc:
         raise ValidationError("Could not write .env.", detail=str(exc)[:120])
     return p
+
+
+def ensure_flask_secret(path: Path | None = None) -> str:
+    """Stable Flask SECRET_KEY, persisted in .env on first boot.
+
+    Sessions previously reset on every restart (ephemeral key). Now
+    the first boot generates 32 random bytes, appends them to .env
+    (never logged, never committed), and every later boot reuses
+    them. Falls back to ephemeral only if .env is unwritable.
+    """
+    import secrets
+    secret = (os.getenv("FLASK_SECRET_KEY") or "").strip()
+    if secret:
+        return secret
+    p = Path(path) if path else ENV_PATH
+    if p.exists():
+        for ln in p.read_text(encoding="utf-8").splitlines():
+            if ln.strip().startswith("FLASK_SECRET_KEY="):
+                saved = ln.split("=", 1)[1].strip()
+                if saved:
+                    os.environ["FLASK_SECRET_KEY"] = saved
+                    return saved
+    generated = secrets.token_hex(32)
+    try:
+        lines: list[str] = []
+        if p.exists():
+            lines = p.read_text(encoding="utf-8").splitlines()
+            lines = [ln for ln in lines
+                     if not ln.strip().startswith("FLASK_SECRET_KEY=")]
+        lines.append(f"FLASK_SECRET_KEY={generated}")
+        p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        os.environ["FLASK_SECRET_KEY"] = generated
+        log.info("FLASK_SECRET_KEY generated and saved to .env.")
+        return generated
+    except OSError as exc:
+        log.warning("Could not persist Flask secret (%s) — "
+                    "sessions reset on restart.", exc)
+        return generated
