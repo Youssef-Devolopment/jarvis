@@ -1,4 +1,4 @@
-﻿/* JARVIS v1.0.0 - app.js (full rewrite, defensive) */
+﻿/* JARVIS v1.1.0 - app.js (full rewrite, defensive) */
 (function(){
 'use strict';
 
@@ -183,6 +183,7 @@ async function loadInfo(){
   try{
     var r=await fetch('/api/info');var info=await r.json();
     setText('side-model',info.model_label||info.model||'--');
+    setText('brand-ver','v'+(info.version||'--'));
     var v=info.voice;
     setText('side-voice',v&&v.label?v.label:(typeof v==='string'?v:'--'));
     setText('side-mood',info.mood||'--');
@@ -1009,7 +1010,7 @@ function prefToggle(key,on,label,sub){
   }
   if(name==='about'){
     return '<div class="set-list">'+
-      '<div class="set-row"><div class="label">Version<small>v1.0.0</small></div></div>'+
+      '<div class="set-row"><div class="label">Version<small>v'+esc(data.version||'--')+'</small></div></div>'+
       '<div class="set-row"><div class="label">Model<small>'+esc(data.model||'--')+'</small></div></div>'+
       '<div class="set-row"><div class="label">Skills<small>'+esc(String((data.skills||[]).length))+'</small></div></div>'+
       '<div class="set-row"><div class="label">Voice<small>'+esc(data.voice&&data.voice.label?data.voice.label:'--')+'</small></div></div>'+

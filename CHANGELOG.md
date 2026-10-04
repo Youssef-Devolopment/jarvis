@@ -4,9 +4,21 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
-## [Unreleased]
+## [1.1.0] — 2026-10-04
+
+Big update: keyless-first onboarding, app open/close autonomy,
+unbreakable skill loading, and a rewritten README.
 
 ### Added
+- **Unbreakable skill loading**: core skill modules import
+  isolated — one broken file logs a warning and boot continues
+  with the rest (proven live with a syntax-broken probe module);
+  broken regex patterns are skipped per-skill instead of failing
+  the request. Community plugins already had this; now everything
+  does.
+- **Installer health report**: `setup.ps1` runs the 11-point
+  `check.py` at the end and, on a fresh keyless install, points at
+  Settings → GENERAL instead of failing the install.
 - **First-run onboarding card**: fresh installs (no key, or zero
   memory facts) get a GETTING STARTED card atop the log — add key,
   try a local skill, open an app — each one click, dismiss persists

@@ -1,74 +1,84 @@
 # JARVIS — Voice-first AI assistant for Windows
 
-![version](https://img.shields.io/badge/version-v1.0.0-blue)
+![version](https://img.shields.io/badge/version-v1.1.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-94%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-144%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
-JARVIS is a Flask + DeepSeek/OpenAI-compatible voice assistant with 124
-regex-dispatched skills, 30 LLM tools, hotword-free mic input (Groq),
-Edge/Piper speech output, multi-model councils, memory, and a desktop
-mode with tray icon, global hotkeys (`Ctrl+Alt+J`, `Alt+Space` overlay),
-native MCP server, and triple power-button autostart.
+Talk to your PC and it obeys: **125 skills, 30 LLM tools, 126 API
+endpoints.** Open and close apps by name, dictate notes into
+Obsidian, search and read the web, run VSCode and terminal tasks —
+by voice, hotkey, or the `Alt+Space` HUD over any window. No API key?
+It still boots in **skills-only mode** and tells you how to unlock
+the rest.
 
 A slim **Lite** build (25 skills, port 5002) lives next to it in
 `../lite jarvis/`.
 
-## Repository status
+## Install (Windows, 3 steps)
 
-- `main` builds green: syntax-check every file + **94 unit tests**
-  on Windows runners (`.github/workflows/ci.yml`)
-- No secrets in the repo — `.env`, runtime data and browser caches
-  are gitignored; API keys live only in your local `.env`
-- Community-friendly: MIT license, issue/PR templates,
-  `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
-  `ARCHITECTURE.md`, `CHANGELOG.md`, hot-reloadable `plugins/`
-  with a validated template
-
-## Quickstart (Windows)
-
-**One-line install** — paste into PowerShell *or* cmd:
+**Step 1 — one line.** Paste into PowerShell *or* cmd, press Enter:
 
 ```bat
 powershell -c "iex (irm https://raw.githubusercontent.com/Youssef-Devolopment/jarvis/main/setup.ps1)"
 ```
 
-(In PowerShell itself the wrapper is optional: the part inside the
-quotes is the whole command.)
+This clones the repo to `%USERPROFILE%\jarvis`, builds `.venv`,
+installs every requirement group + Playwright Chromium, creates
+`.env` from the template, then runs an 11-point health check.
+Existing files are never touched; already have the repo? Run
+`.\setup.ps1` from its folder instead.
 
-It clones the repo to `%USERPROFILE%\jarvis`, builds `.venv`,
-installs every requirement group + Playwright Chromium, and creates
-`.env` from the template (existing files are never touched). Then
-add your keys and launch:
+**Step 2 — add your key (no files needed).** Start JARVIS once
+(`desktop.bat` below), open **Settings → GENERAL**, paste
+`DEEPSEEK_API_KEY`, SAVE+TEST. The key is verified live against
+your provider (any OpenAI-compatible base URL works), saved to
+`.env` with a backup, and chat unlocks immediately. Keyless? Skip
+this — skills-only mode already answers 100+ local commands, and a
+banner + a first-run card walk you through the rest.
+
+**Step 3 — launch.**
 
 ```bat
 cd %USERPROFILE%\jarvis
-notepad .env        :: fill DEEPSEEK_API_KEY / GROQ_API_KEY
-desktop.bat         :: tray + Ctrl+Alt+J  (start.bat = console server)
+desktop.bat         :: tray icon + Ctrl+Alt+J + Alt+Space HUD (recommended)
+start.bat           :: console server on http://127.0.0.1:5000
 ```
 
-Already have the repo? Run `.\setup.ps1` from its folder — it reuses
-your existing `.venv` and `.env`.
+Say *"open notepad"*, *"what time is it"*, *"close chrome"*.
+Press **Alt+Space** anywhere for the floating HUD.
 
-No API key yet? JARVIS still boots in **skills-only mode**: 100+
-local skills (time, math, notes, timers, opening apps...) answer
-normally, and the dashboard shows a banner telling you where to add
-`DEEPSEEK_API_KEY` for full AI chat. Fastest way, no files touched:
-Settings → GENERAL → paste key → SAVE+TEST (verified live).
+Prefer it manual? `install.bat`, `copy .env.example .env`,
+`start.bat` — same result, your hands on every step.
 
-Manual equivalent (from a cloned repo):
+## What it can do
 
-```bat
-install.bat
-copy .env.example .env   :: then fill in DEEPSEEK_API_KEY / GROQ_API_KEY
-start.bat                :: console server on http://127.0.0.1:5000
-```
-
-Or silent desktop mode (tray + `Ctrl+Alt+J`, opens a fresh browser tab):
-
-```bat
-desktop.bat
-```
+- **Talk** — chat bar, mic dictation (Groq), or HUD; skills answer
+  first, the LLM fills the gaps (SSE stream, `POST /command`)
+- **Open any app** — *"open discord"* resolves aliases, Start Menu,
+  PATH and registry; unknown apps get deep-scanned (Program Files /
+  LocalAppData / Start Menu / PATH), launched, and kept as a
+  permanent instant skill. `GET /api/apps/learned`
+- **Close any app** — *"close spotify"*: graceful first (apps may
+  prompt to save), force only leftovers, verified gone. System
+  processes and JARVIS itself are always refused.
+  `POST /api/apps/close`
+- **Auto mode** — turn on *"auto approve skills"* and open/close
+  run with zero prompts. Off = voice + toast confirm every time.
+- **VSCode + terminal** — open files at line N, run sandboxed
+  commands (`code run`, allow-listed folders, destructive commands
+  blocked or confirmed), Code-Mode file ops, OpenCode agent tasks
+- **Files + Obsidian** — explorer, folders, snippets, layouts;
+  notes land in your Obsidian vault (or SQLite fallback),
+  `/clip` and `/vault` from chat
+- **Web** — tiered search, fetch-and-read pages, summaries,
+  screenshots, WhatsApp / Gmail / Todoist
+- **System + voice** — volume, brightness, lock, timers, todos,
+  reminders, focus lock, Edge/Piper speech, multi-model councils,
+  outcome memory, Dream Mode summaries, morning briefing
+- **HUD + dashboard** — glassmorphism UI with mood-reactive accent;
+  `Alt+Space` deck with SCREEN / TIMER / TIME / OPEN / CLOSE /
+  NOTE chips, history, mic, copy-answer, drag, fade
 
 ## Login autostart (power button)
 
@@ -80,126 +90,63 @@ brings JARVIS up:
 2. `HKCU\...\CurrentVersion\Run` registry key (no admin needed)
 3. Task Scheduler logon task, +15s (created when elevated)
 
-Every boot starts the server silently, opens JARVIS in a new browser
-window, and greets you with system uptime. The single-instance guard
-makes a double-fire harmless. `GET /autostart/status` reports which
-mechanisms are armed; disable via Settings or `POST /autostart/disable`.
-
-## What it does
-
-- **Chat** (`POST /command`, SSE stream): skills first, LLM fallback
-- **Skills** (`GET /api/skills`): notes (Obsidian vault or SQLite),
-  todos, reminders, timers, contacts, weather, wiki, crypto, web
-  search/fetch, file ops, desktop control, screenshots, bridges
-  (OpenCode, OpenHands, Clawbot), and more
-- **Council** (`POST /api/council/run`): 3–10 models debate in
-  parallel, moderator synthesizes (levels 7–8 ask confirmation first)
-- **Agents** (`POST /api/agents/run`): split → parallel → merge
-- **Auto-generate skills** (`/api/auto_skills/*`): LLM drafts, isolated
-  test, your approval registers it into `skills/auto_generated/` — or
-  turn on the durable **auto-approve gate** (`auto_approve_skills`
-  pref via `POST /api/auto_skills/auto_approve` or the "auto approve
-  skills" voice command): test-passed drafts then register instantly,
-  while anything failing its test still waits for you
-- **Autonomous app learner** (`system/app_learner.py`): "open <unknown
-  app>" deep-scans Program Files / LocalAppData / Start Menu / %PATH%
-  (parallel, 1h cache, warmed at boot), launches the hit behind the
-  usual confirm gate, then writes a permanent `@register` skill at the
-  front of the dispatch order — next call is instant. With
-  auto-approve off, the skill is staged for approval instead (launching
-  still works). Manage via
-  `GET /api/apps/learned`, `POST /api/apps/learn` / `/api/apps/forget`
-- **Outcome memory** + **reality check**: rejections steer the system
-  prompt; factual answers get second-source verification
-- **Dream Mode**: nightly organize + backup + day summary (off by
-  default, `dream_enabled` pref)
-- **Morning briefing** (`GET /api/briefing`): greeting + pending
-  reminders + things you told it to remember
-- **Premium UI**: glassmorphism dashboard with mood-reactive accent,
-  state-driven status colors, entrance choreography and
-  reduced-motion support; redesigned Alt+Space HUD with bezel edge,
-  focus-lit input and fade/slide animation
-- **MEGA utilities**: clipboard watcher, quick capture, contacts,
-  snippets vault, window layouts, URL cleaner, auto-format, time
-  tracking, focus lock, screen OCR, cross-app bridge
+Every boot starts silently, opens JARVIS in a new browser window,
+and greets you with system uptime. The single-instance guard makes
+a double-fire harmless. Status: `GET /autostart/status`.
 
 ## Screenshots
 
-**Alt+Space overlay HUD** — one key away over any window (captured live,
-idle state):
+**Alt+Space overlay HUD** — one key away over any window:
 
 ![JARVIS Alt+Space overlay HUD](docs/overlay.png)
 
 > **▶ Demo:** press **Alt+Space** anywhere — the HUD fades in over the
 > active window, speak or type, `Esc` (or Alt+Space again) dismisses it.
-> Voice reply + mood-reactive glow included.
 
 <!-- GIF placeholder: drop a recording at docs/overlay-demo.gif
      (record ~4s with Win+Alt+R: invoke HUD, ask "what time is it",
      Esc) and swap the callout above for:
      **▶ Demo:** ![Alt+Space HUD demo](docs/overlay-demo.gif) -->
 
-## Background nervous system (v1.0.0)
-
-JARVIS runs as an invisible background OS layer, not just a chat tab:
-
-- **Single-instance guard** — `logs/jarvis.lock` holds the live PID;
-  a second boot refuses cleanly (exit 2, logged warning). No forks.
-- **Alt+Space floating overlay** — a transparent, always-on-top HUD
-  over any window (game, IDE, browser): glass panel with glow border,
-  hexagon logo, live mood/model header, typewriter reply area,
-  quick chips (SCREEN / TIMER / TIME / NOTE), command history
-  (↑↓), mic dictation, drag-by-header, fade-in, status-dot pulse
-  while thinking. Auto-hides on blur / Esc / second press; pre-warmed
-  at boot so the first press is instant. (`system/overlay.py`,
-  pref `overlay_enabled`)
-- **LIFE / DEV mode switcher** — top-bar toggle, persisted in
-  localStorage. LIFE shows briefing/vault/notes; DEV reveals the
-  terminal drawer, port sentinel and file editor without reload.
-- **Native MCP server** — `venv\python.exe -m mcp.server` speaks
-  MCP stdio/JSON-RPC and exposes 7 tools (skills, command, terminal,
-  memory, Obsidian, ports, screen OCR) + 4 resources to VS Code,
-  Claude Desktop, Cursor, etc. Copy ready-made configs from
-  `GET /api/mcp/serve`.
-- **Port sentinel** — `GET /api/ports` lists listeners with process
-  names, `POST /api/ports/kill` one-click kills (refuses self and
-  system PIDs). Also a DEV-sidebar widget + `/ports`, `/kill`.
-- **Developer terminal** — DEV drawer → TERM tab runs sandboxed
-  commands (`POST /api/terminal/run`), same guards as Code Mode.
-- **Screen-context loop** — RAM-only background capture every ~20s
-  (never written to disk, zero API calls while looping); "what's on
-  my screen" / "fix this error" answer from the freshest frame.
-  Prefs: `screen_loop_enabled`, `screen_loop_interval`.
-- **Obsidian bridge** — `POST /api/obsidian/save` clips ideas to the
-  vault; `/clip <text>` and `/vault` from the chat bar.
-
-## Layout
+## For builders
 
 ```
 run.py / server.py / config.py      entry points + settings (.env)
 ai/          LLM client, tools, agents, council backends, integrations
-skills/      124 @register skills (+ skills/auto_generated/)
+skills/      125 @register skills (+ skills/auto_generated/)
 voice/       Groq mic input, Piper/edge-tts output (Ryan)
 memory/      SQLite facts, messages, prefs, outcomes, contacts, …
 moods/       personalities, router, escalation levels, classifier
 mcp/         client runtime, presets, native stdio MCP server
-plugins/     community plugins (hot-reload, MIT-replaceable)
+plugins/     community plugins (validated, isolated, MIT-replaceable)
 system/      tray, hotkey, overlay, singleton, autostart, launcher,
-             app_learner (deep scan + skill generation)
-routes/      Flask blueprints (122 endpoints)
+             app_learner (scan + skills), app_close (kill by name)
+routes/      Flask blueprints (126 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
+- `main` builds green: syntax-check every file + **144 unit tests**
+  on Windows runners (`.github/workflows/ci.yml`)
+- One broken skill file can never kill the boot: skill modules load
+  isolated (failure logged, rest continue), handler crashes fall
+  through to the next skill instead of failing the request
+- No secrets in the repo — `.env`, `.env.bak`, runtime data and
+  browser caches are gitignored; keys live only in your local `.env`
+- Community-friendly: MIT license, issue/PR templates,
+  `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
+  `ARCHITECTURE.md`, `CHANGELOG.md`, hot-reloadable `plugins/`
+  with a validated template
+
 ## Config
 
-Copy `.env.example` → `.env`. Minimum: `DEEPSEEK_API_KEY`
-(Token Harbor–compatible base URL allowed). Optional: `GROQ_API_KEY`
-(mic), `BRAVE_API_KEY` (search tier), `OBSIDIAN_VAULT` (notes go to
-Obsidian Markdown instead of SQLite), `TODOIST_API_TOKEN`.
+Minimum: `DEEPSEEK_API_KEY` (any OpenAI-compatible base URL).
+Optional: `GROQ_API_KEY` (mic), `BRAVE_API_KEY` (search tier),
+`OBSIDIAN_VAULT` (notes to Markdown), `TODOIST_API_TOKEN`.
+Full list with defaults: `.env.example`.
 
 ## Health
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks
-.venv\Scripts\python.exe -m unittest  :: test suite
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 144 tests
 ```
