@@ -1,12 +1,14 @@
-"""JARVIS floating HUD 2.0 — Alt+Space overlay.
+"""JARVIS floating HUD 3.0 — Alt+Space overlay.
 
 A transparent, always-on-top command deck that works over any window
 (games, IDEs, browsers):
 
-  * glass-panel look: rounded glow border, hexagon logo, status dot
-    that pulses while JARVIS is thinking, fade-in animation;
-  * live header: version · mood · model (fetched from /api/info on
-    every show), plus a NO KEY suffix in skills-only mode;
+  * DPI-aware native rendering (no OS bitmap-scaling blur),
+    layered bezel with accent edge, hexagon logo, status dot that
+    pulses while JARVIS is thinking, fade+slide entrance;
+  * live header: version · mood · model — refreshed on every show,
+    after every answer, and ~30s while visible (plus a NO KEY
+    suffix in skills-only mode);
   * typewriter reply area (scrollable) instead of a one-line label,
     with a COPY button for the last answer;
   * quick chips: SCREEN / TIMER / TIME / OPEN / CLOSE / NOTE — the
@@ -34,7 +36,8 @@ from logger import get_logger
 log = get_logger(__name__)
 
 # ----- geometry / palette -------------------------------------------------
-W, H = 760, 404
+W, BAR_H, EXP_H = 680, 76, 400
+REFRESH_TICKS = 375        # pump runs ~80ms: refresh header ~30s
 TRANSPARENT = "#ff00ff"      # transparent color key
 PANEL = "#0A101C"       # base surface (deep navy)
 PANEL2 = "#0D1526"      # raised surface (reply well / bezel)
@@ -48,7 +51,6 @@ DIM = "#64748C"
 GOOD = "#3DFFA2"
 BUSY = "#FFB020"
 DANGER = "#FF5C7A"
-HEADER_H = 44
 
 _actions: queue.Queue = queue.Queue()
 _ready = threading.Event()
@@ -160,6 +162,18 @@ def _http_get(path: str, timeout: int = 15) -> dict:
         return json.loads(r.read().decode("utf-8") or "{}")
 
 
+# Quick chips, data-driven (label, kind, payload):
+# kind "send" fires immediately, kind "fill" pre-fills the input.
+CHIPS = (
+    ("▣ SCREEN", "send", "what's on my screen"),
+    ("◷ TIMER 5M", "send", "set a timer for 5 minutes"),
+    ("◷ TIME", "send", "what time is it"),
+    ("＋ OPEN", "fill", "open "),
+    ("✕ CLOSE", "fill", "close "),
+    ("✎ NOTE", "fill", "remember: "),
+)
+
+
 # ----- Tk thread ----------------------------------------------------------
 def _run() -> None:
     try:
@@ -168,6 +182,17 @@ def _run() -> None:
         log.warning("Overlay unavailable (tkinter: %s)", exc)
         _ready.set()
         return
+    try:
+        import ctypes
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        except Exception:
+            try:
+                ctypes.windll.user32.SetProcessDPIAware()
+            except Exception:
+                pass
+    except Exception:
+        pass
     try:
         root = tk.Tk()
         root.overrideredirect(True)
@@ -179,12 +204,12 @@ def _run() -> None:
             pass
         root.configure(bg=TRANSPARENT)
         sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
-        root.geometry(f"{W}x{H}+{(sw - W) // 2}+{int(sh * 0.14)}")
+        root.geometry(f"{W}x{BAR_H}+{(sw - W) // 2}+{int(sh * 0.14)}")
         root.withdraw()
 
         # ---------- backdrop (rounded glow panel on transparent canvas)
         cv = tk.Canvas(root, bg=TRANSPARENT, highlightthickness=0,
-                       width=W, height=H, bd=0)
+                       width=W, height=EXP_H, bd=0)
         cv.pack()
 
         def round_rect(x1, y1, x2, y2, r, **kw):
@@ -193,12 +218,23 @@ def _run() -> None:
                    x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
             return cv.create_polygon(pts, smooth=True, **kw)
 
-        # ---------- backdrop: bezel ring + accent edge
-        round_rect(6, 6, W - 6, H - 6, 16, fill=PANEL2, outline=GLOW, width=1)
-        round_rect(3, 3, W - 3, H - 3, 16, fill=PANEL, outline=EDGE, width=2)
-        # hexagon logo (glow ring + solid mark)
+        # ---------- deck chrome (redrawn per mode: bar vs expanded)
+        def draw_chrome(expanded):
+            cv.delete("chrome")
+            h = EXP_H if expanded else BAR_H
+            round_rect(6, 6, W - 6, h - 6, 16, fill=PANEL2,
+                       outline=GLOW, width=1, tags="chrome")
+            round_rect(3, 3, W - 3, h - 3, 16, fill=PANEL,
+                       outline=EDGE, width=2, tags="chrome")
+            if expanded:
+                cv.create_line(14, BAR_H, W - 14, BAR_H, fill=GLOW,
+                               width=1, tags="chrome")
+                cv.create_line(14, BAR_H, 154, BAR_H, fill=EDGE,
+                               width=1, tags="chrome")
+
+        # hexagon mark in the command bar
         import math
-        cx, cy, rr = 26, 23, 11
+        cx, cy, rr = 28, BAR_H // 2, 10
         outer = []
         for i in range(6):
             a = math.radians(60 * i - 30)
@@ -214,13 +250,10 @@ def _run() -> None:
             a = math.radians(60 * i - 30)
             inner += [cx + 5 * math.cos(a), cy + 5 * math.sin(a)]
         cv.create_polygon(inner, fill=PANEL)
-        # header divider: dim track + bright accent segment
-        cv.create_line(14, HEADER_H, W - 14, HEADER_H, fill=GLOW, width=1)
-        cv.create_line(14, HEADER_H, 154, HEADER_H, fill=EDGE, width=1)
-        # status dot with halo + close glyph
-        cv.create_oval(W - 35, 15, W - 17, 33, outline=GLOW, width=1)
-        dot = cv.create_oval(W - 32, 18, W - 20, 30, fill=GOOD, outline="")
-        close_id = cv.create_text(W - 56, 23, text="✕", fill=DIM,
+        # status dot with halo + close glyph (bar right)
+        cv.create_oval(W - 44, 30, W - 26, 48, outline=GLOW, width=1)
+        dot = cv.create_oval(W - 41, 33, W - 29, 45, fill=GOOD, outline="")
+        close_id = cv.create_text(W - 14, BAR_H // 2, text="✕", fill=DIM,
                                   font=("Segoe UI", 11))
         cv.tag_bind(close_id, "<Button-1>", lambda e: hide())
         cv.tag_bind(close_id, "<Enter>",
@@ -228,28 +261,29 @@ def _run() -> None:
         cv.tag_bind(close_id, "<Leave>",
                     lambda e: cv.itemconfig(close_id, fill=DIM))
 
-        # ---------- header labels
+        # ---------- labels (live in the expanded footer strip)
         def label(x, y, anchor, **kw):
             w = tk.Label(cv, bg=kw.pop("bg", PANEL), **kw)
-            cv.create_window(x, y, window=w, anchor=anchor)
-            return w
+            wid = cv.create_window(x, y, window=w, anchor=anchor)
+            return w, wid
 
-        title = label(48, 23, "w", text="J A R V I S", fg="#FFFFFF",
-                      font=("Bahnschrift", 12, "bold"))
-        ver = label(152, 23, "w", text="", fg=DIM,
-                    font=("Bahnschrift", 9))
-        hdr = label(W - 76, 23, "e", text="", fg=TEXT,
-                    font=("Bahnschrift", 9), bg="#101B2E", padx=9, pady=3,
-                    highlightthickness=1, highlightbackground=EDGE_DIM)
+        ver, ver_win = label(W - 120, 334, "e", text="", fg=DIM,
+                             font=("Bahnschrift", 8))
+        hdr, hdr_win = label(W // 2, 334, "center", text="", fg=TEXT,
+                             font=("Bahnschrift", 9), bg="#101B2E",
+                             padx=9, pady=2,
+                             highlightthickness=1,
+                             highlightbackground=EDGE_DIM)
 
         # ---------- reply area (accent bar + readable prose font)
         reply_wrap = tk.Frame(cv, bg=PANEL2, highlightbackground=GLOW,
                               highlightthickness=1)
-        cv.create_window(14, 50, window=reply_wrap, anchor="nw",
-                         width=W - 28, height=218)
+        reply_win = cv.create_window(14, 84, window=reply_wrap,
+                                       anchor="nw", width=W - 28,
+                                       height=196)
         tk.Frame(reply_wrap, bg=EDGE, width=3).pack(side="left", fill="y")
         reply = tk.Text(reply_wrap, bg=PANEL2, fg=TEXT, relief="flat",
-                        font=("Segoe UI", 11), wrap="word", state="disabled",
+                        font=("Segoe UI", 12), wrap="word", state="disabled",
                         insertbackground=EDGE, padx=12, pady=8,
                         spacing1=2, spacing3=2,
                         selectbackground=EDGE, selectforeground="#000")
@@ -275,7 +309,7 @@ def _run() -> None:
 
         # ---------- chips (hover-reactive pills)
         chips = tk.Frame(cv, bg=PANEL)
-        cv.create_window(14, 280, window=chips, anchor="nw")
+        chips_win = cv.create_window(14, 288, window=chips, anchor="nw")
 
         def chip(text, cmd):
             b = tk.Button(chips, text=text, command=cmd, bg=TRACK,
@@ -292,23 +326,21 @@ def _run() -> None:
                                                          fg="#9FB6D8"))
             return b
 
-        hint = tk.Label(cv, bg=PANEL, fg=DIM, font=("Bahnschrift", 8),
-                        text="Enter ↵ send · ↑↓ history · Esc hide")
-        cv.create_window(W - 14, 292, window=hint, anchor="e")
-
-        # ---------- input row (border lights up on focus)
-        input_wrap = tk.Frame(cv, bg=EDGE_DIM)
-        cv.create_window(14, 316, window=input_wrap, anchor="nw",
-                         height=38, width=W - 28)
-        entry = tk.Entry(input_wrap, bg=SURF, fg=TEXT,
+        # ---------- command bar (always visible: emblem + entry + mic/send)
+        bar_frame = tk.Frame(cv, bg=PANEL)
+        cv.create_window(56, 14, window=bar_frame, anchor="nw",
+                         width=W - 112, height=48)
+        entry_flash = tk.Frame(bar_frame, bg=EDGE_DIM)
+        entry_flash.pack(side="left", fill="both", expand=True)
+        entry = tk.Entry(entry_flash, bg=SURF, fg=TEXT,
                          insertbackground=EDGE, relief="flat",
-                         font=("Consolas", 11), bd=4,
+                         font=("Consolas", 12), bd=4,
                          insertwidth=2, highlightbackground=EDGE_DIM)
-        entry.pack(side="left", fill="both", expand=True, ipady=4)
+        entry.pack(side="left", fill="both", expand=True, ipady=6)
         entry.bind("<FocusIn>",
-                   lambda e: input_wrap.configure(bg=EDGE))
+                   lambda e: entry_flash.configure(bg=EDGE))
         entry.bind("<FocusOut>",
-                   lambda e: input_wrap.configure(bg=EDGE_DIM))
+                   lambda e: entry_flash.configure(bg=EDGE_DIM))
 
         def button(parent, text, cmd, w=8, primary=False):
             b = tk.Button(parent, text=text, command=cmd,
@@ -327,13 +359,14 @@ def _run() -> None:
                 bg=("#0C2E44" if primary else TRACK)))
             return b
 
-        send_btn = button(input_wrap, "SEND", lambda: None, w=7,
+        send_btn = button(bar_frame, "➤", lambda: None, w=3,
                           primary=True)
-        mic_btn = button(input_wrap, "MIC", lambda: None, w=5)
+        mic_btn = button(bar_frame, "◉", lambda: None, w=3)
 
-        # ---------- footer / status line
-        status_lbl = label(14, 372, "nw", text="ready · Alt+Space",
-                           fg=DIM, font=("Bahnschrift", 8))
+        # ---------- footer strip (expanded mode only)
+        status_lbl, status_win = label(14, 334, "nw",
+                                       text="ready · Alt+Space",
+                                       fg=DIM, font=("Bahnschrift", 8))
 
         def copy_reply():
             try:
@@ -357,12 +390,33 @@ def _run() -> None:
                              highlightbackground="#1A2A44")
         copy_btn.bind("<Enter>", lambda e: copy_btn.configure(fg=EDGE))
         copy_btn.bind("<Leave>", lambda e: copy_btn.configure(fg=DIM))
-        cv.create_window(W - 14, 372, window=copy_btn, anchor="e")
+        copy_win = cv.create_window(W - 14, 334, window=copy_btn,
+                                    anchor="e")
 
         # ---------- state
         busy = {"n": 0}
+        tick = {"n": 0}
+        H_cur = {"h": BAR_H}
         type_job = {"id": None}
         drag = {"x": 0, "y": 0}
+
+        def _apply_mode(expanded):
+            """Deck mode: bar only, or bar + reply + chips + footer."""
+            H_cur["h"] = EXP_H if expanded else BAR_H
+            draw_chrome(expanded)
+            state = "normal" if expanded else "hidden"
+            for _wid in (reply_win, chips_win, status_win, hdr_win,
+                         ver_win, copy_win):
+                try:
+                    cv.itemconfigure(_wid, state=state)
+                except Exception:
+                    pass
+            if _state["visible"]:
+                try:
+                    x, y = root.winfo_x(), root.winfo_y()
+                    root.geometry(f"{W}x{H_cur['h']}+{x}+{y}")
+                except Exception:
+                    pass
 
         def hide():
             if not _state["visible"]:
@@ -378,6 +432,7 @@ def _run() -> None:
                         if a > 0:
                             root.after(15, lambda: out(a))
                         else:
+                            _apply_mode(False)
                             root.withdraw()
                     except Exception:
                         pass
@@ -386,6 +441,7 @@ def _run() -> None:
                 pass
 
         def fade_in():
+            _apply_mode(False)
             root.deiconify()
             root.lift()
             root.attributes("-topmost", True)
@@ -403,11 +459,11 @@ def _run() -> None:
                     a = min(0.97, a + 0.16)
                     root.attributes("-alpha", a)
                     off = int(12 * (1 - a / 0.97)) if slide else 0
-                    root.geometry(f"{W}x{H}+{x}+{y + off}")
+                    root.geometry(f"{W}x{H_cur['h']}+{x}+{y + off}")
                     if a < 0.97:
                         root.after(16, lambda: step(a))
                     else:
-                        root.geometry(f"{W}x{H}+{x}+{y}")
+                        root.geometry(f"{W}x{H_cur['h']}+{x}+{y}")
                 except Exception:
                     pass
             step()
@@ -466,6 +522,7 @@ def _run() -> None:
             _state["history"].append(text)
             _state["hidx"] = len(_state["history"])
             entry.delete(0, "end")
+            _apply_mode(True)
             set_busy(True)
             set_reply("… thinking", DIM)
             threading.Thread(target=_worker, args=("cmd", text),
@@ -514,18 +571,14 @@ def _run() -> None:
             entry.insert(0, text)
             submit()
 
-        chip("▣ SCREEN", lambda: _quick("what's on my screen"))
-        chip("◷ TIMER 5M", lambda: _quick("set a timer for 5 minutes"))
-        chip("◷ TIME", lambda: _quick("what time is it"))
-        chip("＋ OPEN", lambda: (entry.delete(0, "end"),
-                                entry.insert(0, "open "),
-                                entry.focus_set()))
-        chip("✕ CLOSE", lambda: (entry.delete(0, "end"),
-                                 entry.insert(0, "close "),
-                                 entry.focus_set()))
-        chip("✎ NOTE", lambda: (entry.delete(0, "end"),
-                                entry.insert(0, "remember: "),
-                                entry.focus_set()))
+        for _label, _kind, _payload in CHIPS:
+            if _kind == "send":
+                chip(_label, lambda _p=_payload: _quick(_p))
+            else:
+                chip(_label, lambda _p=_payload: (
+                    entry.delete(0, "end"),
+                    entry.insert(0, _p),
+                    entry.focus_set()))
 
         # ---------- key bindings
         entry.bind("<Return>", submit)
@@ -558,8 +611,8 @@ def _run() -> None:
             root.geometry(f"+{event.x_root - drag['x']}"
                           f"+{event.y_root - drag['y']}")
 
-        cv.bind("<Button-1>", lambda e: (e.y < HEADER_H and drag_start(e)))
-        cv.bind("<B1-Motion>", lambda e: (e.y < HEADER_H and drag_move(e)))
+        cv.bind("<Button-1>", lambda e: (e.y < BAR_H and drag_start(e)))
+        cv.bind("<B1-Motion>", lambda e: (e.y < BAR_H and drag_move(e)))
 
         # ---------- queue pump
         def on_result(text, color=TEXT):
@@ -613,6 +666,10 @@ def _run() -> None:
             except Exception as exc:
                 log.warning("overlay pump error: %s", exc)
             try:
+                tick["n"] += 1
+                if (_state["visible"] and tick["n"] % REFRESH_TICKS == 0):
+                    threading.Thread(target=_pull_info,
+                                     daemon=True).start()
                 root.after(80, pump)
             except Exception:
                 pass        # root destroyed — stop rescheduling
@@ -625,6 +682,8 @@ def _run() -> None:
 
         send_btn.configure(command=submit)
         mic_btn.configure(command=mic)
+        draw_chrome(False)
+        _apply_mode(False)
 
         _state["root"] = root
         # Tk callback errors normally go to stderr — invisible under

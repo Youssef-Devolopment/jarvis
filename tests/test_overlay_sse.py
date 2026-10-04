@@ -4,7 +4,7 @@ import os
 import unittest
 
 import config
-from system.overlay import _base_url, _header_text, stitch_sse
+from system.overlay import _base_url, _header_text, CHIPS, stitch_sse
 
 
 class StitchSseTests(unittest.TestCase):
@@ -116,6 +116,24 @@ class BaseUrlTests(unittest.TestCase):
                 os.environ.pop("DEEPSEEK_API_KEY", None)
             config._settings = saved
         self.assertTrue(url.startswith("http://127.0.0.1:"))
+
+
+class ChipsTableTests(unittest.TestCase):
+    def test_six_unique_labeled_chips(self):
+        labels = [c[0] for c in CHIPS]
+        self.assertEqual(len(CHIPS), 6)
+        self.assertEqual(len(set(labels)), 6)
+
+    def test_kinds_and_payloads_valid(self):
+        for label, kind, payload in CHIPS:
+            self.assertIn(kind, ("send", "fill"), label)
+            self.assertTrue(payload.strip(), label)
+
+    def test_app_chips_prefill(self):
+        fills = {c[0]: c[2] for c in CHIPS if c[1] == "fill"}
+        self.assertEqual(fills["＋ OPEN"], "open ")
+        self.assertEqual(fills["✕ CLOSE"], "close ")
+        self.assertEqual(fills["✎ NOTE"], "remember: ")
 
 
 if __name__ == "__main__":
