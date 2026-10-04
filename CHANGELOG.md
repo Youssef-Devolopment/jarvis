@@ -4,6 +4,17 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [Unreleased]
+
+### Added
+- **Marketplace tab** (Settings → MARKET, `GET /api/market`): one
+  catalog for everything installable — 131 skills with ON/OFF
+  toggles, pending drafts with approve/reject, community plugins
+  (file-upload install + reload), 8 MCP presets with one-click
+  install, MCP servers with start/stop, pinned sites with remove.
+  Every action reuses the existing validated endpoints; verified
+  live with zero console errors.
+
 ## [1.4.0] — 2026-10-04
 
 Autonomy + resilience batch: research agent, HUD rebuild, loops
