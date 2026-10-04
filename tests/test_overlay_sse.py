@@ -86,8 +86,20 @@ class HeaderTextTests(unittest.TestCase):
 
 class BaseUrlTests(unittest.TestCase):
     def test_matches_settings_with_key(self):
-        s = config.Settings.load()
-        self.assertEqual(_base_url(), f"http://{s.host}:{s.port}")
+        had = "DEEPSEEK_API_KEY" in os.environ
+        old = os.environ.get("DEEPSEEK_API_KEY")
+        saved = config._settings
+        os.environ["DEEPSEEK_API_KEY"] = "sk-ci-test-key-123"
+        config._settings = None
+        try:
+            s = config.Settings.load()
+            self.assertEqual(_base_url(), f"http://{s.host}:{s.port}")
+        finally:
+            if had:
+                os.environ["DEEPSEEK_API_KEY"] = old
+            else:
+                os.environ.pop("DEEPSEEK_API_KEY", None)
+            config._settings = saved
 
     def test_no_key_still_resolves(self):
         had = "DEEPSEEK_API_KEY" in os.environ

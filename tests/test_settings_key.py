@@ -98,16 +98,17 @@ class KeyEndpointTests(unittest.TestCase):
         cls.client = cls.app.test_client()
 
     def test_get_never_leaks_secret(self):
-        r = self.__class__.client.get("/api/settings/key")
+        with _EnvGuard():
+            os.environ["DEEPSEEK_API_KEY"] = "sk-ci-test-key-123"
+            config._settings = None
+            r = self.__class__.client.get("/api/settings/key")
         self.assertEqual(r.status_code, 200)
         body = r.get_data(as_text=True)
-        real = os.getenv("DEEPSEEK_API_KEY", "")
-        if real:
-            self.assertNotIn(real, body)
+        self.assertNotIn("sk-ci-test-key-123", body)
         d = json.loads(body)
         self.assertTrue(d["configured"])
         self.assertTrue(d["masked"])
-        self.assertTrue(d["masked"].endswith(real[-4:]))
+        self.assertTrue(d["masked"].endswith("-123"))
 
     def test_post_rejects_bad_format(self):
         r = self.__class__.client.post("/api/settings/key",

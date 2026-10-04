@@ -45,8 +45,10 @@ class AutoModeTests(unittest.TestCase):
                 self.assertTrue(AL.ask_user("anything"))
 
     def test_ask_user_prompts_when_off(self):
+        import sys
+        fake_voice = mock.MagicMock()
         with _AutoPref(False):
-            with mock.patch("voice.speak_async", return_value=None), \
+            with mock.patch.dict(sys.modules, {"voice": fake_voice}), \
                  mock.patch("system.notify.confirm",
                             return_value=True) as cf:
                 self.assertTrue(AL.ask_user("discord"))
