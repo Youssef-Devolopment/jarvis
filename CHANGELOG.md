@@ -37,6 +37,16 @@ bump MINOR for big feature batches, PATCH for fixes
   displays), bigger readable type, data-driven chips, live header
   refresh while visible, idle-only click-away still intact.
 
+## [Unreleased]
+
+### Added
+- **Agent loop that survives dead models**: split/merge/vision/
+  dream/reality-check all use the configured default model instead
+  of hardcoded IDs, plan/merge calls have timeouts, and expired /
+  retired / sunset offers now trigger the fallback chain instead
+  of failing chat (the exact Qwen-expiry 404 seen live is covered
+  by test).
+
 ## [1.3.0] — 2026-10-04
 
 Add-anything + fast-web batch: one verb installs everything, search
