@@ -229,7 +229,61 @@ def _validate(code: str, trusted: bool = False) -> dict:
             re.compile(p)
         except re.error as exc:
             raise ValueError(f"bad regex {p!r}: {exc}")
+    _check_pattern_safety(name, list(patterns), trusted)
     return {"name": name, "patterns": list(patterns), "description": desc}
+
+
+# Utterances no new skill may swallow (hijack guard). A draft matching
+# 2+ of these is a catch-all wearing a name tag.
+_NEGATIVE_CORPUS = (
+    "hello", "what time is it", "open notepad", "close chrome",
+    "set a timer for 5 minutes", "help", "thank you",
+)
+
+
+def _check_pattern_safety(name: str, patterns: list,
+                          trusted: bool = False) -> None:
+    """Reject hijack patterns. Raises ValueError. Trusted system
+    templates skip the corpus/collision checks (their `open <name>`
+    shape legitimately overlaps everyday utterances)."""
+    from skills.registry import all_skills
+    known: dict = {}
+    for s in all_skills():
+        for p in getattr(s, "patterns", []):
+            try:
+                known.setdefault(p.pattern, s.name)
+            except Exception:
+                continue
+    for p in patterns:
+        core = p
+        if core.startswith("^"):
+            core = core[1:]
+        if core.endswith("$") and not core.endswith("\\$"):
+            core = core[:-1]
+        if core in (".*", ".+", "(.*)", "(.+)"):
+            raise ValueError(f"catch-all pattern rejected: {p!r}")
+        try:
+            rx = re.compile(p)
+        except re.error:
+            continue  # _validate already rejected it
+        try:
+            if rx.match(""):
+                raise ValueError(
+                    f"pattern matches empty input, too broad: {p!r}")
+        except ValueError:
+            raise
+        except Exception:
+            continue
+        if p in known and known[p] != name:
+            raise ValueError(
+                f"pattern duplicates skill '{known[p]}': {p!r}")
+        if trusted:
+            continue
+        hits = sum(1 for u in _NEGATIVE_CORPUS if rx.search(u))
+        if hits >= 2:
+            raise ValueError(
+                f"pattern too broad ({hits} everyday utterances match): "
+                f"{p!r}")
 
 
 def _llm_draft(user_request: str) -> str:

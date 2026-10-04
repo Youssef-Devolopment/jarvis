@@ -22,7 +22,7 @@ _CORE_SKILLS = [
     "folder_sentinel", "win_target", "bridge_skill", "app_finder",
     "site_finder", "quick_capture_skill", "screen_ocr_skill",
     "screen_context_skill", "focus_lock_skill", "snippets_skill",
-    "auto_generated",
+    "tidy_skill", "auto_generated",
 ]
 
 

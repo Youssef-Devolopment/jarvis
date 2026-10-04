@@ -55,6 +55,36 @@ class MemoryTest(unittest.TestCase):
         self.assertEqual(st.forget("xyz"), 1)
         self.assertEqual(st.recall("xyz"), [])
 
+    def test_status_index_exists(self):
+        c = st._get_conn()
+        names = {r[0] for r in c.execute(
+            "SELECT name FROM sqlite_master WHERE type='index'").fetchall()}
+        self.assertIn("idx_facts_status_id", names)
+
+    def test_count_matches_all_facts(self):
+        st.remember("Count me once", "general", "test")
+        st.remember("Count me twice", "general", "test")
+        self.assertEqual(st.count_facts(), len(st.all_facts(limit=10000)))
+        self.assertEqual(st.count_facts(), 2)
+
+    def test_recall_parity_at_scale(self):
+        c = st._get_conn()
+        c.executemany(
+            "INSERT INTO facts (fact, category, created_at) VALUES "
+            "(?, ?, datetime('now'))",
+            [(f"bulk fact {i} tungsten carbide", "bulk")
+             for i in range(2000)])
+        c.commit()
+        before = [f["fact"] for f in st.recall("tungsten")]
+        self.assertTrue(before)
+        self.assertEqual(st.count_facts(), 2000)
+        after = [f["fact"] for f in st.recall("tungsten")]
+        self.assertEqual(before, after)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
 
 if __name__ == "__main__":
     unittest.main()

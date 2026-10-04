@@ -1,5 +1,6 @@
 from memory.store import (
-    remember, recall, all_facts, forget, forget_all, facts_block,
+    remember, recall, all_facts, count_facts, forget, forget_all,
+    facts_block,
     save_message, load_recent_messages, load_full_session, clear_session,
     all_sessions, ensure_session, delete_session,
     save_contact, list_contacts, find_contact,
@@ -14,7 +15,8 @@ from memory import context
 from memory import outcomes
 
 __all__ = [
-    "remember", "recall", "all_facts", "forget", "forget_all", "facts_block",
+    "remember", "recall", "all_facts", "count_facts", "forget",
+    "forget_all", "facts_block",
     "extract_and_store",
     "save_message", "load_recent_messages", "load_full_session",
     "clear_session", "all_sessions", "ensure_session", "delete_session",

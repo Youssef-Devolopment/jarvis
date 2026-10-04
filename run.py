@@ -47,6 +47,11 @@ def main():
         except Exception:
             pass
         try:
+            from voice import warmup
+            warmup()  # prime TTS engine + first synth off the critical path
+        except Exception:
+            pass
+        try:
             from ai import screen_context
             screen_context.start()   # RAM-only screen context loop
         except Exception:

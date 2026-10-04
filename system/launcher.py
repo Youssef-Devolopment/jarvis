@@ -63,6 +63,15 @@ def start_background():
             log.warning("App learner warm failed: %s", exc)
     threading.Thread(target=_app_warm, name="app-learner-warm",
                      daemon=True).start()
+    # Prime the TTS engine so the first spoken reply is instant
+    def _voice_warm():
+        try:
+            from voice import warmup
+            warmup()
+        except Exception as exc:
+            log.warning("Voice warm failed: %s", exc)
+    threading.Thread(target=_voice_warm, name="voice-warm",
+                     daemon=True).start()
     # Give it a moment to bind the port
     time.sleep(1.5)
 

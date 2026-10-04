@@ -115,11 +115,9 @@ def _dirs():
 
 
 def _memory_store():
-    from memory import all_facts
-    facts = all_facts(limit=100000)          # opens/creates the SQLite DB
-    if facts is None:
-        raise RuntimeError("facts table unreadable")
-    return f"sqlite OK - {len(facts)} facts"
+    from memory import count_facts
+    n = count_facts()                      # opens/creates the SQLite DB
+    return f"sqlite OK - {n} facts"
 
 
 def _approval_gate():

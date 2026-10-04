@@ -68,6 +68,8 @@ def _get_conn() -> sqlite3.Connection:
                                   "status TEXT DEFAULT 'active'")
                 except Exception:
                     pass  # column already exists
+                _conn.execute("CREATE INDEX IF NOT EXISTS idx_facts_status_id "
+                              "ON facts(status, id DESC)")
                 _conn.commit()
                 log.info("Memory store ready at %s", _DB_PATH)
     return _conn
@@ -177,6 +179,16 @@ def recall(query: str, limit: int = 8) -> list[dict]:
 
 def all_facts(limit: int = 100) -> list[dict]:
     return recall("", limit)
+
+
+def count_facts() -> int:
+    """O(1)-ish fact count — use instead of len(all_facts(huge))."""
+    c = _get_conn()
+    with _lock:
+        row = c.execute(
+            "SELECT COUNT(*) FROM facts "
+            "WHERE status IS NULL OR status = 'active'").fetchone()
+    return int(row[0]) if row else 0
 
 
 def forget(pattern: str) -> int:
