@@ -7,6 +7,11 @@ bump MINOR for big feature batches, PATCH for fixes
 ## [Unreleased]
 
 ### Added
+- **Admin terminal** (`code run-admin` / `run X as admin`):
+  Code-Mode gate + forbidden list + structural checks, elevation
+  ALWAYS asks (auto mode ignored by design), Windows UAC is the
+  final guard, everything audited. Launcher yields `as admin`
+  inputs to it instead of mis-opening apps.
 - **Marketplace tab** (Settings → MARKET, `GET /api/market`): one
   catalog for everything installable — 131 skills with ON/OFF
   toggles, pending drafts with approve/reject, community plugins
