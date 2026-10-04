@@ -1,8 +1,9 @@
 from __future__ import annotations
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from dotenv import load_dotenv
-from errors import ConfigError
+from errors import ConfigError, ValidationError
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -10,6 +11,9 @@ load_dotenv()
 
 # Single source of truth for the app version. Bump on major releases.
 VERSION = "1.0.0"
+
+# Project .env file (gitignored). API keys live here, never in prefs.
+ENV_PATH = Path(__file__).resolve().parent / ".env"
 
 
 @dataclass(frozen=True)
@@ -169,3 +173,61 @@ def key_status() -> dict:
             "error": "" if ok else
             "DEEPSEEK_API_KEY is missing or placeholder. Edit .env and "
             "set a valid key (or add one in Settings), then restart."}
+
+
+def masked_key() -> str:
+    """The current key, masked for display (never returns the secret)."""
+    key = (os.getenv("DEEPSEEK_API_KEY") or "").strip()
+    if not key or key.startswith("sk-paste"):
+        return ""
+    if len(key) <= 7:
+        return "sk-" + ("\u2022" * 4)
+    return key[:3] + "\u2022\u2022\u2022" + key[-4:]
+
+
+def validate_key_format(key: str) -> str:
+    """Stripped key or ValidationError. Format check only (no network)."""
+    key = (key or "").strip()
+    if len(key) < 8 or any(c.isspace() for c in key):
+        raise ValidationError(
+            "That doesn't look like an API key.",
+            detail="Keys are at least 8 characters with no spaces.")
+    if key.startswith("sk-paste"):
+        raise ValidationError(
+            "That is still the template placeholder.",
+            detail="Paste a real key.")
+    return key
+
+
+def write_env_key(key: str, path: Path | None = None) -> Path:
+    """Persist DEEPSEEK_API_KEY to the .env file.
+
+    Preserves every other line/comment; replaces the existing entry or
+    appends one. Backs the previous file up to .env.bak (gitignored).
+    Returns the path written. Raises ValidationError on bad format.
+    """
+    key = validate_key_format(key)
+    p = Path(path) if path else ENV_PATH
+    lines: list[str] = []
+    if p.exists():
+        text = p.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        bak = p.with_suffix(".bak")
+        try:
+            bak.write_text(text, encoding="utf-8")
+        except OSError as exc:
+            raise ValidationError("Could not back up .env.",
+                                  detail=str(exc)[:120])
+    found = False
+    for i, line in enumerate(lines):
+        if line.strip().startswith("DEEPSEEK_API_KEY="):
+            lines[i] = f"DEEPSEEK_API_KEY={key}"
+            found = True
+            break
+    if not found:
+        lines.append(f"DEEPSEEK_API_KEY={key}")
+    try:
+        p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except OSError as exc:
+        raise ValidationError("Could not write .env.", detail=str(exc)[:120])
+    return p

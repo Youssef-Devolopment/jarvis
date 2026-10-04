@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import os
 import sys
 import threading
 from flask import Blueprint, Response, jsonify, request
@@ -1036,6 +1037,51 @@ def prefs_set():
 def prefs_reset():
     memory.reset_prefs()
     return jsonify({"ok": True, "prefs": memory.all_prefs()})
+
+
+# ---------- API KEY (in-app setup; keys live in .env, never prefs) ----------
+@bp.get("/settings/key")
+def settings_key_get():
+    import config as _cfg
+    st = _cfg.key_status()
+    s = _cfg.try_settings()
+    base = s.base_url if s else os.getenv(
+        "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    return jsonify({"configured": st["ok"], "masked": _cfg.masked_key(),
+                    "base_url": base})
+
+
+@bp.post("/settings/key")
+def settings_key_set():
+    import config as _cfg
+    d = request.get_json(silent=True) or {}
+    key = _cfg.validate_key_format(d.get("key"))
+    s = _cfg.try_settings()
+    base = s.base_url if s else os.getenv(
+        "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    try:
+        from openai import OpenAI
+        probe = OpenAI(api_key=key, base_url=base, timeout=20)
+        found = probe.models.list()
+        n_models = len(found.data or [])
+    except ValidationError:
+        raise
+    except Exception as exc:
+        raise AIError("Key verification failed.",
+                      detail=f"{base}: {exc}"[:200])
+    _cfg.write_env_key(key)
+    os.environ["DEEPSEEK_API_KEY"] = key
+    _cfg._settings = None
+    try:
+        from ai import client as _ac
+        _ac._clients = {}
+        _ac._model_ids_cache = {}
+    except Exception:
+        pass
+    log.info("API key updated via Settings (verified, %d models).", n_models)
+    return jsonify({"ok": True, "masked": _cfg.masked_key(),
+                    "verified_models": n_models,
+                    "restart_recommended": True})
 
 
 @bp.get("/code-mode/audit")

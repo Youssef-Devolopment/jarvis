@@ -201,7 +201,7 @@ function updateKeyBanner(info){
 (function wireKeyBanner(){
   document.addEventListener('DOMContentLoaded',function(){
     var s=$('key-banner-settings');
-    if(s)s.addEventListener('click',function(){openSettings();});
+    if(s)s.addEventListener('click',function(){openSettings();loadTab('general');});
     var x=$('key-banner-hide');
     if(x)x.addEventListener('click',function(){
       keyBannerDismissed=true;updateKeyBanner(null);
@@ -853,8 +853,16 @@ function loadTab(name){
     clipboard:'/api/clipboard/recent',dream:'/api/dream/status'};
   fetch(endpoints[name]||'/api/info')
     .then(function(r){return r.json();})
-    .then(function(data){inner.innerHTML=renderTab(name,data);})
+    .then(function(data){inner.innerHTML=renderTab(name,data);if(name==='general')refreshKeyStatus();})
     .catch(function(){inner.innerHTML='<div style="color:var(--red)">Failed to load</div>';});
+}
+
+function refreshKeyStatus(){
+  var el=$('key-status');if(!el)return;
+  fetch('/api/settings/key').then(function(r){return r.json();}).then(function(d){
+    var e=$('key-status');if(!e)return;
+    e.textContent=d.configured?('Set ('+(d.masked||'key')+')'):'Not set — skills-only mode';
+  }).catch(function(){var e=$('key-status');if(e)e.textContent='Unknown';});
 }
 
 function renderTab(name,data){
@@ -948,6 +956,13 @@ function prefToggle(key,on,label,sub){
   if(name==='general'){
     var p3=data.prefs||{};
     return '<div class="set-list">'+
+      '<div class="set-row"><div class="label">API key<small id="key-status">Checking&hellip;</small></div></div>'+
+      '<div class="set-row"><div class="label" style="flex:1"><input id="input-api-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-..." style="width:100%;box-sizing:border-box;background:#000;color:#fff;border:1px solid var(--border);border-radius:4px;padding:6px;font-family:var(--mono);font-size:11px;"></div>'+
+      '<div class="actions"><button class="dbtn" data-action="save-key">SAVE+TEST</button></div></div>'+
+      '<div class="set-row"><div class="label"><small id="key-msg"></small></div></div>'+
+      '</div>'+
+      '<div style="margin-top:12px;color:var(--dim);font-size:9px;letter-spacing:2px">SYSTEM</div>'+
+      '<div class="set-list" style="margin-top:8px">'+
       '<div class="set-row"><div class="label">Autostart<small>'+(p3.autostart_enabled?'On':'Off')+'</small></div></div>'+
       '<div class="set-row"><div class="label">System tray<small>'+(p3.tray_enabled?'On':'Off')+'</small></div></div>'+
       '<div class="set-row"><div class="label">Hotkey (Ctrl+Alt+J)<small>'+(p3.hotkey_enabled?'On':'Off')+'</small></div></div>'+
@@ -1667,8 +1682,24 @@ document.addEventListener('DOMContentLoaded',function(){
       fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({key:'duck_level',value:next})}).then(function(){loadTab('audio');}).catch(function(){});
     }
-    if(target.getAttribute&&target.getAttribute('data-action')==='set-hour'){
-      var inp=document.getElementById('input-briefing-hour');
+    if(target.getAttribute&&target.getAttribute('data-action')==='save-key'){
+      var kinp=document.getElementById('input-api-key');
+      var kval=kinp?(kinp.value||'').trim():'';
+      var kmsg=document.getElementById('key-msg');
+      if(kmsg){kmsg.style.color='var(--dim)';kmsg.textContent='Testing key against provider...';}
+      fetch('/api/settings/key',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({key:kval})}).then(function(r){return r.json().then(function(d){return {status:r.status,body:d};});}).then(function(res){
+        var m=document.getElementById('key-msg');var d=res.body||{};
+        if(res.status===200&&d.ok){
+          if(m){m.style.color='var(--accent-hi)';m.textContent='Key verified ('+d.verified_models+' models) and saved.'+(d.restart_recommended?' Restart JARVIS for voice features.':'');}
+          if(kinp)kinp.value='';
+          refreshKeyStatus();loadInfo();
+        }else{
+          if(m){m.style.color='var(--red)';m.textContent=(d.detail||d.error||'Save failed.');}
+        }
+      }).catch(function(){var m=document.getElementById('key-msg');if(m){m.style.color='var(--red)';m.textContent='Request failed.';}});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='set-hour'){      var inp=document.getElementById('input-briefing-hour');
       var h=inp?parseInt(inp.value,10):8;
       if(isNaN(h))h=8;h=Math.max(0,Math.min(23,h));
       fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},

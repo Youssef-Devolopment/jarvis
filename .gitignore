@@ -1,6 +1,7 @@
 # --- secrets & env ---
 .env
 .env.local
+.env.bak
 
 # --- python ---
 __pycache__/
