@@ -941,6 +941,7 @@ function loadTab(name){
     personality:'/api/personality',skills:'/api/skills',tools:'/api/tools',
     mcp:'/api/mcp',appearance:'/api/prefs',audio:'/api/prefs',
     market:'/api/market',
+    library:'/api/library',
     general:'/api/prefs',about:'/api/info',council:'/api/council/levels',
     capture:'/api/contacts',workspace:'/api/layouts',
     clipboard:'/api/clipboard/recent',dream:'/api/dream/status'};
@@ -1059,6 +1060,31 @@ function renderTab(name,data){
       return '<div class="set-row"><div class="label">'+esc(b.file)+
         '<small>'+esc(String(b.kb))+' KB</small></div>'+
         '<div class="actions"><button class="dbtn" data-action="mkt-restore" data-name="'+esc(b.file)+'">RESTORE</button></div></div>';
+    }).join('')+'</div>';
+    return html;
+  }
+  if(name==='library'){
+    var lsk=data.skills||[],lmcp=data.mcp||[];
+    var html='<div style="margin:0 0 10px"><input id="lib-search" placeholder="Search the library\u2026" style="width:100%;background:#000;color:#fff;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:var(--mono);font-size:11px;box-sizing:border-box"></div>';
+    html+='<div style="margin:4px 0 8px;color:var(--amber);font-size:9px;letter-spacing:2px">SKILL PACKS \u2014 ONE CLICK ('+lsk.length+')</div><div class="set-list" style="margin-bottom:12px">';
+    if(!lsk.length)html+='<div class="set-row"><div class="label">No packs found<small>library/catalog.json missing?</small></div></div>';
+    html+=lsk.map(function(s){
+      var text=((s.name||s.id||'')+' '+(s.description||'')+' '+(s.tags||[]).join(' ')).toLowerCase();
+      return '<div class="set-row lib-row" data-text="'+esc(text).replace(/"/g,'&quot;')+'"><div class="label">'+esc(s.name||s.id)+
+        '<small>'+esc((s.description||'').slice(0,90))+'</small></div>'+
+        '<div class="actions"><button class="dbtn'+(s.installed?' on':'')+'"'+(s.installed?' disabled':'')+' data-action="lib-install" data-id="'+esc(s.id||'')+'">'+(s.installed?'ADDED':'INSTALL')+'</button></div></div>';
+    }).join('')+'</div>';
+    html+='<div style="margin:4px 0 8px;color:var(--amber);font-size:9px;letter-spacing:2px">MCP SERVERS \u2014 ONE CLICK ('+lmcp.length+')</div><div class="set-list">';
+    if(!lmcp.length)html+='<div class="set-row"><div class="label">No servers found<small>library/catalog.json missing?</small></div></div>';
+    html+=lmcp.map(function(m){
+      var env=m.env||{};
+      var keys=Object.keys(env);
+      var needKey=keys.length>0&&keys.some(function(k){return !String(env[k]||'').trim();});
+      var official=(m.tags||[]).indexOf('official')>=0;
+      var text=((m.name||m.id||'')+' '+(m.description||'')+' '+(m.tags||[]).join(' ')).toLowerCase();
+      return '<div class="set-row lib-row" data-text="'+esc(text).replace(/"/g,'&quot;')+'"><div class="label">'+esc(m.name||m.id)+
+        '<small>'+esc((m.description||'').slice(0,90))+(needKey?' \u00b7 needs API key':'')+(official?' \u00b7 official':'')+'</small></div>'+
+        '<div class="actions"><button class="dbtn'+(m.installed?' on':'')+'"'+(m.installed?' disabled':'')+' data-action="lib-add-mcp" data-id="'+esc(m.id||'')+'">'+(m.installed?'ADDED':'ADD')+'</button></div></div>';
     }).join('')+'</div>';
     return html;
   }
@@ -1951,6 +1977,27 @@ document.addEventListener('DOMContentLoaded',function(){
         fr.readAsText(pf.files[0]);
       }
     }
+    if(target.getAttribute&&target.getAttribute('data-action')==='lib-install'){
+      var lid=target.getAttribute('data-id');
+      target.textContent='\u2026';
+      fetch('/api/library/skill',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:lid})}).then(function(r){return r.json();}).then(function(d){
+        addLog(d.ok?('Installed pack: '+(d.skill||lid)):('Install failed: '+(d.detail||d.error||'unknown')),d.ok?'system':'error');
+        loadTab('library');
+      }).catch(function(){addLog('Install request failed.','error');loadTab('library');});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='lib-add-mcp'){
+      var mid=target.getAttribute('data-id');
+      target.textContent='\u2026';
+      fetch('/api/library/mcp',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:mid})}).then(function(r){return r.json();}).then(function(d){
+        var msg=d.ok?('Added MCP server: '+mid):('MCP add failed: '+(d.detail||d.error||'unknown'));
+        if(d.ok&&d.note)msg+=' \u2014 '+d.note;
+        if(d.ok&&d.started)msg+=' (running)';
+        addLog(msg,d.ok?'system':'error');
+        loadTab('library');
+      }).catch(function(){addLog('MCP add request failed.','error');loadTab('library');});
+    }
     if(target.getAttribute&&target.getAttribute('data-action')==='set-hour'){      var inp=document.getElementById('input-briefing-hour');
       var h=inp?parseInt(inp.value,10):8;
       if(isNaN(h))h=8;h=Math.max(0,Math.min(23,h));
@@ -1959,6 +2006,17 @@ document.addEventListener('DOMContentLoaded',function(){
           fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({key:'briefings_enabled',value:true})}).then(function(){loadTab('general');}).catch(function(){});
         }).catch(function(){});
+    }
+  });
+
+  document.addEventListener('input',function(e){
+    if(e.target&&e.target.id==='lib-search'){
+      var q=(e.target.value||'').toLowerCase().trim();
+      var rows=document.querySelectorAll('#panel-library .lib-row');
+      for(var i=0;i<rows.length;i++){
+        var t=rows[i].getAttribute('data-text')||'';
+        rows[i].style.display=(!q||t.indexOf(q)>=0)?'':'none';
+      }
     }
   });
 

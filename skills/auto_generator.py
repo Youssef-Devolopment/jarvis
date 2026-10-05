@@ -66,6 +66,7 @@ Rules:
 - 1-3 regex patterns that match the user's request below.
   Use named groups (?P<name>...) for values the handler needs.
 - Allowed imports ONLY: re, json, math, datetime, urllib.parse, html,
+  time, random, secrets,
   plus `from skills.registry import register`.
   No file access, no subprocess, no eval, no network except reads
   via urllib (the runner validates this and rejects violations).
@@ -76,7 +77,8 @@ Rules:
 
 # Import roots a generated skill may use (top-level package name).
 _ALLOWED_IMPORT_ROOTS = {"skills", "logger", "re", "json", "math",
-                         "datetime", "urllib", "html", "time", "random"}
+                         "datetime", "urllib", "html", "time", "random",
+                         "secrets"}
 # Callables / attributes that are never allowed in generated code.
 _BLOCKED_CALLS = {"eval", "exec", "compile", "__import__", "open",
                   "input", "breakpoint", "exit", "quit", "system",

@@ -1,0 +1,31 @@
+{
+  "skills": [
+    {"id": "word_counter", "name": "Word Counter", "description": "Count words, characters and sentences in any text.", "tags": ["text", "utility"], "file": "word_counter.py"},
+    {"id": "percent_calc", "name": "Percent Calculator", "description": "\"20% of 150\" — quick percentages.", "tags": ["math"], "file": "percent_calc.py"},
+    {"id": "tip_calc", "name": "Tip Calculator", "description": "\"tip on 50 at 18%\" — bill splitting made easy.", "tags": ["math"], "file": "tip_calc.py"},
+    {"id": "bmi_calc", "name": "BMI Calculator", "description": "\"bmi 70kg 175cm\" — body mass index.", "tags": ["health", "math"], "file": "bmi_calc.py"},
+    {"id": "date_diff", "name": "Date Distance", "description": "\"days until 2026-12-25\" — countdowns and ages in days.", "tags": ["time"], "file": "date_diff.py"},
+    {"id": "age_calc", "name": "Age Calculator", "description": "\"age if born 2000-05-14\" — exact age from a birth date.", "tags": ["time"], "file": "age_calc.py"},
+    {"id": "rot13", "name": "ROT13 Cipher", "description": "\"rot13 hello\" — encode/decode ROT13 text.", "tags": ["text", "fun"], "file": "rot13.py"},
+    {"id": "password_gen", "name": "Password Generator", "description": "\"generate password 20\" — strong random passwords (crypto RNG).", "tags": ["security"], "file": "password_gen.py"},
+    {"id": "coin_flip", "name": "Coin Flip", "description": "\"flip a coin\" — heads or tails.", "tags": ["fun"], "file": "coin_flip.py"},
+    {"id": "random_pick", "name": "Random Picker", "description": "\"pick between pizza, sushi, tacos\" — let chance decide.", "tags": ["fun"], "file": "random_pick.py"},
+    {"id": "json_format", "name": "JSON Formatter", "description": "\"format json {...}\" — pretty-print messy JSON.", "tags": ["dev"], "file": "json_format.py"},
+    {"id": "roman_numeral", "name": "Roman Numerals", "description": "\"roman numeral 1987\" — numbers to Roman and back.", "tags": ["math", "fun"], "file": "roman_numeral.py"},
+    {"id": "palindrome", "name": "Palindrome Check", "description": "\"is racecar a palindrome\" — instant answer.", "tags": ["text", "fun"], "file": "palindrome.py"}
+  ],
+  "mcp": [
+    {"id": "memory", "name": "memory", "description": "Knowledge-graph persistent memory across sessions.", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-memory"], "auto_start": true, "tags": ["official"]},
+    {"id": "filesystem", "name": "filesystem", "description": "Secure file access to your Documents folder.", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "{DOCUMENTS}"], "auto_start": true, "tags": ["official"]},
+    {"id": "everything", "name": "everything", "description": "Reference server: prompts, resources and demo tools.", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-everything"], "auto_start": true, "tags": ["official", "demo"]},
+    {"id": "time", "name": "time", "description": "Time and timezone conversion.", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-time"], "auto_start": true, "tags": ["official"]},
+    {"id": "fetch", "name": "fetch", "description": "Fetch web pages as clean text for the LLM (Python, uvx).", "command": "uvx", "args": ["mcp-server-fetch"], "auto_start": true, "tags": ["official", "web"]},
+    {"id": "git", "name": "git", "description": "Read and search git repositories (Python, uvx).", "command": "uvx", "args": ["mcp-server-git", "--repository", "{HOME}"], "auto_start": true, "tags": ["official", "dev"]},
+    {"id": "sqlite", "name": "sqlite", "description": "Query a local SQLite database (Python, uvx).", "command": "uvx", "args": ["mcp-server-sqlite", "--db-path", "{HOME}\\jarvis-mcp.db"], "auto_start": true, "tags": ["data"]},
+    {"id": "github", "name": "github", "description": "GitHub repos and issues — set GITHUB_PERSONAL_ACCESS_TOKEN after adding.", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"], "env": {"GITHUB_PERSONAL_ACCESS_TOKEN": ""}, "auto_start": false, "tags": ["dev", "key"]},
+    {"id": "brave-search", "name": "brave-search", "description": "Web search via Brave — set BRAVE_API_KEY after adding.", "command": "npx", "args": ["-y", "@brave/brave-search-mcp-server"], "env": {"BRAVE_API_KEY": ""}, "auto_start": false, "tags": ["web", "key"]},
+    {"id": "puppeteer", "name": "puppeteer", "description": "Headless Chrome automation and scraping.", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-puppeteer"], "auto_start": true, "tags": ["browser"]},
+    {"id": "playwright", "name": "playwright", "description": "Microsoft Playwright browser automation.", "command": "npx", "args": ["-y", "@playwright/mcp@latest"], "auto_start": true, "tags": ["browser"]},
+    {"id": "postgres", "name": "postgres", "description": "PostgreSQL access — edit the connection string in the MCP tab first.", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"], "auto_start": false, "tags": ["data"]}
+  ]
+}

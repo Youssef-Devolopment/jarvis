@@ -962,6 +962,42 @@ def backup_restore():
     return jsonify(res), code
 
 
+# ---------- LIBRARY (one-click skill packs + MCP servers) ----------
+@bp.get("/library")
+def library_catalog():
+    from system import library
+    return jsonify(library.catalog())
+
+
+@bp.post("/library/skill")
+def library_skill_install():
+    """One click: install a bundled skill pack (hot-loads, no restart)."""
+    from system import library
+    d = request.get_json(silent=True) or {}
+    pid = (d.get("id") or "").strip()
+    if not pid:
+        raise ValidationError("Missing 'id'.")
+    r = library.install_skill_pack(pid)
+    if r.get("error"):
+        raise ValidationError(r["error"])
+    return jsonify(r)
+
+
+@bp.post("/library/mcp")
+def library_mcp_add():
+    """One click: add a catalog MCP server (best-effort auto-start).
+    Body: {"id": str, "start": bool=true}"""
+    from system import library
+    d = request.get_json(silent=True) or {}
+    pid = (d.get("id") or "").strip()
+    if not pid:
+        raise ValidationError("Missing 'id'.")
+    r = library.add_mcp_entry(pid, start=bool(d.get("start", True)))
+    if r.get("error"):
+        raise ValidationError(r["error"])
+    return jsonify(r)
+
+
 # ---------- SITE INDEX ----------
 @bp.get("/sites")
 def sites_list():

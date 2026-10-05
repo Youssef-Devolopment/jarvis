@@ -6,7 +6,7 @@ RULES (enforced by the loader, violations are rejected with a reason):
 - Skill name: lowercase letters, digits, underscores (max 30 chars).
 - 1-5 regex patterns (literals, compiled at load).
 - Allowed imports ONLY: re, json, math, datetime, urllib.parse, html,
-  time, random, plus `from skills.registry import register`.
+  time, random, secrets, plus `from skills.registry import register`.
   No files, no subprocess, no eval, no network beyond urllib reads.
 - Handler: def anything(text, match) -> returns short spoken string
   or None when the request does not apply.

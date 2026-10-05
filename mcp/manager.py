@@ -30,11 +30,16 @@ def all_servers():
 def add_server(name, command, args="", enabled=True):
     if not name or not command:
         return {"error": "Name and command required."}
+    if isinstance(args, (list, tuple)):
+        arg_list = [str(a).strip() for a in args if str(a).strip()]
+    else:
+        arg_list = [a.strip() for a in args.split()
+                    if a.strip()] if args else []
     with _lock:
         items = [s for s in _load() if s.get("name") != name]
         entry = {"id": uuid.uuid4().hex[:8], "name": name.strip(),
                  "command": command.strip(),
-                 "args": [a.strip() for a in args.split() if a.strip()] if args else [],
+                 "args": arg_list,
                  "enabled": bool(enabled)}
         items.append(entry)
         _save(items)

@@ -1,21 +1,22 @@
-"""JARVIS floating HUD 3.0 — Alt+Space overlay.
+"""JARVIS floating HUD 4.0 — Glass Command Deck (Alt+Space overlay).
 
-A transparent, always-on-top command deck that works over any window
-(games, IDEs, browsers):
+Rebuilt from zero: a rounded, transparent-cornered command deck that
+floats over any window (games, IDEs, browsers):
 
-  * DPI-aware native rendering (no OS bitmap-scaling blur),
-    layered bezel with accent edge, hexagon logo, status dot that
-    pulses while JARVIS is thinking, fade+slide entrance;
-  * live header: version · mood · model — refreshed on every show,
-    after every answer, and ~30s while visible (plus a NO KEY
-    suffix in skills-only mode);
-  * typewriter reply area (scrollable) instead of a one-line label,
-    with a COPY button for the last answer;
+  * true transparent corners (Windows transparentcolor key) around a
+    20px-radius double bezel with a top accent line — no OS blur,
+    DPI-aware native rendering;
+  * two modes: a compact input deck (header + prompt + chips + footer)
+    that expands into a full deck with a scrollable reply well;
+  * live header: JARVIS title, version · mood · model, status dot
+    (green idle / amber pulse while thinking / red on error),
+    refreshed on every show, after every answer and ~10s while visible;
+  * typewriter reply area with a COPY button for the last answer;
   * quick chips: SCREEN / TIMER / TIME / OPEN / CLOSE / NOTE — the
     app chips prefill "open "/"close " so one tap + name runs it;
   * command history (Up/Down), mic dictation → auto-send;
   * drag by the header; Esc / ✕ / Alt+Space hide outright, while
-    click-away only dismisses an idle, empty HUD — never mid-answer.
+    focus-away only dismisses an idle, empty HUD — never mid-answer.
 
 Thread model: hotkey threads and Flask handlers only push actions on
 a queue; the Tk thread drains it (Tkinter is not thread-safe).
@@ -36,18 +37,22 @@ from logger import get_logger
 log = get_logger(__name__)
 
 # ----- geometry / palette -------------------------------------------------
-W, BAR_H, EXP_H = 680, 76, 400
-REFRESH_TICKS = 125        # pump runs ~80ms: refresh header ~10s
-TRANSPARENT = "#ff00ff"      # transparent color key
-PANEL = "#0A101C"       # base surface (deep navy)
-PANEL2 = "#0D1526"      # raised surface (reply well / bezel)
-EDGE = "#00E5FF"            # primary accent (cyan)
-EDGE_DIM = "#0E4A5E"        # dim accent ring
-GLOW = "#123246"            # hairline / busy blink
-TRACK = "#101B2E"       # chips + secondary buttons
-SURF = "#0A0F1C"        # input well
+W = 760                       # deck width
+INPUT_H = 200                  # compact deck height
+EXP_H = 424                    # expanded deck height (with reply well)
+RADIUS = 20                    # corner radius
+REFRESH_TICKS = 125            # pump runs ~80ms: refresh header ~10s
+TRANSPARENT = "#ff00ff"        # transparent color key
+PANEL = "#0A101C"              # base surface (deep navy)
+PANEL2 = "#0D1526"             # raised surface (reply well / bezel)
+EDGE = "#00E5FF"               # primary accent (cyan)
+EDGE_DIM = "#0E4A5E"           # dim accent ring
+GLOW = "#123246"               # hairline / busy blink
+TRACK = "#101B2E"              # chips + secondary buttons
+SURF = "#0A0F1C"               # input well
 TEXT = "#DCE7FA"
 DIM = "#64748C"
+HINT = "#475569"
 GOOD = "#3DFFA2"
 BUSY = "#FFB020"
 DANGER = "#FF5C7A"
@@ -162,6 +167,14 @@ def _http_get(path: str, timeout: int = 15) -> dict:
         return json.loads(r.read().decode("utf-8") or "{}")
 
 
+def _pull_info() -> None:
+    """Refresh mood/model/version onto the deck (worker thread)."""
+    try:
+        _actions.put(("info", _info()))
+    except Exception:
+        pass
+
+
 # Quick chips, data-driven (label, kind, payload):
 # kind "send" fires immediately, kind "fill" pre-fills the input.
 CHIPS = (
@@ -193,6 +206,15 @@ def _run() -> None:
                 pass
     except Exception:
         pass
+
+    def _layout(expanded: bool) -> dict:
+        """Vertical layout per mode (y of each content group)."""
+        if expanded:
+            return {"reply": 62, "input": 290, "chips": 346,
+                    "footer": 388, "h": EXP_H}
+        return {"reply": None, "input": 62, "chips": 118,
+                "footer": 160, "h": INPUT_H}
+
     try:
         root = tk.Tk()
         root.overrideredirect(True)
@@ -204,10 +226,11 @@ def _run() -> None:
             pass
         root.configure(bg=TRANSPARENT)
         sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
-        root.geometry(f"{W}x{BAR_H}+{(sw - W) // 2}+{int(sh * 0.14)}")
+        x0, y0 = (sw - W) // 2, int(sh * 0.10)
+        root.geometry(f"{W}x{INPUT_H}+{x0}+{y0}")
         root.withdraw()
 
-        # ---------- backdrop (rounded glow panel on transparent canvas)
+        # ---------- backdrop (rounded glass panel on transparent canvas)
         cv = tk.Canvas(root, bg=TRANSPARENT, highlightthickness=0,
                        width=W, height=EXP_H, bd=0)
         cv.pack()
@@ -218,392 +241,416 @@ def _run() -> None:
                    x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
             return cv.create_polygon(pts, smooth=True, **kw)
 
-        # ---------- deck chrome (redrawn per mode: bar vs expanded)
-        def draw_chrome(expanded):
-            cv.delete("chrome")
-            h = EXP_H if expanded else BAR_H
-            round_rect(6, 6, W - 6, h - 6, 16, fill=PANEL2,
-                       outline=GLOW, width=1, tags="chrome")
-            round_rect(3, 3, W - 3, h - 3, 16, fill=PANEL,
-                       outline=EDGE, width=2, tags="chrome")
-            if expanded:
-                cv.create_line(14, BAR_H, W - 14, BAR_H, fill=GLOW,
-                               width=1, tags="chrome")
-                cv.create_line(14, BAR_H, 154, BAR_H, fill=EDGE,
-                               width=1, tags="chrome")
+        mode = {"expanded": False}
+        groups: dict = {}          # group name -> [canvas item ids]
+        interactive = []           # canvas ids that must not start drags
 
-        # hexagon mark in the command bar
+        def draw_chrome(expanded: bool):
+            cv.delete("chrome")
+            h = _layout(expanded)["h"]
+            # outer halo hairline, inner raised surface
+            round_rect(5, 5, W - 5, h - 5, RADIUS, fill=PANEL2,
+                       outline=GLOW, width=1, tags="chrome")
+            round_rect(2, 2, W - 2, h - 2, RADIUS - 2, fill=PANEL,
+                       outline=EDGE_DIM, width=2, tags="chrome")
+            # top accent line: bright segment fading into the hairline
+            cv.create_line(40, 3, W - 40, 3, fill=EDGE, width=2,
+                           tags="chrome")
+            cv.create_line(16, 3, 40, 3, fill=EDGE_DIM, width=2,
+                           tags="chrome")
+            cv.create_line(W - 40, 3, W - 16, 3, fill=EDGE_DIM, width=2,
+                           tags="chrome")
+            # separator under the header
+            cv.create_line(14, 52, W - 14, 52, fill=GLOW, width=1,
+                           tags="chrome")
+            if expanded:
+                cv.create_line(14, 52, 174, 52, fill=EDGE, width=1,
+                               tags="chrome")
+
+        # ---------- header: hexagon mark + title + live header text
         import math
-        cx, cy, rr = 28, BAR_H // 2, 10
-        outer = []
-        for i in range(6):
-            a = math.radians(60 * i - 30)
-            outer += [cx + (rr + 3) * math.cos(a), cy + (rr + 3) * math.sin(a)]
-        cv.create_polygon(outer, fill="", outline=EDGE_DIM, width=1)
-        hexpts = []
-        for i in range(6):
-            a = math.radians(60 * i - 30)
-            hexpts += [cx + rr * math.cos(a), cy + rr * math.sin(a)]
-        cv.create_polygon(hexpts, fill=EDGE, outline=TEXT, width=1)
-        inner = []
-        for i in range(6):
-            a = math.radians(60 * i - 30)
-            inner += [cx + 5 * math.cos(a), cy + 5 * math.sin(a)]
-        cv.create_polygon(inner, fill=PANEL)
-        # status dot with halo + close glyph (bar right)
-        cv.create_oval(W - 44, 30, W - 26, 48, outline=GLOW, width=1)
-        dot = cv.create_oval(W - 41, 33, W - 29, 45, fill=GOOD, outline="")
-        close_id = cv.create_text(W - 14, BAR_H // 2, text="✕", fill=DIM,
+        cx, cy, rr = 30, 29, 10
+        for ring, rad, fill, out in ((rr + 3, rr + 3, "", EDGE_DIM),
+                                     (rr, rr, EDGE, TEXT),
+                                     (5, 5, PANEL, "")):
+            pts = []
+            for i in range(6):
+                a = math.radians(60 * i - 30)
+                pts += [cx + rad * math.cos(a), cy + rad * math.sin(a)]
+            cv.create_polygon(pts, fill=fill, outline=out, width=1)
+
+        cv.create_text(52, 29, text="JARVIS", anchor="w", fill=TEXT,
+                       font=("Bahnschrift", 12, "bold"))
+        hdr = tk.Label(cv, text="", bg=PANEL, fg=TEXT,
+                       font=("Bahnschrift", 9), padx=8, pady=1,
+                       highlightthickness=1,
+                       highlightbackground=EDGE_DIM)
+        hdr_win = cv.create_window(140, 29, window=hdr, anchor="w")
+        ver = tk.Label(cv, text="", bg=PANEL, fg=DIM,
+                       font=("Bahnschrift", 8))
+        ver_win = cv.create_window(W - 44, 29, window=ver, anchor="e")
+
+        # status dot (halo + core) right before the version
+        dot_x, dot_y = W - 170, 29
+        dot_halo = cv.create_oval(dot_x - 10, dot_y - 10,
+                                  dot_x + 10, dot_y + 10,
+                                  outline=GLOW, width=1)
+        dot_core = cv.create_oval(dot_x - 5, dot_y - 5,
+                                  dot_x + 5, dot_y + 5,
+                                  fill=GOOD, outline="")
+        close_id = cv.create_text(W - 16, 29, text="\u2715", fill=DIM,
                                   font=("Segoe UI", 11))
-        cv.tag_bind(close_id, "<Button-1>", lambda e: hide())
+        cv.tag_bind(close_id, "<Button-1>", lambda e: _hide_now())
         cv.tag_bind(close_id, "<Enter>",
                     lambda e: cv.itemconfig(close_id, fill=DANGER))
         cv.tag_bind(close_id, "<Leave>",
                     lambda e: cv.itemconfig(close_id, fill=DIM))
+        interactive.append(close_id)
 
-        # ---------- labels (live in the expanded footer strip)
-        def label(x, y, anchor, **kw):
-            w = tk.Label(cv, bg=kw.pop("bg", PANEL), **kw)
-            wid = cv.create_window(x, y, window=w, anchor=anchor)
-            return w, wid
-
-        ver, ver_win = label(W - 120, 334, "e", text="", fg=DIM,
-                             font=("Bahnschrift", 8))
-        hdr, hdr_win = label(W // 2, 334, "center", text="", fg=TEXT,
-                             font=("Bahnschrift", 9), bg="#101B2E",
-                             padx=9, pady=2,
-                             highlightthickness=1,
-                             highlightbackground=EDGE_DIM)
-
-        # ---------- reply area (accent bar + readable prose font)
-        reply_wrap = tk.Frame(cv, bg=PANEL2, highlightbackground=GLOW,
-                              highlightthickness=1)
-        reply_win = cv.create_window(14, 84, window=reply_wrap,
-                                       anchor="nw", width=W - 28,
-                                       height=196)
+        # ---------- reply well (expanded mode only)
+        reply_wrap = tk.Frame(cv, bg=PANEL2)
+        reply_win = cv.create_window(14, 62, window=reply_wrap,
+                                     anchor="nw", width=W - 28, height=214,
+                                     state="hidden")
         tk.Frame(reply_wrap, bg=EDGE, width=3).pack(side="left", fill="y")
         reply = tk.Text(reply_wrap, bg=PANEL2, fg=TEXT, relief="flat",
                         font=("Segoe UI", 12), wrap="word", state="disabled",
                         insertbackground=EDGE, padx=12, pady=8,
-                        spacing1=2, spacing3=2,
+                        spacing1=2, spacing3=2, highlightthickness=0,
                         selectbackground=EDGE, selectforeground="#000")
         rscroll = tk.Scrollbar(reply_wrap, command=reply.yview,
                                bg=PANEL2, troughcolor=PANEL2,
                                activebackground=EDGE, width=8)
         reply.configure(yscrollcommand=rscroll.set)
-        rscroll.pack(side="right", fill="y")
         reply.pack(side="left", fill="both", expand=True)
+        rscroll.pack(side="right", fill="y")
+        groups["reply"] = [reply_win]
 
-        def set_reply(text, color=TEXT):
-            reply.configure(state="normal")
-            reply.delete("1.0", "end")
-            reply.insert("1.0", text)
-            reply.configure(state="disabled", fg=color)
-            reply.yview("end")
+        # ---------- input row: prompt + entry + mic + send
+        in_y = _layout(False)["input"]
+        prompt = cv.create_text(24, in_y + 20, text="\u203a", fill=EDGE,
+                                font=("Consolas", 15, "bold"),
+                                anchor="w")
+        entry_wrap = tk.Frame(cv, bg=SURF, highlightthickness=1,
+                              highlightbackground=EDGE_DIM)
+        entry = tk.Entry(entry_wrap, bg=SURF, fg=TEXT, insertbackground=EDGE,
+                         relief="flat", font=("Consolas", 11),
+                         bd=0, highlightthickness=0,
+                         selectbackground=EDGE, selectforeground="#000")
+        entry.pack(fill="both", expand=True, padx=8, pady=7)
+        entry_win = cv.create_window(44, in_y, window=entry_wrap,
+                                     anchor="nw", width=W - 184, height=40)
 
-        def append_reply(text):
-            reply.configure(state="normal")
-            reply.insert("end", text)
-            reply.configure(state="disabled")
-            reply.yview("end")
-
-        # ---------- chips (hover-reactive pills)
-        chips = tk.Frame(cv, bg=PANEL)
-        chips_win = cv.create_window(14, 288, window=chips, anchor="nw")
-
-        def chip(text, cmd):
-            b = tk.Button(chips, text=text, command=cmd, bg=TRACK,
-                          fg="#9FB6D8", activebackground=EDGE,
-                          activeforeground="#000", relief="flat",
-                          font=("Bahnschrift", 9, "bold"), padx=10, pady=3,
-                          cursor="hand2", bd=0,
-                          highlightthickness=1, highlightbackground="#1A2A44",
-                          disabledforeground=DIM)
-            b.pack(side="left", padx=(0, 6))
-            b.bind("<Enter>", lambda e, w=b: w.configure(bg="#16283F",
-                                                         fg=EDGE))
-            b.bind("<Leave>", lambda e, w=b: w.configure(bg=TRACK,
-                                                         fg="#9FB6D8"))
+        def _btn(text, bg, fg, cmd):
+            b = tk.Button(cv, text=text, bg=bg, fg=fg, command=cmd,
+                          relief="flat", bd=0, highlightthickness=0,
+                          font=("Bahnschrift", 9, "bold"), padx=10, pady=4,
+                          activebackground=EDGE, activeforeground="#000",
+                          cursor="hand2")
             return b
 
-        # ---------- command bar (always visible: emblem + entry + mic/send)
-        bar_frame = tk.Frame(cv, bg=PANEL)
-        cv.create_window(56, 14, window=bar_frame, anchor="nw",
-                         width=W - 112, height=48)
-        entry_flash = tk.Frame(bar_frame, bg=EDGE_DIM)
-        entry_flash.pack(side="left", fill="both", expand=True)
-        entry = tk.Entry(entry_flash, bg=SURF, fg=TEXT,
-                         insertbackground=EDGE, relief="flat",
-                         font=("Consolas", 12), bd=4,
-                         insertwidth=2, highlightbackground=EDGE_DIM)
-        entry.pack(side="left", fill="both", expand=True, ipady=6)
-        entry.bind("<FocusIn>",
-                   lambda e: entry_flash.configure(bg=EDGE))
-        entry.bind("<FocusOut>",
-                   lambda e: entry_flash.configure(bg=EDGE_DIM))
+        mic_btn = _btn("\U0001F3A4", TRACK, TEXT, lambda: _mic())
+        send_btn = _btn("SEND \u25b8", EDGE, "#04121A", lambda: _submit())
+        mic_win = cv.create_window(W - 104, in_y + 20, window=mic_btn,
+                                   anchor="center")
+        send_win = cv.create_window(W - 46, in_y + 20, window=send_btn,
+                                    anchor="center")
+        groups["input"] = [prompt, entry_win, mic_win, send_win]
+        for wid in (mic_win, send_win):
+            interactive.append(wid)
 
-        def button(parent, text, cmd, w=8, primary=False):
-            b = tk.Button(parent, text=text, command=cmd,
-                          bg=("#0C2E44" if primary else TRACK),
-                          fg=("#CFFAFF" if primary else TEXT),
-                          activebackground=EDGE,
-                          activeforeground="#000", relief="flat",
-                          font=("Bahnschrift", 9, "bold"), width=w,
-                          cursor="hand2", bd=0,
-                          highlightthickness=1, highlightbackground="#1A2A44",
-                          disabledforeground=DIM)
-            b.pack(side="left", padx=(8, 0), fill="y")
-            hot = "#12425C" if primary else "#16283F"
-            b.bind("<Enter>", lambda e, v=hot: b.configure(bg=v))
-            b.bind("<Leave>", lambda e: b.configure(
-                bg=("#0C2E44" if primary else TRACK)))
-            return b
+        # ---------- chips row (data-driven from CHIPS)
+        chip_ids = []
+        cxp, chip_y = 14, _layout(False)["chips"]
+        for label, kind, payload in CHIPS:
+            wch = int(len(label) * 6.6) + 24
+            pill = round_rect(cxp, chip_y, cxp + wch, chip_y + 26, 13,
+                              fill=TRACK, outline=EDGE_DIM, width=1)
+            txt = cv.create_text(cxp + wch // 2, chip_y + 13, text=label,
+                                 fill=TEXT, font=("Bahnschrift", 8))
 
-        send_btn = button(bar_frame, "➤", lambda: None, w=3,
-                          primary=True)
-        mic_btn = button(bar_frame, "◉", lambda: None, w=3)
+            def _enter(e, p=pill, t=txt):
+                cv.itemconfig(p, fill=EDGE)
+                cv.itemconfig(t, fill="#04121A")
 
-        # ---------- footer strip (expanded mode only)
-        status_lbl, status_win = label(14, 334, "nw",
-                                       text="ready · Alt+Space",
-                                       fg=DIM, font=("Bahnschrift", 8))
+            def _leave(e, p=pill, t=txt):
+                cv.itemconfig(p, fill=TRACK)
+                cv.itemconfig(t, fill=TEXT)
 
-        def copy_reply():
-            try:
-                text = reply.get("1.0", "end").strip()
-            except Exception:
-                text = ""
-            if not text:
-                return
-            try:
-                root.clipboard_clear()
-                root.clipboard_append(text)
-                status_lbl.configure(text="copied · Alt+Space", fg=GOOD)
-            except Exception as exc:
-                log.warning("overlay copy failed: %s", exc)
+            def _press(e, k=kind, p=payload):
+                _chip(k, p)
 
-        copy_btn = tk.Button(cv, text="⧉ COPY", command=copy_reply,
-                             bg=TRACK, fg=DIM, activebackground=EDGE,
-                             activeforeground="#000", relief="flat",
-                             font=("Bahnschrift", 8, "bold"), padx=8, pady=1,
-                             cursor="hand2", bd=0, highlightthickness=1,
-                             highlightbackground="#1A2A44")
-        copy_btn.bind("<Enter>", lambda e: copy_btn.configure(fg=EDGE))
-        copy_btn.bind("<Leave>", lambda e: copy_btn.configure(fg=DIM))
-        copy_win = cv.create_window(W - 14, 334, window=copy_btn,
-                                    anchor="e")
+            for it in (pill, txt):
+                cv.tag_bind(it, "<Button-1>", _press)
+                cv.tag_bind(it, "<Enter>", _enter)
+                cv.tag_bind(it, "<Leave>", _leave)
+                interactive.append(it)
+            chip_ids += [pill, txt]
+            cxp += wch + 8
+        groups["chips"] = chip_ids
 
-        # ---------- state
-        busy = {"n": 0}
-        tick = {"n": 0}
-        H_cur = {"h": BAR_H}
-        type_job = {"id": None}
-        drag = {"x": 0, "y": 0}
+        # ---------- footer: status · key hints · copy
+        status_lbl = tk.Label(cv, text="ready \u00b7 Alt+Space",
+                              bg=PANEL, fg=DIM, font=("Bahnschrift", 8))
+        status_win = cv.create_window(16, 0, window=status_lbl, anchor="w")
+        hints = cv.create_text(
+            W // 2, 0,
+            text="\u21b5 SEND   ESC CLOSE   \u2191 HISTORY   ALT+SPACE",
+            fill=HINT, font=("Bahnschrift", 8))
+        copy_id = cv.create_text(W - 20, 0, text="COPY", fill=DIM,
+                                 font=("Bahnschrift", 8, "bold"),
+                                 anchor="e", state="hidden")
+        cv.tag_bind(copy_id, "<Button-1>", lambda e: _copy_last())
+        cv.tag_bind(copy_id, "<Enter>",
+                    lambda e: cv.itemconfig(copy_id, fill=EDGE))
+        cv.tag_bind(copy_id, "<Leave>",
+                    lambda e: cv.itemconfig(copy_id, fill=DIM))
+        interactive.append(copy_id)
+        groups["footer"] = [status_win, hints, copy_id]
 
-        def _apply_mode(expanded):
-            """Deck mode: bar only, or bar + reply + chips + footer."""
-            H_cur["h"] = EXP_H if expanded else BAR_H
+        # ---------- mode switch: chrome + widget positions ----------
+        def _apply_mode(expanded: bool):
+            mode["expanded"] = expanded
+            lay = _layout(expanded)
             draw_chrome(expanded)
-            state = "normal" if expanded else "hidden"
-            for _wid in (reply_win, chips_win, status_win, hdr_win,
-                         ver_win, copy_win):
-                try:
-                    cv.itemconfigure(_wid, state=state)
-                except Exception:
-                    pass
-            if _state["visible"]:
-                try:
-                    x, y = root.winfo_x(), root.winfo_y()
-                    root.geometry(f"{W}x{H_cur['h']}+{x}+{y}")
-                except Exception:
-                    pass
-
-        def hide():
-            if not _state["visible"]:
-                return
-            _state["visible"] = False
-            try:
-                def out(a=0.97):
-                    try:
-                        if _state["visible"]:
-                            return      # re-shown mid-fade: abort
-                        a = max(0.0, a - 0.19)
-                        root.attributes("-alpha", a)
-                        if a > 0:
-                            root.after(15, lambda: out(a))
-                        else:
-                            _apply_mode(False)
-                            root.withdraw()
-                    except Exception:
-                        pass
-                out()
-            except Exception:
-                pass
-
-        def fade_in():
-            _apply_mode(False)
-            root.deiconify()
-            root.lift()
-            root.attributes("-topmost", True)
-            _state["visible"] = True
+            for gid in groups.get("reply", []):
+                cv.itemconfig(gid, state="normal" if expanded else "hidden")
+                if expanded:
+                    cv.coords(gid, 14, lay["reply"])
+            row = lay["input"]
+            cv.coords(prompt, 24, row + 20)
+            cv.coords(entry_win, 44, row)
+            cv.coords(mic_win, W - 104, row + 20)
+            cv.coords(send_win, W - 46, row + 20)
+            chip_y2 = lay["chips"]
+            xs = 14
+            i = 0
+            while i < len(chip_ids):
+                label, kind, payload = CHIPS[i // 2]
+                wch = int(len(label) * 6.6) + 24
+                if i % 2 == 0:
+                    cv.coords(chip_ids[i], xs, chip_y2,
+                              xs + wch, chip_y2 + 26)
+                else:
+                    cv.coords(chip_ids[i], xs + wch // 2, chip_y2 + 13)
+                    xs += wch + 8
+                i += 1
+            fy = lay["footer"] + 10
+            cv.coords(status_win, 16, fy)
+            cv.coords(hints, W // 2, fy)
+            cv.coords(copy_id, W - 20, fy)
             try:
                 x, y = root.winfo_x(), root.winfo_y()
-            except Exception:
-                x = y = 0
-            slide = x >= 0 and y >= 0
-
-            def step(a=0.0):
-                try:
-                    if not _state["visible"]:
-                        return
-                    a = min(0.97, a + 0.16)
-                    root.attributes("-alpha", a)
-                    off = int(12 * (1 - a / 0.97)) if slide else 0
-                    root.geometry(f"{W}x{H_cur['h']}+{x}+{y + off}")
-                    if a < 0.97:
-                        root.after(16, lambda: step(a))
-                    else:
-                        root.geometry(f"{W}x{H_cur['h']}+{x}+{y}")
-                except Exception:
-                    pass
-            step()
-            root.focus_force()
-            entry.focus_set()
-
-        def set_busy(on):
-            busy["n"] = 1 if on else 0
-            try:
-                send_btn.configure(state="disabled" if on else "normal")
-                mic_btn.configure(state="disabled" if on else "normal")
+                root.geometry(f"{W}x{lay['h']}+{x}+{y}")
             except Exception:
                 pass
 
-        def pulse():
-            """Blink the status dot while busy, solid green when idle."""
+        # ---------- state helpers ----------
+        def _set_dot(kind: str):
+            color = {"busy": BUSY, "danger": DANGER}.get(kind, GOOD)
             try:
-                if busy["n"]:
-                    cur = cv.itemcget(dot, "fill")
-                    cv.itemconfig(dot, fill=GLOW if cur == BUSY else BUSY)
+                cv.itemconfig(dot_core, fill=color)
+            except Exception:
+                pass
+        _state["dot"] = "good"
+
+        def set_busy(b: bool):
+            _state["busy"] = 1 if b else 0
+            try:
+                if b:
+                    _state["dot"] = "busy"
+                    status_lbl.configure(text="thinking\u2026", fg=BUSY)
+                    send_btn.configure(state="disabled", text="\u2026")
+                    cv.itemconfig(copy_id, state="hidden")
                 else:
-                    cv.itemconfig(dot, fill=GOOD)
-                root.after(350, pulse)
+                    _state["dot"] = "good"
+                    send_btn.configure(state="normal", text="SEND \u25b8")
             except Exception:
                 pass
+
+        def set_status(text, color=DIM):
+            try:
+                status_lbl.configure(text=text, fg=color)
+            except Exception:
+                pass
+
+        def set_reply(text, color=TEXT):
+            type_gen["n"] += 1            # cancel any in-flight typing
+            try:
+                reply.configure(state="normal")
+                reply.delete("1.0", "end")
+                if text:
+                    reply.tag_configure("body", foreground=color)
+                    reply.insert("end", text, "body")
+                reply.configure(state="disabled")
+            except Exception:
+                pass
+
+        type_gen = {"n": 0}
 
         def type_out(text, color=TEXT):
-            """Typewriter reveal of the reply."""
-            if type_job["id"]:
+            """Typewriter reveal; a new call cancels the previous one."""
+            type_gen["n"] += 1
+            gen = type_gen["n"]
+            try:
+                reply.configure(state="normal")
+                reply.delete("1.0", "end")
+                reply.tag_configure("body", foreground=color)
+                reply.configure(state="disabled")
+            except Exception:
+                return
+
+            def step(i=0):
+                if type_gen["n"] != gen:
+                    return                 # superseded by a newer reply
+                chunk = text[i:i + 3]
+                if not chunk:
+                    try:
+                        reply.configure(state="disabled")
+                        cv.itemconfig(copy_id,
+                                      state="normal" if text else "hidden")
+                    except Exception:
+                        pass
+                    return
                 try:
-                    root.after_cancel(type_job["id"])
+                    reply.configure(state="normal")
+                    reply.insert("end", chunk, "body")
+                    reply.see("end")
+                    reply.configure(state="disabled")
+                except Exception:
+                    return
+                root.after(16, lambda: step(i + 3))
+            step(0)
+
+        def _copy_last():
+            try:
+                body = reply.get("1.0", "end").strip()
+                if not body:
+                    return
+                root.clipboard_clear()
+                root.clipboard_append(body)
+                set_status("copied to clipboard", GOOD)
+            except Exception:
+                set_status("copy failed", DANGER)
+
+        # ---------- input actions ----------
+        def _remember(text):
+            hist = _state["history"]
+            if not hist or hist[-1] != text:
+                hist.append(text)
+                del hist[:-100]            # cap history at 100
+            _state["hidx"] = len(_state["history"])
+
+        def _submit(prefill=None):
+            text = (prefill if prefill is not None
+                    else entry.get()).strip()
+            if not text:
+                return
+            if _state.get("busy"):
+                return                     # one answer at a time
+            try:
+                entry.delete(0, "end")
+            except Exception:
+                pass
+            _remember(text)
+            if not mode["expanded"]:
+                _apply_mode(True)
+            set_busy(True)
+            set_reply("")
+            set_status("thinking\u2026", BUSY)
+
+            def work():
+                try:
+                    reply_txt = _command(text)
+                except Exception as exc:
+                    reply_txt = f"[error] {exc}"
+                _actions.put(("result", reply_txt))
+            threading.Thread(target=work, daemon=True,
+                             name="overlay-cmd").start()
+
+        def _mic():
+            if _state.get("busy"):
+                return
+            set_status("\U0001F399 listening\u2026", BUSY)
+
+            def work():
+                try:
+                    heard = _listen()
+                except Exception as exc:
+                    _actions.put(("heard", f"[error] {exc}"))
+                    return
+                _actions.put(("heard", heard))
+            threading.Thread(target=work, daemon=True,
+                             name="overlay-mic").start()
+
+        def _chip(kind, payload):
+            if kind == "send":
+                _submit(payload)
+            else:                          # fill: prefill the input
+                try:
+                    entry.delete(0, "end")
+                    entry.insert(0, payload)
+                    entry.focus_set()
+                    entry.icursor("end")
                 except Exception:
                     pass
-                type_job["id"] = None
-            set_reply("", color)
-            total = len(text)
-            if total == 0:
-                return
-            chunk = max(2, total // 70)
-            pos = {"i": 0}
 
-            def tick():
-                pos["i"] = min(total, pos["i"] + chunk)
-                set_reply(text[:pos["i"]], color)
-                if pos["i"] < total:
-                    type_job["id"] = root.after(24, tick)
-                else:
-                    type_job["id"] = None
-            tick()
-
-        # ---------- actions (called from workers via queue)
-        def submit(event=None):
-            text = entry.get().strip()
-            if not text or busy["n"]:
+        # ---------- keys ----------
+        def on_key(event):
+            if event.keysym in ("Return", "KP_Enter"):
+                _submit()
                 return "break"
-            _state["history"].append(text)
-            del _state["history"][:-100]
-            _state["hidx"] = len(_state["history"])
-            entry.delete(0, "end")
-            _apply_mode(True)
-            set_busy(True)
-            set_reply("… thinking", DIM)
-            threading.Thread(target=_worker, args=("cmd", text),
-                             daemon=True).start()
-            return "break"
-
-        def mic():
-            if busy["n"]:
-                return
-            set_busy(True)
-            set_reply("… listening", DIM)
-            threading.Thread(target=_worker, args=("mic", ""),
-                             daemon=True).start()
-
-        def history_move(delta):
-            h = _state["history"]
-            if not h:
-                return
-            i = _state["hidx"] + delta
-            i = max(0, min(len(h), i))
-            _state["hidx"] = i
-            entry.delete(0, "end")
-            if i < len(h):
-                entry.insert(0, h[i])
-
-        def _worker(kind, payload):
-            try:
-                if kind == "cmd":
-                    reply_txt = _command(payload)
+            if event.keysym == "Escape":
+                _hide_now()
+                return "break"
+            if event.keysym in ("Up", "Down"):
+                hist = _state["history"]
+                if not hist:
+                    return "break"
+                idx = _state["hidx"]
+                if event.keysym == "Up":
+                    idx = max(0, idx - 1)
                 else:
-                    heard = _listen()
-                    if heard:
-                        _actions.put(("heard", heard))
-                        reply_txt = _command(heard)
-                    else:
-                        reply_txt = "didn't catch that."
-                _actions.put(("result", reply_txt))
-            except Exception as exc:
-                _actions.put(("result", f"[error] {exc}"))
+                    idx = min(len(hist), idx + 1)
+                _state["hidx"] = idx
+                try:
+                    entry.delete(0, "end")
+                    if idx < len(hist):
+                        entry.insert(0, hist[idx])
+                        entry.icursor("end")
+                except Exception:
+                    pass
+                return "break"
+            if event.state & 0x2 and event.keysym.lower() == "m":
+                _mic()
+                return "break"
+            return None
 
-        # ---------- chips wiring
-        def _quick(text):
-            if busy["n"]:
-                return
-            entry.delete(0, "end")
-            entry.insert(0, text)
-            submit()
+        entry.bind("<Key>", on_key)
 
-        for _label, _kind, _payload in CHIPS:
-            if _kind == "send":
-                chip(_label, lambda _p=_payload: _quick(_p))
-            else:
-                chip(_label, lambda _p=_payload: (
-                    entry.delete(0, "end"),
-                    entry.insert(0, _p),
-                    entry.focus_set()))
+        def on_focus_out(event=None):
+            # Click-away dismisses ONLY an idle, empty deck — never
+            # mid-answer. Focus staying inside this process cancels.
+            root.after(160, _maybe_focus_hide)
 
-        # ---------- key bindings
-        entry.bind("<Return>", submit)
-        entry.bind("<Up>", lambda e: (history_move(-1), "break")[1])
-        entry.bind("<Down>", lambda e: (history_move(+1), "break")[1])
-        root.bind("<Escape>", lambda e: hide())
-
-        def on_focus_out(event):
-            # Click-away hides an untouched HUD, but never yanks it
-            # mid-thought: a pending answer or half-typed command keeps
-            # the window up (Esc / ✕ / Alt+Space still hide outright).
-            if busy["n"]:
-                return
+        def _maybe_focus_hide():
             try:
-                composing = bool(entry.get().strip())
+                if not _state["visible"] or _state.get("busy"):
+                    return
+                if entry.get().strip():
+                    return
+                if root.focus_displayof() is not None:
+                    return          # focus still inside our window
+                _hide_now()
             except Exception:
-                composing = False
-            if composing:
-                return
-            root.after(250, lambda: (root.focus_displayof() is None)
-                       and _state["visible"] and hide())
-        root.bind("<FocusOut>", on_focus_out)
+                pass
 
-        # ---------- drag by header
+        root.bind("<FocusOut>", on_focus_out)
+        entry.bind("<FocusOut>", on_focus_out)
+
+        # ---------- drag by header ----------
+        drag = {"x": 0, "y": 0}
+
         def drag_start(event):
             drag["x"] = event.x_root - root.winfo_x()
             drag["y"] = event.y_root - root.winfo_y()
@@ -612,18 +659,99 @@ def _run() -> None:
             root.geometry(f"+{event.x_root - drag['x']}"
                           f"+{event.y_root - drag['y']}")
 
-        cv.bind("<Button-1>", lambda e: (e.y < BAR_H and drag_start(e)))
-        cv.bind("<B1-Motion>", lambda e: (e.y < BAR_H and drag_move(e)))
+        def on_canvas_click(event):
+            if event.y >= 52:
+                return                     # header band only
+            # ignore clicks that landed on an interactive item
+            hits = cv.find_overlapping(event.x - 1, event.y - 1,
+                                       event.x + 1, event.y + 1)
+            top = hits[-1] if hits else None
+            if top is not None and top in interactive:
+                return
+            drag_start(event)
 
-        # ---------- queue pump
+        def on_canvas_drag(event):
+            if drag["x"] or drag["y"]:
+                drag_move(event)
+
+        cv.bind("<Button-1>", on_canvas_click)
+        cv.bind("<B1-Motion>", on_canvas_drag)
+        cv.bind("<ButtonRelease-1>", lambda e: drag.update(x=0, y=0))
+
+        # ---------- show / hide (alpha fade) ----------
+        def _fade_in():
+            _apply_mode(False)
+            try:
+                root.deiconify()
+                root.lift()
+                root.attributes("-topmost", True)
+                _state["visible"] = True
+                set_status("ready \u00b7 Alt+Space", DIM)
+                cv.itemconfig(dot_core, fill=GOOD)
+                _state["dot"] = "good"
+                x, y = root.winfo_x(), root.winfo_y()
+                start_y = y - 14
+
+                def step(a=0.0, i=0):
+                    if not _state["visible"]:
+                        return
+                    a = min(1.0, a + 0.22)
+                    root.attributes("-alpha", a)
+                    if i < 5:
+                        yy = int(start_y + (y - start_y) * (i + 1) / 5)
+                        try:
+                            root.geometry(f"{W}x{INPUT_H}+{x}+{yy}")
+                        except Exception:
+                            pass
+                    if a < 1.0:
+                        root.after(14, lambda: step(a, i + 1))
+                    else:
+                        try:
+                            root.geometry(f"{W}x{INPUT_H}+{x}+{y}")
+                            root.focus_force()
+                            entry.focus_set()
+                            entry.icursor("end")
+                        except Exception:
+                            pass
+                step()
+                threading.Thread(target=_pull_info, daemon=True).start()
+            except Exception as exc:
+                log.warning("overlay fade-in failed: %s", exc)
+
+        def _fade_out():
+            try:
+                _state["visible"] = False
+
+                def out(a=0.97):
+                    try:
+                        if _state["visible"]:
+                            return         # re-shown mid-fade: abort
+                        a = max(0.0, a - 0.19)
+                        root.attributes("-alpha", a)
+                        if a > 0:
+                            root.after(15, lambda: out(a))
+                        else:
+                            root.withdraw()
+                    except Exception:
+                        pass
+                out()
+            except Exception:
+                pass
+
+        def _hide_now():
+            _fade_out()
+
+        # ---------- queue pump (never dies) ----------
         def on_result(text, color=TEXT):
             set_busy(False)
             type_out(text, color)
-            status_lbl.configure(
-                text=("error" if text.startswith("[error]") else "done")
-                + " · Alt+Space to recall", fg=(DANGER if
-                                                 text.startswith("[error]")
-                                                 else DIM))
+            is_err = text.startswith("[error]")
+            set_status(("error \u00b7 " if is_err else "done \u00b7 ")
+                       + "Alt+Space to recall",
+                       DANGER if is_err else DIM)
+            _state["dot"] = "danger" if is_err else "good"
+            cv.itemconfig(dot_core,
+                          fill=DANGER if is_err else GOOD)
             # Mood/model may have changed with this reply — refresh
             # the header right away instead of waiting for the tick.
             threading.Thread(target=_pull_info, daemon=True).start()
@@ -641,24 +769,29 @@ def _run() -> None:
                                       DANGER if payload.startswith("[error]")
                                       else TEXT)
                         elif kind == "heard":
-                            set_reply(f"🎙 heard: {payload}", DIM)
+                            if payload.startswith("[error]"):
+                                set_status(payload, DANGER)
+                            elif payload:
+                                _chip("fill", payload)
+                                _submit()
+                            else:
+                                set_status("didn't catch that", DIM)
                         elif kind == "info":
-                            ver.configure(
-                                text=f"v{payload.get('version','')}")
-                            hdr.configure(text=_header_text(payload))
+                            try:
+                                ver.configure(
+                                    text=f"v{payload.get('version','')}")
+                                hdr.configure(text=_header_text(payload))
+                            except Exception:
+                                pass
                         elif kind == "show":
-                            fade_in()
-                            threading.Thread(target=_pull_info,
-                                             daemon=True).start()
+                            _fade_in()
                         elif kind == "hide":
-                            hide()
+                            _hide_now()
                         elif kind == "toggle":
                             if _state["visible"]:
-                                hide()
+                                _hide_now()
                             else:
-                                fade_in()
-                                threading.Thread(target=_pull_info,
-                                                 daemon=True).start()
+                                _fade_in()
                         elif kind == "quit":
                             root.destroy()
                             return
@@ -671,31 +804,34 @@ def _run() -> None:
                 log.warning("overlay pump error: %s", exc)
             try:
                 tick["n"] += 1
-                if (_state["visible"] and tick["n"] % REFRESH_TICKS == 0):
-                    threading.Thread(target=_pull_info,
-                                     daemon=True).start()
+                if _state["visible"]:
+                    # status-dot pulse while thinking (~320ms cadence)
+                    if _state.get("busy") and tick["n"] % 4 == 0:
+                        halo = (BUSY if cv.itemcget(dot_halo,
+                                                    "outline") == GLOW
+                                else GLOW)
+                        cv.itemconfig(dot_halo, outline=halo)
+                        cv.itemconfig(dot_core,
+                                      fill=(BUSY if halo == GLOW
+                                            else "#FFD36B"))
+                    elif not _state.get("busy") and \
+                            cv.itemcget(dot_halo, "outline") != GLOW:
+                        cv.itemconfig(dot_halo, outline=GLOW)
+                    if tick["n"] % REFRESH_TICKS == 0:
+                        threading.Thread(target=_pull_info,
+                                         daemon=True).start()
                 root.after(80, pump)
             except Exception:
                 pass        # root destroyed — stop rescheduling
 
-        def _pull_info():
-            try:
-                _actions.put(("info", _info()))
-            except Exception:
-                pass
+        tick = {"n": 0}
 
-        send_btn.configure(command=submit)
-        mic_btn.configure(command=mic)
-        draw_chrome(False)
-        _apply_mode(False)
-
+        # ---------- wire + go ----------
         _state["root"] = root
-        # Tk callback errors normally go to stderr — invisible under
-        # pythonw and fatal to mainloop. Log them instead.
         root.report_callback_exception = (
             lambda *a: log.warning("overlay tk callback error: %s", a[1]))
+        _apply_mode(False)
         _ready.set()
-        pulse()
         pump()
         try:
             root.mainloop()
@@ -706,6 +842,11 @@ def _run() -> None:
     except Exception as exc:
         log.warning("Overlay thread failed: %s", exc)
         _ready.set()
+
+
+def _hide_now() -> None:
+    """Module-level hide used by non-Tk threads (queue-safe)."""
+    _actions.put(("hide", ""))
 
 
 # ----- public API ---------------------------------------------------------
