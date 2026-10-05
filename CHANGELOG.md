@@ -4,7 +4,10 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
-## [Unreleased]
+## [1.5.0] — 2026-10-05
+
+Autonomy + storefront batch: the box keeps working when models
+misbehave, and everything installable lives in one Marketplace tab.
 
 ### Added
 - **Admin terminal** (`code run-admin` / `run X as admin`):
@@ -13,7 +16,7 @@ bump MINOR for big feature batches, PATCH for fixes
   final guard, everything audited. Launcher yields `as admin`
   inputs to it instead of mis-opening apps.
 - **Marketplace tab** (Settings → MARKET, `GET /api/market`): one
-  catalog for everything installable — 131 skills with ON/OFF
+  catalog for everything installable — 133 skills with ON/OFF
   toggles, pending drafts with approve/reject, community plugins
   (file-upload install + reload), 8 MCP presets with one-click
   install, MCP servers with start/stop, pinned sites with remove.
