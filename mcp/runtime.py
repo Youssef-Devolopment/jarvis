@@ -135,7 +135,10 @@ async def _start_server(server: dict) -> dict | None:
             tools.append({
                 "name": t.name,
                 "description": t.description or "",
-                "input_schema": t.inputSchema or {},
+                # mcp SDK 2.x renamed inputSchema -> input_schema
+                "input_schema": (getattr(t, "input_schema", None)
+                                 or getattr(t, "inputSchema", None)
+                                 or {}),
             })
 
         log.info("MCP '%s' started with %d tools",
