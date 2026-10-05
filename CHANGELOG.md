@@ -4,6 +4,36 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.5.1] — 2026-10-05
+
+Full error-and-logic sweep: a systematic audit of every subsystem
+for crashes, silent failures, unbounded growth and unguarded input.
+
+### Fixed
+- **MCP tool calls timing out**: the client runtime used
+  `run_coroutine_threadsafe` only when the server's event loop was
+  NOT running (inverted check), so idle loops went down a fallback
+  path that never worked. Idle loops are now driven directly with a
+  timeout, running loops use `run_coroutine_threadsafe` — proven by
+  a test that fails on the old code (60s timeout) and passes now.
+- **Directory deletes lost data**: `fs_delete` and `code delete`
+  only backed up files, so deleting a folder rmtree'd it with no
+  recovery. Both now copy the whole tree first (50MB cap) and
+  REFUSE the delete if the backup fails or the tree is too large.
+- **Garbage numerics crashed endpoints**: unguarded `int()` on
+  `minutes`/`hours`/personality sliders turned `"lots"` into a 500.
+  New `_to_int` helper parses defensively and clamps to safe ranges.
+- **Unbounded growth**: `jarvis.log` now rotates at 5MB × 3
+  backups; research jobs pruned to 20 finished; overlay command
+  history capped at 100; dashboard log honors the `log_max` pref;
+  `tidy clean` LRU-trims the TTS voice cache (was 561 files / 20MB).
+- **Cosmetic**: inline `__import__('os')` in the MCP stdio banner.
+
+### Added
+- 19 new tests (265 total): MCP loop-state dispatch, directory
+  backup/refusal paths, input-clamp endpoints, log rotation, voice
+  cache LRU, research job pruning.
+
 ## [1.5.0] — 2026-10-05
 
 Autonomy + storefront batch: the box keeps working when models
