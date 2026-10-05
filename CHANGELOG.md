@@ -4,6 +4,35 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.8.0] — 2026-10-06
+
+Library v2 (uninstall + import + live status), real token streaming
+into the HUD, and background-job alerts that reach you on the desktop
+and on the deck.
+
+### Added
+- **Library v2** — every installed pack and MCP server now has a
+  REMOVE button (unregisters the skills and deletes the pack file;
+  stops the server and drops its config), installed servers show
+  running/stopped state with inline START/STOP, and you can
+  **import your own packs as JSON** (`POST /api/library/import`):
+  id + code, passed through the community-plugin validator before it
+  enters the Library, catalogued in gitignored
+  `library/user_catalog.json`. **5 new packs** — Caesar cipher,
+  anagram check, weekday finder, prime check, leetspeak (18 total).
+- **HUD live streaming** — replies flow token-by-token into the deck
+  as the model answers instead of being stitched and typed out
+  afterwards; a mid-stream error turns the reply red in place and
+  the fast path still applies when nothing streamed.
+- **Background-job alerts** — `notify.alert()` fires a desktop toast
+  AND flashes the open HUD's status dot green when timers,
+  reminders, research jobs or computer tasks finish (the deck is
+  never force-shown — the toast is the reach when it is closed).
+- **Per-server stop** — `POST /api/mcp/stop {"name": ...}` stops one
+  server while an omitted name still stops all; new
+  `runtime.stop_server` / `is_running` / `running_names` power the
+  Library status chips.
+
 ## [1.7.0] — 2026-10-06
 
 Overlay rebuilt from zero as HUD 4.0, a one-click Library for skill

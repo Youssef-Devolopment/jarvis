@@ -2,11 +2,11 @@
 
 ![version](https://img.shields.io/badge/version-v1.7.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-302%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-332%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
-Talk to your PC and it obeys: **133 skills + 13 one-click library
-packs, 30 LLM tools, 136 API endpoints.** Open and close apps by
+Talk to your PC and it obeys: **133 skills + 18 one-click library
+packs, 30 LLM tools, 137 API endpoints.** Open and close apps by
 name, dictate notes into
 Obsidian, search and read the web, run VSCode and terminal tasks —
 by voice, hotkey, or the `Alt+Space` HUD over any window. No API key?
@@ -94,14 +94,18 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
 - **HUD + dashboard** — glassmorphism UI with mood-reactive accent;
   `Alt+Space` opens the rebuilt **HUD 4.0 glass command deck** —
   rounded transparent corners, compact input mode that expands into
-  a scrollable reply well, pulsing status dot, hover chips, COPY —
+  a scrollable reply well, replies that **stream token-by-token** as
+  the model answers, pulsing status dot, hover chips, COPY —
   first boot gives a self-removing guided tour; a GETTING STARTED
   card stays until dismissed
-- **Library (one click)** — Settings → LIBRARY: install any of 13
+- **Library (one click)** — Settings → LIBRARY: install any of 18
   bundled skill packs (passwords, calculators, ciphers…) or add any
   of 12 MCP servers (memory, filesystem, fetch, git, playwright…)
   with a single click; packs hot-load validated, MCP entries
-  auto-start or tell you which API key to set
+  auto-start or tell you which API key to set — and **import your
+  own packs as JSON**, with REMOVE / START / STOP per entry
+- **Alerts that reach you** — desktop toast plus a green HUD pulse
+  when timers, reminders, research jobs or computer tasks finish
 
 ## Login autostart (power button)
 
@@ -137,7 +141,8 @@ a double-fire harmless. Status: `GET /autostart/status`.
 run.py / server.py / config.py      entry points + settings (.env)
 ai/          LLM client, tools, agents, council backends, integrations
 skills/      133 @register skills (+ skills/auto_generated/)
-library/     one-click catalog: 13 skill packs + 12 MCP entries
+library/     one-click catalog: 18 skill packs + 12 MCP entries
+             (library/user_catalog.json = your imports, gitignored)
 voice/       Groq mic input, Piper/edge-tts output (Ryan)
 memory/      SQLite facts, messages, prefs, outcomes, contacts, …
 moods/       personalities, router, escalation levels, classifier
@@ -145,11 +150,11 @@ mcp/         client runtime, presets, native stdio MCP server
 plugins/     community plugins (validated, isolated, MIT-replaceable)
 system/      tray, hotkey, overlay, singleton, autostart, launcher,
              app_learner (scan + skills), app_close (kill by name)
-routes/      Flask blueprints (136 endpoints)
+routes/      Flask blueprints (137 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
-- `main` builds green: syntax-check every file + **302 unit tests**
+- `main` builds green: syntax-check every file + **332 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -175,5 +180,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 302 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 332 tests
 ```
