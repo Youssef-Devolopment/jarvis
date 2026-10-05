@@ -37,6 +37,12 @@ packs and MCP servers, plus cross-cutting polish.
   the crypto-RNG module so password packs can be truly random.
 
 ### Fixed
+- **MCP server starts died under `mcp` SDK 2.x** — the client read
+  `Tool.inputSchema`, which 2.x renamed to `input_schema`, so every
+  start failed during tool listing; it now reads either shape.
+- **Library `time` entry pointed at a nonexistent npm package** —
+  repointed to the official PyPI server (`uvx mcp-server-time`); all
+  12 catalog entries were verified live against npm/PyPI.
 - **MCP `add_server` accepts list args** — arguments were split on
   whitespace, breaking any path containing spaces; one-click
   library entries now pass real argument lists.
