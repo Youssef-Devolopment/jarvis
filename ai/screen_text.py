@@ -31,7 +31,7 @@ def ask_image(img, question: str) -> str:
     """
     import io
     try:
-        from ai.client import get_client
+        from ai.client import get_client, create_with_temp_fallback
         if isinstance(img, (str, Path)):
             raw = Path(img).read_bytes()
         elif isinstance(img, bytes):
@@ -43,8 +43,8 @@ def ask_image(img, question: str) -> str:
         b64 = base64.b64encode(raw).decode("ascii")
         c = get_client()
         model = getattr(c, "model", None) or c.default_model
-        r = c._client.chat.completions.create(
-            model=model,
+        r = create_with_temp_fallback(
+            c._client.chat.completions.create, model,
             messages=[{"role": "user", "content": [
                 {"type": "text", "text": question},
                 {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},

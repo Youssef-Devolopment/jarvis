@@ -206,11 +206,11 @@ def summarize_day() -> str:
             f"{events[0]['timestamp'][11:16]}\n"
         )
         try:
-            from ai.client import get_client
+            from ai.client import get_client, create_with_temp_fallback
             c = get_client()
             model = getattr(c, "model", None) or c.default_model
-            r = c._client.chat.completions.create(
-                model=model,
+            r = create_with_temp_fallback(
+                c._client.chat.completions.create, model,
                 messages=[
                     {"role": "system",
                      "content": "Summarize the user's day in 2 sentences. "

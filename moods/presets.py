@@ -22,7 +22,6 @@ MOODS: dict[str, Mood] = {
     "fast": Mood("fast", "Fastest replies, fewest words",
         "Answer in the fewest words possible. One short sentence max. "
         "No preamble, no filler, no follow-up questions.",
-        "fastest replay you can .",
         0.1, 60, "+8%", "+1Hz", prefer_fastest=True),
 }
 

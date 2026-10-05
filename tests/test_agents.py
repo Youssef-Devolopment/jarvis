@@ -128,6 +128,50 @@ class ModelErrorTests(unittest.TestCase):
         self.assertFalse(_is_model_error(Exception("connection reset")))
         self.assertFalse(_is_model_error(Exception("timeout")))
 
+    def test_temp_rejection_retries_without_it(self):
+        from ai.client import create_with_temp_fallback
+        calls = []
+
+        def fake_create(model=None, messages=None, temperature=None,
+                        **kw):
+            calls.append((model, temperature, kw))
+            if temperature is not None:
+                raise RuntimeError(
+                    "Error code: 400 - temperature not accepted")
+            return "STREAM-OK"
+
+        out = create_with_temp_fallback(
+            fake_create, "m", [{"role": "user", "content": "hi"}],
+            0.2, max_tokens=10)
+        self.assertEqual(out, "STREAM-OK")
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0][1], 0.2)
+        self.assertIsNone(calls[1][1])
+        self.assertEqual(calls[1][2].get("max_tokens"), 10)
+
+    def test_other_errors_propagate(self):
+        from ai.client import create_with_temp_fallback
+
+        def fake_create(model=None, messages=None, temperature=None,
+                        **kw):
+            raise RuntimeError("Error code: 401 - invalid_api_key")
+
+        with self.assertRaises(RuntimeError):
+            create_with_temp_fallback(fake_create, "m", [], 0.2)
+
+    def test_no_retry_when_temperature_none(self):
+        from ai.client import create_with_temp_fallback
+        calls = []
+
+        def fake_create(model=None, messages=None, temperature=None,
+                        **kw):
+            calls.append(temperature)
+            raise RuntimeError("Error code: 400 - temperature bad")
+
+        with self.assertRaises(RuntimeError):
+            create_with_temp_fallback(fake_create, "m", [], None)
+        self.assertEqual(calls, [None])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -99,11 +99,11 @@ def _ask_judge(question: str, primary: str, second: str) -> dict:
         f"Second source: {second[:800]}"
     )
     try:
-        from ai.client import get_client
+        from ai.client import get_client, create_with_temp_fallback
         c = get_client()
         model = getattr(c, "model", None) or c.default_model
-        r = c._client.chat.completions.create(
-            model=model,
+        r = create_with_temp_fallback(
+            c._client.chat.completions.create, model,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},

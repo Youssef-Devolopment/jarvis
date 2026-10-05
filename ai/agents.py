@@ -22,11 +22,11 @@ def _plan_split(question: str) -> list:
         "reply exactly: SINGLE"
     )
     try:
-        from ai.client import get_client
+        from ai.client import get_client, create_with_temp_fallback
         c = get_client()
         model = getattr(c, "model", None) or c.default_model
-        r = c._client.chat.completions.create(
-            model=model,
+        r = create_with_temp_fallback(
+            c._client.chat.completions.create, model,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": question},
@@ -54,10 +54,10 @@ def _run_one(task: str) -> dict:
     """Run a single sub-task through the LLM."""
     t0 = time.time()
     try:
-        from ai.client import get_client
+        from ai.client import get_client, create_with_temp_fallback
         c = get_client()
-        r = c._client.chat.completions.create(
-            model=c.default_model,
+        r = create_with_temp_fallback(
+            c._client.chat.completions.create, c.default_model,
             messages=[
                 {"role": "system",
                  "content": "Answer in 2-3 short sentences. Be specific. "
@@ -104,11 +104,11 @@ def _merge(question: str, results: list) -> str:
             f"Sub-agent answers:\n{evidence}")
 
     try:
-        from ai.client import get_client
+        from ai.client import get_client, create_with_temp_fallback
         c = get_client()
         model = getattr(c, "model", None) or c.default_model
-        r = c._client.chat.completions.create(
-            model=model,
+        r = create_with_temp_fallback(
+            c._client.chat.completions.create, model,
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},

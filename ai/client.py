@@ -63,6 +63,30 @@ def _friendly_error(exc: Exception) -> str:
     return "AI error: " + msg[:100]
 
 
+def _temp_rejected(exc: Exception) -> bool:
+    """True when the provider refuses the temperature value itself
+    (some models only accept it omitted). Distinct from auth/rate
+    errors, which must keep failing loudly."""
+    msg = str(exc).lower()
+    return "temperature" in msg and (
+        "400" in msg or "invalid_request" in msg or "invalid" in msg)
+
+
+def create_with_temp_fallback(create_fn, model: str, messages,
+                              temperature, **kwargs):
+    """Call create_fn with temperature; on a temperature rejection,
+    retry once without it. Other errors propagate untouched."""
+    try:
+        return create_fn(model=model, messages=messages,
+                         temperature=temperature, **kwargs)
+    except Exception as exc:
+        if temperature is not None and _temp_rejected(exc):
+            log.info("Model %s rejects temperature — retrying without it",
+                     model)
+            return create_fn(model=model, messages=messages, **kwargs)
+        raise
+
+
 class AIClient:
     def __init__(self, provider=None) -> None:
         from config import Provider
@@ -154,10 +178,9 @@ class AIClient:
     def _open_stream(self, model: str, messages, schemas, mood,
                        client=None):
         client = client or self._client
-        return client.chat.completions.create(
-            model=model, messages=messages,
-            tools=schemas or None, stream=True,
-            temperature=mood.temperature,
+        return create_with_temp_fallback(
+            client.chat.completions.create, model, messages,
+            mood.temperature, tools=schemas or None, stream=True,
             max_tokens=mood.max_tokens)
 
     def stream(self, messages, tools=None, max_rounds=15) -> Iterator[tuple]:

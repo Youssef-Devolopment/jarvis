@@ -35,6 +35,17 @@ class MoodTest(unittest.TestCase):
         tags = {m["id"]: m.get("tag") for m in featured_models()}
         self.assertEqual(tags.get(FAST_MODEL), "fastest")
 
+    def test_preset_params_are_provider_safe(self):
+        from moods.presets import MOODS
+        for name, m in MOODS.items():
+            self.assertIsInstance(m.temperature, (int, float), name)
+            self.assertGreaterEqual(m.temperature, 0, name)
+            self.assertLessEqual(m.temperature, 2, name)
+            self.assertIsInstance(m.max_tokens, int, name)
+            self.assertGreater(m.max_tokens, 0, name)
+            self.assertIsInstance(m.voice_rate, str, name)
+            self.assertIsInstance(m.voice_pitch, str, name)
+
 
 if __name__ == "__main__":
     unittest.main()
