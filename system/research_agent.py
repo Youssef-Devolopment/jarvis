@@ -294,6 +294,15 @@ def research_topic(topic: str, out_dir: Path | None = None,
 
 _jobs: dict = {}
 _jobs_lock = threading.Lock()
+_MAX_JOBS = 20
+
+
+def _prune_jobs() -> None:
+    """Drop oldest finished jobs past the cap. Call with lock held."""
+    done = sorted((j for j in _jobs.values() if j.get("status") == "done"),
+                  key=lambda j: j.get("started", 0))
+    for old in done[:max(0, len(done) - _MAX_JOBS)]:
+        _jobs.pop(old["id"], None)
 
 
 def start_research(topic: str, **kwargs) -> dict:
@@ -302,6 +311,7 @@ def start_research(topic: str, **kwargs) -> dict:
     with _jobs_lock:
         _jobs[jid] = {"id": jid, "topic": topic, "status": "running",
                       "started": time.time(), "result": None}
+        _prune_jobs()
     threading.Thread(target=_run_job, args=(jid, topic, kwargs),
                      daemon=True, name=f"research-{jid}").start()
     return {"id": jid, "topic": topic, "status": "running"}

@@ -21,6 +21,44 @@ _ALLOWED_ROOTS = [
 
 _MAX_READ_BYTES = 100_000
 _MAX_RESULTS = 50
+_BACKUP_MAX_BYTES = 50 * 1024 * 1024
+
+
+def _tree_size(path: Path) -> int:
+    """Best-effort recursive size, symlinks excluded (no cycles)."""
+    total = 0
+    try:
+        for f in path.rglob("*"):
+            try:
+                if f.is_file() and not f.is_symlink():
+                    total += f.stat().st_size
+                    if total > _BACKUP_MAX_BYTES:
+                        break
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return total
+
+
+def _backup(path: Path):
+    """Back up a file or dir. Returns dest path, "TOO_LARGE" when a
+    dir exceeds the backup cap, or None on any failure."""
+    if not path.exists():
+        return None
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    safe = str(path).replace(":", "").replace("\\", "__").replace("/", "__")
+    dest = _BACKUPS / f"{safe}.{ts}.bak"
+    try:
+        if path.is_dir():
+            if _tree_size(path) > _BACKUP_MAX_BYTES:
+                return "TOO_LARGE"
+            shutil.copytree(path, dest)
+        else:
+            shutil.copy2(path, dest)
+        return dest
+    except Exception:
+        return None
 
 
 def _safe_path(p: str):
@@ -35,19 +73,6 @@ def _safe_path(p: str):
         except ValueError:
             continue
     return None
-
-
-def _backup(path: Path):
-    if not path.exists() or path.is_dir():
-        return None
-    ts = time.strftime("%Y%m%d_%H%M%S")
-    safe = str(path).replace(":", "").replace("\\", "__").replace("/", "__")
-    dest = _BACKUPS / f"{safe}.{ts}.bak"
-    try:
-        shutil.copy2(path, dest)
-        return dest
-    except Exception:
-        return None
 
 
 def fs_read(path: str, max_bytes: int = _MAX_READ_BYTES) -> str:
@@ -143,8 +168,13 @@ def fs_delete(path: str) -> str:
         return f"[blocked] {path} outside allowed paths."
     if not p.exists():
         return f"[not found] {path}"
+    saved = _backup(p)
+    if saved == "TOO_LARGE":
+        return (f"[refused] {p.name} is too large to back up safely "
+                f"(over {_BACKUP_MAX_BYTES // (1024 * 1024)}MB).")
+    if saved is None:
+        return f"[refused] could not back up {p.name}; nothing deleted."
     try:
-        _backup(p)
         if p.is_dir():
             shutil.rmtree(p)
         else:

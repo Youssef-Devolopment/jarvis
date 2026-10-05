@@ -35,9 +35,17 @@ function addLog(msg,cls){
     d.className='log-entry '+(cls||'');
     d.innerHTML='<span class="t">'+ts()+'</span>'+esc(msg);
     log.appendChild(d);
-    while(log.children.length>200)log.removeChild(log.firstChild);
+    trimLog(log);
     log.scrollTop=log.scrollHeight;
   }catch(e){console.warn('addLog',e);}
+}
+
+function trimLog(log){
+  try{
+    var cap=parseInt(window.__logMax||'200',10);
+    if(!(cap>0))cap=200;
+    while(log.children.length>cap)log.removeChild(log.firstChild);
+  }catch(e){}
 }
 
 function addStreamingLog(cls){
@@ -46,6 +54,7 @@ function addStreamingLog(cls){
     var d=document.createElement('div');
     d.className='log-entry '+(cls||'bot');
     log.appendChild(d);
+    trimLog(log);
     log.scrollTop=log.scrollHeight;
     return d;
   }catch(e){return null;}
@@ -175,7 +184,9 @@ function applyTheme(hue,accent){
 async function loadPrefs(){
   try{
     var r=await fetch('/api/prefs');var d=await r.json();
-    var p=d.prefs||{};applyTheme(p.hue,p.accent);return p;
+    var p=d.prefs||{};applyTheme(p.hue,p.accent);
+    try{window.__logMax=parseInt(p.log_max,10)||200;}catch(e){}
+    return p;
   }catch(e){console.warn('loadPrefs',e);return{};}
 }
 

@@ -174,6 +174,25 @@ class LoopTests(unittest.TestCase):
             self.assertEqual(st_["result"], {"ok": True, "path": "p"})
         self.assertIsNone(ra.job_status("nope" * 3))
 
+    def test_finished_jobs_pruned(self):
+        with ra._jobs_lock:
+            ra._jobs.clear()
+            for i in range(25):
+                ra._jobs[f"old{i}"] = {"id": f"old{i}", "topic": "t",
+                                       "status": "done", "started": i,
+                                       "result": None}
+            ra._jobs["live"] = {"id": "live", "topic": "t",
+                                "status": "running",
+                                "started": 1000.0, "result": None}
+        with mock.patch.object(ra, "research_topic",
+                               return_value={"ok": True}):
+            ra.start_research("new")
+        with ra._jobs_lock:
+            self.assertLessEqual(len(ra._jobs), ra._MAX_JOBS + 2)
+            self.assertIn("live", ra._jobs)  # running never pruned
+            self.assertNotIn("old0", ra._jobs)  # oldest pruned first
+            ra._jobs.clear()
+
 
 class ApiTests(unittest.TestCase):
     @classmethod

@@ -98,7 +98,34 @@ def clean(dry_run: bool = True,
             "removed": removed,
             "reclaimed_mb": round(reclaimed / 1048576, 1),
             "skipped_errors": errors,
+            "voice_pruned": (prune_voice_cache()["pruned"]
+                             if not dry_run else 0),
             "dry_run": dry_run}
+
+
+def prune_voice_cache(keep: int = 50,
+                      cache_dir: Path | None = None) -> dict:
+    """LRU-cap the TTS voice cache. Files are pure regenerable cache
+    (voice/output.py re-creates on miss) — safe to drop oldest."""
+    from pathlib import Path as _P
+    root = _P(cache_dir) if cache_dir else _P(
+        __file__).resolve().parent.parent / ".voice_cache"
+    try:
+        files = [p for p in root.iterdir()
+                 if p.is_file() and p.suffix.lower() in
+                 (".mp3", ".wav", ".tmp")]
+    except Exception:
+        return {"pruned": 0}
+    files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    pruned, freed = 0, 0
+    for old in files[keep:]:
+        try:
+            freed += old.stat().st_size
+            old.unlink()
+            pruned += 1
+        except Exception:
+            continue
+    return {"pruned": pruned, "freed_mb": round(freed / 1048576, 1)}
 
 
 def prune_dream_reports(keep: int = KEEP_DREAM_REPORTS) -> dict:

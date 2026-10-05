@@ -109,5 +109,43 @@ class TidyTests(unittest.TestCase):
                     for p in TIDY_PATTERNS), bad)
 
 
+    def test_voice_cache_lru_prune(self):
+        cache = Path(mkdtemp())
+        for i in range(8):
+            f = cache / f"clip{i}.mp3"
+            f.write_bytes(b"a" * 100)
+            _aged(str(f), 10 - i)  # clip0 oldest … clip7 newest
+        (cache / "notes.txt").write_bytes(b"not audio - keep me")
+        r = tidy.prune_voice_cache(keep=5, cache_dir=cache)
+        self.assertEqual(r["pruned"], 3)
+        left = sorted(p.name for p in cache.iterdir())
+        self.assertIn("notes.txt", left)
+        self.assertNotIn("clip0.mp3", left)
+        self.assertIn("clip7.mp3", left)
+
+    def test_voice_cache_missing_dir_safe(self):
+        r = tidy.prune_voice_cache(
+            cache_dir=Path(mkdtemp()) / "nope")
+        self.assertEqual(r, {"pruned": 0})
+
+    def test_clean_reports_voice_prune(self):
+        from unittest import mock
+        old = Path(self.tmp) / "old.tmp"
+        old.write_bytes(b"x" * 200000)
+        _aged(str(old), 8)
+        cache = Path(mkdtemp())
+        for i in range(3):
+            (cache / f"c{i}.mp3").write_bytes(b"a")
+        real = tidy.prune_voice_cache
+        with _TempHome(self.tmp):
+            with mock.patch.object(
+                    tidy, "prune_voice_cache",
+                    lambda keep=50, cache_dir=None:
+                    real(keep=keep, cache_dir=cache)):
+                r = tidy.clean(dry_run=False)
+        self.assertEqual(r["voice_pruned"], 0)  # 3 files < keep 50
+        self.assertIn("removed", r)
+
+
 if __name__ == "__main__":
     unittest.main()

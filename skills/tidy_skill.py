@@ -19,10 +19,12 @@ def _report(dry: bool) -> str:
         return (f"Temp holds {r['stale_files']} files "
                 f"({r['stale_mb']} MB) older than 7 days. "
                 f"Say 'tidy confirm' and I'll remove them.")
+    tail = (f" ({r['skipped_errors']} in-use files skipped)."
+            if r["skipped_errors"] else ".")
+    if r.get("voice_pruned"):
+        tail = tail.rstrip(".") + f", voice cache trimmed ({r['voice_pruned']} files)."
     return (f"Removed {r['removed']} temp files, "
-            f"reclaimed {r['reclaimed_mb']} MB"
-            + (f" ({r['skipped_errors']} in-use files skipped)."
-               if r["skipped_errors"] else "."))
+            f"reclaimed {r['reclaimed_mb']} MB" + tail)
 
 
 @register("tidy", TIDY_PATTERNS, "Report or remove old temp files")

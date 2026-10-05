@@ -246,19 +246,29 @@ def call_tool(server_name: str, tool_name: str, arguments: dict,
             log.exception("MCP tool call failed: %s", exc)
             result_box["value"] = f"Tool error: {str(exc)[:200]}"
 
-    # Run in the same loop the server was created in
+    # Run in the same loop the server was created in. That loop is
+    # idle (not running) after startup, so drive it directly; only
+    # use run_coroutine_threadsafe when another thread runs it.
     loop = h.get("loop")
-    if loop and loop.is_running() is False:
-        fut = asyncio.run_coroutine_threadsafe(_call(), loop)
-        try:
-            fut.result(timeout=timeout)
-        except Exception as exc:
-            return f"Tool timeout: {str(exc)[:120]}"
+    if loop is not None and not loop.is_closed():
+        if loop.is_running():
+            fut = asyncio.run_coroutine_threadsafe(_call(), loop)
+            try:
+                fut.result(timeout=timeout)
+            except Exception as exc:
+                return f"Tool timeout: {str(exc)[:120]}"
+        else:
+            try:
+                loop.run_until_complete(asyncio.wait_for(_call(), timeout))
+            except Exception as exc:
+                return f"Tool timeout: {str(exc)[:120]}"
     else:
         # Fallback: new loop (may not work for stdio streams)
         new_loop = asyncio.new_event_loop()
         try:
-            new_loop.run_until_complete(_call())
+            new_loop.run_until_complete(asyncio.wait_for(_call(), timeout))
+        except Exception as exc:
+            return f"Tool timeout: {str(exc)[:120]}"
         finally:
             new_loop.close()
 

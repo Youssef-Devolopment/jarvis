@@ -520,6 +520,7 @@ def _run() -> None:
             if not text or busy["n"]:
                 return "break"
             _state["history"].append(text)
+            del _state["history"][:-100]
             _state["hidx"] = len(_state["history"])
             entry.delete(0, "end")
             _apply_mode(True)

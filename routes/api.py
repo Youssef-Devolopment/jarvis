@@ -41,6 +41,21 @@ def _speak_quiet(text: str) -> None:
         speak_async(text)
     except Exception as exc:
         get_logger(__name__).warning("speak failed (reply kept): %s", exc)
+
+
+def _to_int(value, default: int, lo: int | None = None,
+            hi: int | None = None) -> int:
+    """Parse user-supplied ints defensively: garbage becomes the
+    default, extremes get clamped. Never raises."""
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        return default
+    if lo is not None:
+        v = max(lo, v)
+    if hi is not None:
+        v = min(hi, v)
+    return v
 from moods.models import (get_active, set_active, set_cache, get_cache,
                            theme_for, label_for, build_fallback_list)
 from moods.router import needs_reasoning
@@ -637,7 +652,7 @@ def reminders_ep():
 @bp.post("/focus/start")
 def focus_start_ep():
     d = request.get_json(silent=True) or {}
-    mins = int(d.get("minutes", 60))
+    mins = _to_int(d.get("minutes", 60), 60, 1, 480)
     ok = focus_lock.start(mins)
     return jsonify({"ok": ok, "minutes": mins})
 
@@ -719,7 +734,7 @@ def format_ep():
 
 @bp.get("/time/summary")
 def time_summary_ep():
-    hours = int(request.args.get("hours", 24))
+    hours = _to_int(request.args.get("hours", 24), 24, 1, 168)
     return jsonify({"entries": time_tracker.summary(hours=hours)})
 
 
@@ -1280,9 +1295,9 @@ def personality_preset():
 def personality_custom():
     from moods import personality
     d = request.get_json(silent=True) or {}
-    f = int(d.get("formality", 50))
-    h = int(d.get("humor", 50))
-    v = int(d.get("verbosity", 50))
+    f = _to_int(d.get("formality", 50), 50, 0, 100)
+    h = _to_int(d.get("humor", 50), 50, 0, 100)
+    v = _to_int(d.get("verbosity", 50), 50, 0, 100)
     personality.set_values(f, h, v)
     memory.set_pref("personality_preset", "custom")
     memory.set_pref("personality_formality", f)

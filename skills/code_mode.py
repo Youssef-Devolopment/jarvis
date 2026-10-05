@@ -89,14 +89,40 @@ def _is_allowed(path: Path) -> bool:
     return False
 
 
+_BACKUP_MAX_BYTES = 50 * 1024 * 1024
+
+
+def _tree_size(path: Path) -> int:
+    """Best-effort recursive size, symlinks excluded (no cycles)."""
+    total = 0
+    try:
+        for f in path.rglob("*"):
+            try:
+                if f.is_file() and not f.is_symlink():
+                    total += f.stat().st_size
+                    if total > _BACKUP_MAX_BYTES:
+                        break
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return total
+
+
 def _backup(path: Path):
+    """Back up a file or dir. Returns dest, "TOO_LARGE" when a dir
+    exceeds the backup cap, or None on any failure."""
     if not path.exists():
         return None
     ts = time.strftime("%Y%m%d_%H%M%S")
     safe = str(path).replace(":", "").replace("\\", "__").replace("/", "__")
     dest = _BACKUPS / f"{safe}.{ts}.bak"
     try:
-        if path.is_file():
+        if path.is_dir():
+            if _tree_size(path) > _BACKUP_MAX_BYTES:
+                return "TOO_LARGE"
+            shutil.copytree(path, dest)
+        else:
             shutil.copy2(path, dest)
         return dest
     except Exception:
@@ -167,8 +193,14 @@ def s_delete(text, m):
         return f"Blocked: {path} outside allowed paths."
     if not path.exists():
         return f"Not found: {path}"
+    saved = _backup(path)
+    if saved == "TOO_LARGE":
+        return (f"Blocked: {path.name} is too large to back up safely "
+                f"(over {_BACKUP_MAX_BYTES // (1024 * 1024)}MB).")
+    if saved is None:
+        _audit("delete", str(path), False, "backup failed")
+        return f"Blocked: could not back up {path.name}; nothing deleted."
     try:
-        _backup(path)
         if path.is_dir():
             shutil.rmtree(path)
         else:

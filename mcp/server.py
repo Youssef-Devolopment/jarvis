@@ -25,6 +25,7 @@ stdout; ALL logging goes to stderr so it can never corrupt the stream.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -387,7 +388,7 @@ def handle(msg: dict) -> dict | None:
 
 
 def main() -> int:
-    _log(f"stdio server up (v{_version()}, pid {__import__('os').getpid()})")
+    _log(f"stdio server up (v{_version()}, pid {os.getpid()})")
     for line in sys.stdin:
         line = line.strip()
         if not line:

@@ -140,8 +140,86 @@ class _FakeMatch:
         self._cmd = cmd
 
     def group(self, name):
-        assert name == "cmd"
+        assert name in ("cmd", "path")
         return self._cmd
+
+
+class DeleteBackupTests(unittest.TestCase):
+    def _tree(self, files):
+        import tempfile
+        from pathlib import Path
+        root = Path(tempfile.mkdtemp())
+        for rel, size in files.items():
+            p = root / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(b"z" * size)
+        return root
+
+    def test_fs_delete_backs_up_dir(self):
+        from unittest import mock
+        from ai import tools_fs as tfs
+        root = self._tree({"sub/a.txt": 10, "sub/b.txt": 20})
+        bak = root / "backups"
+        bak.mkdir()
+        with mock.patch.object(tfs, "_ALLOWED_ROOTS", [root]), \
+             mock.patch.object(tfs, "_BACKUPS", bak):
+            out = tfs.fs_delete(str(root / "sub"))
+        self.assertIn("[ok]", out)
+        self.assertFalse((root / "sub").exists())
+        saved = list(bak.iterdir())
+        self.assertEqual(len(saved), 1)
+        self.assertTrue((saved[0] / "a.txt").exists())
+
+    def test_fs_delete_refuses_oversize_dir(self):
+        from unittest import mock
+        from ai import tools_fs as tfs
+        root = self._tree({"big/f.bin": 100})
+        bak = root / "backups"
+        bak.mkdir()
+        with mock.patch.object(tfs, "_ALLOWED_ROOTS", [root]), \
+             mock.patch.object(tfs, "_BACKUPS", bak), \
+             mock.patch.object(tfs, "_BACKUP_MAX_BYTES", 50):
+            out = tfs.fs_delete(str(root / "big"))
+        self.assertIn("[refused]", out)
+        self.assertTrue((root / "big" / "f.bin").exists())
+
+    def test_fs_delete_refuses_failed_backup(self):
+        from unittest import mock
+        from ai import tools_fs as tfs
+        root = self._tree({"f.txt": 10})
+        with mock.patch.object(tfs, "_ALLOWED_ROOTS", [root]), \
+             mock.patch.object(tfs, "_backup", return_value=None):
+            out = tfs.fs_delete(str(root / "f.txt"))
+        self.assertIn("[refused]", out)
+        self.assertTrue((root / "f.txt").exists())
+
+    def test_code_delete_backs_up_dir(self):
+        from unittest import mock
+        from skills import code_mode as cm
+        root = self._tree({"proj/main.py": 30})
+        bak = root / "backups"
+        bak.mkdir()
+        with mock.patch.object(cm, "_code_mode_on", return_value=True), \
+             mock.patch.object(cm, "_DEFAULT_ALLOWED", [str(root)]), \
+             mock.patch.object(cm, "_BACKUPS", bak):
+            out = cm.s_delete("x", _FakeMatch(str(root / "proj")))
+        self.assertIn("Deleted", out)
+        self.assertFalse((root / "proj").exists())
+        self.assertEqual(len(list(bak.iterdir())), 1)
+
+    def test_code_delete_refuses_oversize_dir(self):
+        from unittest import mock
+        from skills import code_mode as cm
+        root = self._tree({"proj/f.bin": 100})
+        bak = root / "backups"
+        bak.mkdir()
+        with mock.patch.object(cm, "_code_mode_on", return_value=True), \
+             mock.patch.object(cm, "_DEFAULT_ALLOWED", [str(root)]), \
+             mock.patch.object(cm, "_BACKUPS", bak), \
+             mock.patch.object(cm, "_BACKUP_MAX_BYTES", 50):
+            out = cm.s_delete("x", _FakeMatch(str(root / "proj")))
+        self.assertIn("too large", out)
+        self.assertTrue((root / "proj" / "f.bin").exists())
 
 
 if __name__ == "__main__":
