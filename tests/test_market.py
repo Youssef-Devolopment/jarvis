@@ -16,8 +16,11 @@ class MarketTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         d = r.get_json()
         for key in ("skills", "pending", "plugins", "mcp_presets",
-                    "mcp_servers", "sites"):
+                    "mcp_servers", "sites", "backups"):
             self.assertIn(key, d, key)
+        for b in d["backups"]:
+            self.assertIn("file", b)
+            self.assertIn("kb", b)
         self.assertGreater(len(d["skills"]), 100)
         by_name = {s["name"]: s for s in d["skills"]}
         self.assertEqual(by_name["close_app"]["source"], "builtin")

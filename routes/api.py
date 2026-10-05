@@ -108,6 +108,7 @@ def info():
         "skills": [sk.name for sk in all_skills()],
         "facts": facts,
         "auto_approve": auto_approve,
+        "dev": bool(s and getattr(s, "debug", False)),
         "theme": _theme_dict("auto" if active == "auto" else active),
     })
 
@@ -407,6 +408,11 @@ def market_catalog():
                  for n, u in sorted(L.custom_sites().items())]
     except Exception:
         sites = []
+    try:
+        from system import backup as _b
+        backups = _b.list_backups()
+    except Exception:
+        backups = []
     return jsonify({
         "skills": skills,
         "pending": pending,
@@ -414,6 +420,7 @@ def market_catalog():
         "mcp_presets": list_presets(),
         "mcp_servers": all_servers(),
         "sites": sites,
+        "backups": backups,
     })
 
 
@@ -939,6 +946,20 @@ def backups_list():
     from system import backup as _b
     items = _b.list_backups()
     return jsonify({"count": len(items), "backups": items})
+
+
+@bp.post("/backup/restore")
+def backup_restore():
+    """Preview without confirm, apply with confirm=true.
+    Body: {"file": optional-name, "confirm": bool}"""
+    from system import backup as _b
+    d = request.get_json(silent=True) or {}
+    res = _b.restore_backup(d.get("file"),
+                            confirm=bool(d.get("confirm")))
+    if res.get("needs_confirm"):
+        return jsonify(res)
+    code = 200 if res.get("ok") else 400
+    return jsonify(res), code
 
 
 # ---------- SITE INDEX ----------

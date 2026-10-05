@@ -173,5 +173,73 @@ class ModelErrorTests(unittest.TestCase):
         self.assertEqual(calls, [None])
 
 
+class RetryAndSafetyTests(unittest.TestCase):
+    def test_transient_failure_retries_then_succeeds(self):
+        calls, n = [], {"n": 0}
+
+        def flaky(*a, **kw):
+            n["n"] += 1
+            if n["n"] == 1:
+                raise RuntimeError("blip")
+            return _Resp("Recovered.")
+
+        with mock.patch("ai.client.get_client",
+                        return_value=FakeClient(calls)), \
+             mock.patch("ai.client.create_with_temp_fallback",
+                        side_effect=flaky), \
+             mock.patch.object(agents.time, "sleep"):
+            r = agents._run_one("do a thing")
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["attempts"], 2)
+        self.assertEqual(r["answer"], "Recovered.")
+
+    def test_permanent_failure_returns_ok_false(self):
+        calls = []
+        with mock.patch("ai.client.get_client",
+                        return_value=FakeClient(calls)), \
+             mock.patch("ai.client.create_with_temp_fallback",
+                        side_effect=RuntimeError("provider down")), \
+             mock.patch.object(agents.time, "sleep"):
+            r = agents._run_one("do a thing")
+        self.assertFalse(r["ok"])
+        self.assertIn("provider down", r["error"])
+
+    def test_empty_answer_retried_once(self):
+        calls, n = [], {"n": 0}
+
+        def empty_then_answer(*a, **kw):
+            n["n"] += 1
+            return _Resp("" if n["n"] == 1 else "Second try works.")
+
+        with mock.patch("ai.client.get_client",
+                        return_value=FakeClient(calls)), \
+             mock.patch("ai.client.create_with_temp_fallback",
+                        side_effect=empty_then_answer), \
+             mock.patch.object(agents.time, "sleep"):
+            r = agents._run_one("do a thing")
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["answer"], "Second try works.")
+
+    def test_run_never_raises(self):
+        with mock.patch.object(agents, "_plan_split",
+                               side_effect=RuntimeError("boom")):
+            res = agents.run("compare apples and oranges in detail")
+        self.assertFalse(res["ok"])
+        self.assertEqual(res["mode"], "error")
+        self.assertIn("boom", res["answer"])
+
+    def test_merge_notes_failed_subtasks(self):
+        calls = []
+        results = [{"ok": True, "task": "t1", "answer": "a1"},
+                   {"ok": False, "task": "t2", "error": "e"}]
+        with mock.patch("ai.client.get_client",
+                        return_value=FakeClient(calls)):
+            out = agents._merge("compare things", results)
+        self.assertEqual(out, "Combined final answer.")
+        merge_call = calls[-1]
+        user = " ".join(m["content"] for m in merge_call["messages"])
+        self.assertIn("1 of 2 sub-tasks FAILED", user)
+
+
 if __name__ == "__main__":
     unittest.main()

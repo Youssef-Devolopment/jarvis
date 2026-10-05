@@ -76,6 +76,115 @@ class BackupApiTests(unittest.TestCase):
         self.assertIn("count", d)
         self.assertIn("backups", d)
 
+    def test_restore_preview_needs_confirm(self):
+        r = self.__class__.client.post("/api/backup/restore", json={})
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertTrue(d.get("needs_confirm"))
+        self.assertIn("backups", d)
+
+    def test_restore_missing_backup_400_no_side_effects(self):
+        client = self.__class__.client
+        r = client.post("/api/backup/restore",
+                        json={"confirm": True, "file": "nope.zip"})
+        self.assertEqual(r.status_code, 400)
+        r = client.post("/api/backup/restore",
+                        json={"confirm": True,
+                              "file": "jarvis-backup-19990101-0000.zip"})
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(r.get_json().get("ok"))
+
+
+class RestoreTests(unittest.TestCase):
+    def test_preview_needs_confirm(self):
+        dest = Path(tempfile.mkdtemp())
+        root = _root_with({"memory/jarvis_memory.db": b"DB",
+                           ".env": b"KEY=x"})
+        self.assertTrue(B.create_backup(root=root, backup_dir=dest)["ok"])
+        res = B.restore_backup(backup_dir=dest)
+        self.assertTrue(res["needs_confirm"])
+        self.assertEqual(len(res["backups"]), 1)
+        self.assertTrue(res["newest"].startswith("jarvis-backup-"))
+
+    def test_roundtrip_restores_old_content(self):
+        root = _root_with({"memory/jarvis_memory.db": b"OLD",
+                           ".env": b"OLDKEY=1"})
+        dest = Path(tempfile.mkdtemp())
+        self.assertTrue(B.create_backup(root=root, backup_dir=dest)["ok"])
+        (root / "memory/jarvis_memory.db").write_bytes(b"NEW")
+        (root / ".env").write_bytes(b"NEWKEY=2")
+        closed = []
+        res = B.restore_backup(confirm=True, root=root, backup_dir=dest,
+                               close_db=lambda: closed.append(1))
+        self.assertTrue(res["ok"], res)
+        self.assertEqual(sorted(res["restored"]),
+                         [".env", "memory/jarvis_memory.db"])
+        self.assertEqual((root / "memory/jarvis_memory.db").read_bytes(),
+                         b"OLD")
+        self.assertEqual((root / ".env").read_bytes(), b"OLDKEY=1")
+        self.assertEqual(closed, [1])          # live handle released
+        self.assertTrue(res["safety_backup"])  # pre-restore snapshot
+        self.assertTrue(Path(res["safety_backup"]).is_file())
+
+    def test_invalid_names_refused_before_anything_happens(self):
+        dest = Path(tempfile.mkdtemp())
+        root = _root_with({"memory/jarvis_memory.db": b"DB"})
+        for bad in ("../evil.zip", "C:\\x\\b.zip", "other.zip",
+                    "..\\jarvis-backup-x.zip"):
+            res = B.restore_backup(bad, confirm=True, root=root,
+                                   backup_dir=dest,
+                                   close_db=lambda: None)
+            self.assertFalse(res["ok"], bad)
+        # nothing was written, no safety zips created
+        self.assertEqual(list(dest.glob("*.zip")), [])
+        self.assertEqual((root / "memory/jarvis_memory.db").read_bytes(),
+                         b"DB")
+
+    def test_confirm_without_backups_errors(self):
+        res = B.restore_backup(confirm=True,
+                               root=_root_with({"memory/jarvis_memory.db":
+                                                b"DB"}),
+                               backup_dir=Path(tempfile.mkdtemp()))
+        self.assertFalse(res["ok"])
+        self.assertIn("no backups", res["error"])
+
+    def test_zip_slip_refused(self):
+        dest = Path(tempfile.mkdtemp())
+        evil = dest / "jarvis-backup-evil.zip"
+        with zipfile.ZipFile(evil, "w") as z:
+            z.writestr("../evil.txt", "pwned")
+        root = _root_with({"memory/jarvis_memory.db": b"DB"})
+        res = B.restore_backup(evil.name, confirm=True, root=root,
+                               backup_dir=dest, close_db=lambda: None)
+        self.assertFalse(res["ok"])
+        self.assertIn("unsafe", res["error"])
+        self.assertFalse((dest.parent / "evil.txt").exists())
+
+    def test_zip_without_restorable_files_errors(self):
+        dest = Path(tempfile.mkdtemp())
+        fp = dest / "jarvis-backup-empty.zip"
+        with zipfile.ZipFile(fp, "w") as z:
+            z.writestr("docs/readme.txt", "hi")
+        res = B.restore_backup(fp.name, confirm=True,
+                               root=_root_with({"memory/jarvis_memory.db":
+                                                b"DB"}),
+                               backup_dir=dest, close_db=lambda: None)
+        self.assertFalse(res["ok"])
+
+    def test_restore_patterns(self):
+        from skills.backup_skill import RESTORE_PATTERNS
+        for good in ("restore", "restore backup", "restore my backup",
+                     "recover", "restore confirm", "restore backup confirm",
+                     "recover confirm", "restore memory"):
+            self.assertTrue(
+                any(re.match(p, good, re.IGNORECASE)
+                    for p in RESTORE_PATTERNS), good)
+        for bad in ("restore layout home", "restored", "undo restore",
+                    "restore confirm later"):
+            self.assertFalse(
+                any(re.match(p, bad, re.IGNORECASE)
+                    for p in RESTORE_PATTERNS), bad)
+
 
 if __name__ == "__main__":
     unittest.main()

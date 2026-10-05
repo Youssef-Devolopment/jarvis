@@ -37,7 +37,7 @@ log = get_logger(__name__)
 
 # ----- geometry / palette -------------------------------------------------
 W, BAR_H, EXP_H = 680, 76, 400
-REFRESH_TICKS = 375        # pump runs ~80ms: refresh header ~30s
+REFRESH_TICKS = 125        # pump runs ~80ms: refresh header ~10s
 TRANSPARENT = "#ff00ff"      # transparent color key
 PANEL = "#0A101C"       # base surface (deep navy)
 PANEL2 = "#0D1526"      # raised surface (reply well / bezel)
@@ -624,6 +624,9 @@ def _run() -> None:
                 + " · Alt+Space to recall", fg=(DANGER if
                                                  text.startswith("[error]")
                                                  else DIM))
+            # Mood/model may have changed with this reply — refresh
+            # the header right away instead of waiting for the tick.
+            threading.Thread(target=_pull_info, daemon=True).start()
 
         def pump():
             # NEVER dies: one poisoned action must not disable the HUD

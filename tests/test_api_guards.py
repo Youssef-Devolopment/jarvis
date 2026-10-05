@@ -64,6 +64,13 @@ class GuardedEndpointsTests(unittest.TestCase):
         self.assertTrue(all(0 <= cur[k] <= 100
                             for k in ("formality", "humor", "verbosity")))
 
+    def test_info_exposes_dev_flag(self):
+        r = self.__class__.client.get("/api/info")
+        self.assertEqual(r.status_code, 200)
+        d = r.get_json()
+        self.assertIn("dev", d)
+        self.assertIsInstance(d["dev"], bool)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -37,14 +37,47 @@ class LaunchTest(unittest.TestCase):
         self.assertEqual(L.open_url("not a url at all"), "")
 
     def test_new_aliases_resolve(self):
-        for app, exe in [("zoom", "Zoom.exe"), ("notion", "Notion.exe"),
-                         ("slack", "slack.exe"),
-                         ("notepad++", "notepad++.exe"),
-                         ("everything", "Everything.exe"),
-                         ("snipping tool", "snippingtool.exe")]:
-            r = L.resolve_app(app)
-            self.assertEqual(r["status"], "found", app)
-            self.assertEqual(r["target"], exe, app)
+        # Alias targets are trusted when the exe resolves (registry
+        # App Paths hit mocked truthy here).
+        from unittest import mock
+        with mock.patch.object(L, "_app_paths",
+                               return_value="C:\\x\\app.exe"):
+            for app, exe in [("zoom", "Zoom.exe"), ("notion", "Notion.exe"),
+                             ("slack", "slack.exe"),
+                             ("notepad++", "notepad++.exe"),
+                             ("everything", "Everything.exe"),
+                             ("snipping tool", "snippingtool.exe"),
+                             ("7zip", "7zFM.exe"), ("blender", "blender.exe"),
+                             ("word", "WINWORD.EXE")]:
+                r = L.resolve_app(app)
+                self.assertEqual(r["status"], "found", app)
+                self.assertEqual(r["target"], exe, app)
+
+    def test_dead_alias_falls_through_to_start_menu(self):
+        # App uninstalled → the alias must NOT dead-end; resolution
+        # continues into the Start Menu index.
+        from unittest import mock
+        with mock.patch.object(L.shutil, "which", return_value=None), \
+             mock.patch.object(L, "_app_paths", return_value=""), \
+             mock.patch.object(L, "_start_menu_index",
+                               return_value={"blender": "C:\\m\\Blender.lnk"}):
+            r = L.resolve_app("blender")
+        self.assertEqual(r["status"], "found")
+        self.assertTrue(r["target"].endswith("Blender.lnk"))
+
+    def test_dead_alias_without_any_hit_is_not_found(self):
+        from unittest import mock
+        with mock.patch.object(L.shutil, "which", return_value=None), \
+             mock.patch.object(L, "_app_paths", return_value=""), \
+             mock.patch.object(L, "_start_menu_index", return_value={}):
+            r = L.resolve_app("blender")
+        self.assertNotEqual(r["status"], "found")
+
+    def test_uri_alias_trusted_without_lookup(self):
+        # ms-settings: has no exe to verify — must resolve directly.
+        r = L.resolve_app("settings")
+        self.assertEqual(r["status"], "found")
+        self.assertEqual(r["target"], "ms-settings:")
 
     def test_obsidian_uri_when_vault_set(self):
         from unittest import mock
@@ -58,7 +91,9 @@ class LaunchTest(unittest.TestCase):
 
     def test_obsidian_exe_without_vault(self):
         from unittest import mock
-        with mock.patch("config.try_settings", return_value=None):
+        with mock.patch("config.try_settings", return_value=None), \
+             mock.patch.object(L, "_app_paths",
+                               return_value="C:\\x\\Obsidian.exe"):
             r = L.resolve_app("obsidian")
         self.assertEqual(r["target"], "obsidian.exe")
 

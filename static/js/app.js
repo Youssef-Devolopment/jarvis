@@ -1,4 +1,4 @@
-﻿/* JARVIS v1.5.1 - app.js (full rewrite, defensive) */
+﻿/* JARVIS v1.6.0 - app.js (full rewrite, defensive) */
 (function(){
 'use strict';
 
@@ -194,7 +194,7 @@ async function loadInfo(){
   try{
     var r=await fetch('/api/info');var info=await r.json();
     setText('side-model',info.model_label||info.model||'--');
-    setText('brand-ver','v'+(info.version||'--'));
+    setText('brand-ver','v'+(info.version||'--')+(info.dev?' · DEV':''));
     var v=info.voice;
     setText('side-voice',v&&v.label?v.label:(typeof v==='string'?v:'--'));
     setText('side-mood',info.mood||'--');
@@ -1050,6 +1050,16 @@ function renderTab(name,data){
         '<small>'+esc(s.url)+'</small></div>'+
         '<div class="actions"><button class="dbtn" data-action="mkt-unpin" data-name="'+esc(s.name)+'">REMOVE</button></div></div>';
     }).join('')+'</div>';
+    var bks=data.backups||[];
+    html+='<div style="margin:4px 0 8px;color:var(--dim);font-size:9px;letter-spacing:2px">BACKUPS ('+bks.length+')</div><div class="set-list" style="margin-bottom:12px">';
+    html+='<div class="set-row"><div class="label">Back up now<small>memory + keys, keeps last 5</small></div>'+
+      '<div class="actions"><button class="dbtn" data-action="mkt-backup-now">BACK UP</button></div></div>';
+    if(!bks.length)html+='<div class="set-row"><div class="label">No backups yet<small>Say \u201cbackup\u201d or press BACK UP</small></div></div>';
+    html+=bks.map(function(b){
+      return '<div class="set-row"><div class="label">'+esc(b.file)+
+        '<small>'+esc(String(b.kb))+' KB</small></div>'+
+        '<div class="actions"><button class="dbtn" data-action="mkt-restore" data-name="'+esc(b.file)+'">RESTORE</button></div></div>';
+    }).join('')+'</div>';
     return html;
   }
   if(name==='mcp'){
@@ -1903,6 +1913,23 @@ document.addEventListener('DOMContentLoaded',function(){
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-unpin'){
       fetch('/api/sites/unpin',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({name:target.getAttribute('data-name')})}).then(function(){loadTab('market');}).catch(function(){});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mkt-backup-now'){
+      fetch('/api/backup',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:'{}'}).then(function(r){return r.json();}).then(function(d){
+        addLog(d.ok?('Backup ok: '+(d.files||[]).length+' files, '+(d.kb||0)+' KB'):('Backup failed: '+(d.error||'unknown')),'system');
+        loadTab('market');
+      }).catch(function(){addLog('Backup request failed.','error');});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mkt-restore'){
+      var bfile=target.getAttribute('data-name')||'';
+      if(bfile&&window.confirm('Restore '+bfile+'?\n\nCurrent memory and keys are snapshotted first, so nothing is lost.')){
+        fetch('/api/backup/restore',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({file:bfile,confirm:true})}).then(function(r){return r.json();}).then(function(d){
+          addLog(d.ok?('Restored '+(d.restored||[]).join(', ')+' from '+bfile):('Restore failed: '+(d.error||'unknown')),'system');
+          loadTab('market');
+        }).catch(function(){addLog('Restore request failed.','error');});
+      }
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-plugins-reload'){
       fetch('/api/plugins/reload',{method:'POST'}).then(function(){loadTab('market');}).catch(function(){});

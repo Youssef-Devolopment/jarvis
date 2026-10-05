@@ -36,6 +36,7 @@ def main():
     print(f"  Voice   : {s.voice_name}  (British)")
     print(f"  Mood    : {moods.current_name()}")
     print(f"  Memory  : {len(memory.all_facts())} facts on file")
+    print(f"  Mode    : {'DEV (debug on)' if getattr(s, 'debug', False) else 'production'}")
     print(f"  Logs    : logs/jarvis.log\n")
 
     # Pre-warm browser in background so first search is instant

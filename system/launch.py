@@ -23,7 +23,8 @@ IS_WIN = platform.system() == "Windows"
 SAFE_INSTANT = {
     "notepad.exe", "calc.exe", "mspaint.exe", "explorer.exe",
     "taskmgr.exe", "control.exe", "msedge.exe", "chrome.exe",
-    "brave.exe", "firefox.exe",
+    "brave.exe", "firefox.exe", "osk.exe", "charmap.exe",
+    "magnify.exe", "msinfo32.exe", "resmon.exe",
 }
 
 ALIASES = {
@@ -41,6 +42,26 @@ ALIASES = {
     "notion": "Notion.exe", "slack": "slack.exe", "zoom": "Zoom.exe",
     "obsidian": "obsidian.exe", "everything": "Everything.exe",
     "snipping tool": "snippingtool.exe", "snip": "snippingtool.exe",
+    # --- wider native coverage (uninstalled aliases fall through to
+    # Start Menu / PATH / App Paths instead of dead-ending) ---
+    "7zip": "7zFM.exe", "7-zip": "7zFM.exe", "winrar": "WinRAR.exe",
+    "word": "WINWORD.EXE", "excel": "EXCEL.EXE",
+    "powerpoint": "POWERPNT.EXE", "outlook": "OUTLOOK.EXE",
+    "teams": "ms-teams.exe", "github desktop": "GitHubDesktop.exe",
+    "blender": "blender.exe", "gimp": "gimp.exe",
+    "pycharm": "pycharm64.exe", "intellij": "idea64.exe",
+    "android studio": "studio64.exe", "visual studio": "devenv.exe",
+    "postman": "Postman.exe", "signal": "Signal.exe",
+    "sticky notes": "StickyNotes.exe", "remote desktop": "mstsc.exe",
+    "regedit": "regedit.exe", "registry editor": "regedit.exe",
+    "media player": "wmplayer.exe", "windows media player": "wmplayer.exe",
+    "disk cleanup": "cleanmgr.exe", "magnifier": "magnify.exe",
+    "on-screen keyboard": "osk.exe", "osk": "osk.exe",
+    "character map": "charmap.exe", "charmap": "charmap.exe",
+    "system information": "msinfo32.exe", "resource monitor": "resmon.exe",
+    "performance monitor": "perfmon.exe", "wordpad": "wordpad.exe",
+    "epic games": "EpicGamesLauncher.exe", "epic": "EpicGamesLauncher.exe",
+    "obs studio": "obs64.exe", "vlc media player": "vlc.exe",
 }
 
 
@@ -140,7 +161,16 @@ def resolve_app(name: str) -> dict:
         if uri:
             return {"status": "found", "target": uri, "display": name}
     if key in ALIASES:
-        return {"status": "found", "target": ALIASES[key], "display": name}
+        target = ALIASES[key]
+        # Trust URIs (ms-settings:) and anything that actually
+        # resolves; a dead alias (app uninstalled) must fall
+        # through to Start Menu / PATH / App Paths below instead
+        # of launching a target that cannot exist.
+        if (":" in target or shutil.which(target)
+                or (target.lower().endswith(".exe")
+                    and _app_paths(target))):
+            return {"status": "found", "target": target,
+                    "display": name}
     idx = _start_menu_index()
     if key in idx:
         return {"status": "found", "target": idx[key], "display": name}

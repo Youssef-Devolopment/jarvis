@@ -135,6 +135,12 @@ class ChipsTableTests(unittest.TestCase):
         self.assertEqual(fills["✕ CLOSE"], "close ")
         self.assertEqual(fills["✎ NOTE"], "remember: ")
 
+    def test_header_refresh_is_dynamic(self):
+        # pump ticks ~80ms — 125 ticks ≈ 10s, so mood/model changes
+        # surface quickly instead of a stale 30s header.
+        from system import overlay
+        self.assertLessEqual(overlay.REFRESH_TICKS, 150)
+
 
 if __name__ == "__main__":
     unittest.main()

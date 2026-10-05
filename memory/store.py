@@ -75,6 +75,19 @@ def _get_conn() -> sqlite3.Connection:
     return _conn
 
 
+def close_conn() -> None:
+    """Close the shared connection so the DB file can be replaced
+    (backup restore). Reopens lazily on next use."""
+    global _conn
+    with _lock:
+        if _conn is not None:
+            try:
+                _conn.close()
+            except Exception:
+                pass
+            _conn = None
+
+
 def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
