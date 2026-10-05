@@ -75,17 +75,35 @@ def confirm(question: str, timeout: int = 120) -> bool:
     return answer["yes"]
 
 
-def toast(title: str, message: str = "", duration: int = 4):
+def alert(title: str, message: str = "") -> bool:
+    """A finished background job reaching you: desktop toast AND a
+    HUD flash when the deck is already open.
+
+    The HUD pulse is best-effort (overlay may be closed or not yet
+    started) — the toast is the guaranteed channel.
+    """
+    shown = toast(title, message or "")
+    try:
+        from system import overlay
+        text = f"{title} — {message}" if message else title
+        overlay.notice(text[:70])
+    except Exception as exc:
+        log.debug("HUD notice skipped: %s", exc)
+    return shown
+
+
+def toast(title: str, message: str = "", duration: int = 4) -> bool:
     """Show a native Windows notification (simple wrapper).
 
     Prefers windows_toasts via notify(); falls back to a PowerShell
     toast when the library is missing. duration is best-effort.
+    Returns True when a toast was handed to the OS.
     """
     if notify(title, message or ""):
-        return
+        return True
     if platform.system() != "Windows":
         log.info("[notify] %s — %s", title, message)
-        return
+        return False
     try:
         import subprocess
         ps = (
@@ -104,6 +122,8 @@ def toast(title: str, message: str = "", duration: int = 4):
         subprocess.Popen(["powershell", "-NoProfile", "-Command", ps],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        return True
     except Exception as exc:
         log.debug("PowerShell toast failed: %s", exc)
         log.info("[notify] %s — %s", title, message)
+        return False

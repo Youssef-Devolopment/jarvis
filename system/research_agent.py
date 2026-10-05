@@ -326,6 +326,15 @@ def _run_job(jid: str, topic: str, kwargs: dict) -> None:
         if jid in _jobs:
             _jobs[jid]["status"] = "done"
             _jobs[jid]["result"] = res
+    try:
+        from system import notify
+        if res.get("ok"):
+            notify.alert("Research ready", str(topic)[:100])
+        else:
+            notify.alert("Research failed",
+                         str(res.get("error") or topic)[:120])
+    except Exception:
+        pass
 
 
 def job_status(jid: str) -> dict | None:

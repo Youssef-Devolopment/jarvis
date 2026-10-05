@@ -23,7 +23,7 @@ def _loop():
                     log.warning("Reminder speech failed: %s", exc)
                 try:
                     from system import notify
-                    notify.toast("JARVIS Reminder", r["text"][:200])
+                    notify.alert("JARVIS Reminder", r["text"][:200])
                 except Exception:
                     pass
                 mark_reminder_fired(r["id"])

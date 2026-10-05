@@ -8,15 +8,20 @@ log = get_logger(__name__)
 
 
 def _speak(msg):
+    spoken = False
     try:
         from voice import speak_async
         speak_async(msg)
-        return
+        spoken = True
     except Exception as exc:
         log.warning("Timer speech failed: %s", exc)
     try:
         from system import notify
-        notify.toast("JARVIS Timer", msg)
+        if spoken:
+            from system import overlay
+            overlay.notice(msg[:70])        # flash the open HUD only
+        else:
+            notify.alert("JARVIS Timer", msg)   # toast + HUD pulse
     except Exception as exc:
         log.warning("Timer alert failed: %s", exc)
 

@@ -44,5 +44,25 @@ class CallToolTests(unittest.TestCase):
         self.assertIn("not running", res)
 
 
+class StopServerTests(unittest.TestCase):
+    def test_stop_unknown_returns_false(self):
+        from mcp import runtime
+        self.assertFalse(runtime.stop_server("definitely-not-running"))
+
+    def test_is_running_and_names(self):
+        from mcp import runtime
+        self.assertFalse(runtime.is_running("definitely-not-running"))
+        self.assertIsInstance(runtime.running_names(), list)
+        self.assertNotIn("definitely-not-running", runtime.running_names())
+
+    def test_stop_drops_handle_without_loop(self):
+        from mcp import runtime
+        handle = {"loop": None}
+        with mock.patch.object(runtime, "_servers", {"fake": handle}):
+            self.assertTrue(runtime.is_running("fake"))
+            self.assertTrue(runtime.stop_server("fake"))
+            self.assertFalse(runtime.is_running("fake"))
+
+
 if __name__ == "__main__":
     unittest.main()

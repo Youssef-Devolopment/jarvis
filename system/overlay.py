@@ -66,6 +66,48 @@ _lock = threading.Lock()
 
 # ----- SSE stitching (pure — unit-tested) ---------------------------------
 _TEXT_KEYS = ("delta", "reply", "text", "message", "content")
+_DONE = object()                       # sentinel: end of stream
+
+
+def _sse_piece(raw) -> object:
+    """One SSE line -> reply piece, '[error] ...', _DONE, or None.
+
+    None means "metadata / not a reply" (route, reasoning, tool_call…).
+    """
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8", "replace")
+    line = raw.strip() if isinstance(raw, str) else str(raw).strip()
+    if not line.startswith("data:"):
+        return None
+    payload = line[5:].strip()
+    if payload == "[DONE]":
+        return _DONE
+    try:
+        obj = json.loads(payload)
+    except Exception:
+        return payload                  # plain text chunk
+    if isinstance(obj, dict):
+        err = obj.get("error")
+        if err:
+            return "[error] " + str(err)
+        for key in _TEXT_KEYS:
+            v = obj.get(key)
+            if isinstance(v, str) and v:
+                return v
+        return None
+    if isinstance(obj, str) and obj:
+        return obj
+    return None
+
+
+def _stream_from(lines):
+    """Yield reply pieces from an SSE response (any line iterable)."""
+    for raw in lines:
+        piece = _sse_piece(raw)
+        if piece is _DONE:
+            return
+        if piece:
+            yield piece
 
 
 def stitch_sse(lines) -> str:
@@ -76,34 +118,7 @@ def stitch_sse(lines) -> str:
     never masquerade as "(no reply)"). Stops at [DONE]; ignores
     route/reasoning/tool_call/tool_result metadata.
     """
-    parts: list[str] = []
-    for raw in lines:
-        if isinstance(raw, (bytes, bytearray)):
-            raw = raw.decode("utf-8", "replace")
-        line = raw.strip() if isinstance(raw, str) else str(raw).strip()
-        if not line.startswith("data:"):
-            continue
-        payload = line[5:].strip()
-        if payload == "[DONE]":
-            break
-        try:
-            obj = json.loads(payload)
-        except Exception:
-            parts.append(payload)          # plain text chunk
-            continue
-        if isinstance(obj, dict):
-            err = obj.get("error")
-            if err:
-                parts.append("[error] " + str(err))
-                continue
-            for key in _TEXT_KEYS:
-                v = obj.get(key)
-                if isinstance(v, str) and v:
-                    parts.append(v)
-                    break
-        elif isinstance(obj, str) and obj:
-            parts.append(obj)
-    return "".join(parts).strip()
+    return "".join(_stream_from(lines)).strip()
 
 
 # ----- server I/O (worker threads only) -----------------------------------
@@ -126,21 +141,26 @@ def _post_json(path: str, body: dict, timeout: int = 60) -> dict:
         return json.loads(r.read().decode("utf-8") or "{}")
 
 
-def _command(text: str) -> str:
+def _command_stream(text: str):
+    """Yield reply pieces from /api/command as they arrive (live)."""
     req = urllib.request.Request(
         _base_url() + "/api/command",
         data=json.dumps({"text": text, "session": "overlay"}).encode("utf-8"),
         headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=90) as r:
-            return stitch_sse(r) or "(no reply)"
+            yield from _stream_from(r)
     except urllib.error.HTTPError as exc:
         try:
             detail = json.loads(exc.read().decode("utf-8", "replace"))
             msg = detail.get("detail") or detail.get("type") or str(exc)
         except Exception:
             msg = str(exc)
-        return f"[error] server said: {msg}"
+        yield f"[error] server said: {msg}"
+
+
+def _command(text: str) -> str:
+    return "".join(_command_stream(text)).strip() or "(no reply)"
 
 
 def _listen() -> str:
@@ -474,6 +494,18 @@ def _run() -> None:
             except Exception:
                 pass
 
+        notice_ticks = {"n": 0}
+
+        def _notice(msg):
+            """Background-job ping: flash status + dot (only when up)."""
+            try:
+                if not _state["visible"]:
+                    return
+                set_status(("\u23f0 " + str(msg))[:70], GOOD)
+                notice_ticks["n"] = 12       # ~1s green flash
+            except Exception:
+                pass
+
         def set_reply(text, color=TEXT):
             type_gen["n"] += 1            # cancel any in-flight typing
             try:
@@ -557,14 +589,19 @@ def _run() -> None:
                 _apply_mode(True)
             set_busy(True)
             set_reply("")
+            _state["streaming"] = False    # new round — first delta re-clears
             set_status("thinking\u2026", BUSY)
 
             def work():
+                pieces = []
                 try:
-                    reply_txt = _command(text)
+                    for piece in _command_stream(text):
+                        pieces.append(piece)
+                        _actions.put(("delta", piece))
+                    full = "".join(pieces).strip()
+                    _actions.put(("result", full or "(no reply)"))
                 except Exception as exc:
-                    reply_txt = f"[error] {exc}"
-                _actions.put(("result", reply_txt))
+                    _actions.put(("result", f"[error] {exc}"))
             threading.Thread(target=work, daemon=True,
                              name="overlay-cmd").start()
 
@@ -742,10 +779,36 @@ def _run() -> None:
             _fade_out()
 
         # ---------- queue pump (never dies) ----------
+        def on_delta(piece):
+            """Append a live reply piece (first delta clears the well)."""
+            try:
+                reply.configure(state="normal")
+                if not _state.get("streaming"):
+                    reply.delete("1.0", "end")
+                    reply.tag_configure("body", foreground=TEXT)
+                    _state["streaming"] = True
+                reply.insert("end", piece, "body")
+                reply.see("end")
+                reply.configure(state="disabled")
+            except Exception:
+                pass
+
         def on_result(text, color=TEXT):
             set_busy(False)
-            type_out(text, color)
             is_err = text.startswith("[error]")
+            if _state.get("streaming"):
+                # Live deltas already drew the reply — finalize only.
+                _state["streaming"] = False
+                try:
+                    if is_err and text:
+                        reply.tag_configure("err", foreground=DANGER)
+                        reply.tag_add("err", "1.0", "end")
+                    cv.itemconfig(copy_id,
+                                  state="normal" if text else "hidden")
+                except Exception:
+                    pass
+            else:
+                type_out(text, color)     # nothing streamed (fast path)
             set_status(("error \u00b7 " if is_err else "done \u00b7 ")
                        + "Alt+Space to recall",
                        DANGER if is_err else DIM)
@@ -764,7 +827,11 @@ def _run() -> None:
                 while True:
                     kind, payload = _actions.get_nowait()
                     try:
-                        if kind == "result":
+                        if kind == "delta":
+                            on_delta(payload)
+                        elif kind == "notice":
+                            _notice(payload)
+                        elif kind == "result":
                             on_result(payload,
                                       DANGER if payload.startswith("[error]")
                                       else TEXT)
@@ -805,8 +872,16 @@ def _run() -> None:
             try:
                 tick["n"] += 1
                 if _state["visible"]:
+                    if notice_ticks["n"] > 0:
+                        # green flash for a finished background job
+                        notice_ticks["n"] -= 1
+                        on = notice_ticks["n"] % 2 == 0
+                        cv.itemconfig(dot_core,
+                                      fill=GOOD if on else "#B9FFD9")
+                        cv.itemconfig(dot_halo,
+                                      outline=GLOW if on else EDGE_DIM)
                     # status-dot pulse while thinking (~320ms cadence)
-                    if _state.get("busy") and tick["n"] % 4 == 0:
+                    elif _state.get("busy") and tick["n"] % 4 == 0:
                         halo = (BUSY if cv.itemcget(dot_halo,
                                                     "outline") == GLOW
                                 else GLOW)
@@ -888,3 +963,13 @@ def show() -> None:
 def hide() -> None:
     if _state["root"]:
         _actions.put(("hide", ""))
+
+
+def notice(text: str) -> None:
+    """Flash the HUD status for a finished background job.
+
+    Only touches an ALREADY-VISIBLE overlay (never forces it on — the
+    desktop toast is the reach when the deck is closed).
+    """
+    if _state["root"] and _state["visible"]:
+        _actions.put(("notice", str(text)))

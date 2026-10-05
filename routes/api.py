@@ -971,13 +971,15 @@ def library_catalog():
 
 @bp.post("/library/skill")
 def library_skill_install():
-    """One click: install a bundled skill pack (hot-loads, no restart)."""
+    """One click: install a pack (hot-loads, no restart), or remove
+    it with {"remove": true}. Body: {"id": str, "remove": bool}"""
     from system import library
     d = request.get_json(silent=True) or {}
     pid = (d.get("id") or "").strip()
     if not pid:
         raise ValidationError("Missing 'id'.")
-    r = library.install_skill_pack(pid)
+    r = (library.uninstall_skill_pack(pid) if d.get("remove")
+         else library.install_skill_pack(pid))
     if r.get("error"):
         raise ValidationError(r["error"])
     return jsonify(r)
@@ -985,14 +987,28 @@ def library_skill_install():
 
 @bp.post("/library/mcp")
 def library_mcp_add():
-    """One click: add a catalog MCP server (best-effort auto-start).
-    Body: {"id": str, "start": bool=true}"""
+    """One click: add a catalog MCP server (best-effort auto-start),
+    or drop it with {"remove": true}.
+    Body: {"id": str, "start": bool=true, "remove": bool=false}"""
     from system import library
     d = request.get_json(silent=True) or {}
     pid = (d.get("id") or "").strip()
     if not pid:
         raise ValidationError("Missing 'id'.")
-    r = library.add_mcp_entry(pid, start=bool(d.get("start", True)))
+    r = (library.remove_mcp_entry(pid) if d.get("remove")
+         else library.add_mcp_entry(pid, start=bool(d.get("start", True))))
+    if r.get("error"):
+        raise ValidationError(r["error"])
+    return jsonify(r)
+
+
+@bp.post("/library/import")
+def library_import():
+    """Import user-authored packs (JSON). Body: a pack object, a
+    list, or {"packs": [...]} — each needs id + code."""
+    from system import library
+    d = request.get_json(silent=True) or {}
+    r = library.import_packs(d)
     if r.get("error"):
         raise ValidationError(r["error"])
     return jsonify(r)
@@ -1134,7 +1150,12 @@ def mcp_start_route():
 
 @bp.post("/mcp/stop")
 def mcp_stop_route():
+    """Body: {"name": optional} — stop one server, or all when omitted."""
     from mcp import runtime
+    d = request.get_json(silent=True) or {}
+    name = (d.get("name") or "").strip()
+    if name:
+        return jsonify({"ok": runtime.stop_server(name), "server": name})
     runtime.shutdown_all()
     return jsonify({"ok": True})
 

@@ -278,6 +278,46 @@ def call_tool(server_name: str, tool_name: str, arguments: dict,
     return result_box.get("value", "(no output)")
 
 
+def is_running(name: str) -> bool:
+    """True when the named server has a live handle."""
+    with _lock:
+        return bool(_servers.get(name))
+
+
+def running_names() -> list:
+    with _lock:
+        return [n for n, h in _servers.items() if h]
+
+
+def stop_server(name: str) -> bool:
+    """Stop ONE running server (config stays). Returns True if it was up."""
+    with _lock:
+        h = _servers.pop(name, None)
+    if not h:
+        return False
+    try:
+        loop = h.get("loop")
+
+        async def _close():
+            await h["session_cm"].__aexit__(None, None, None)
+            await h["transport_cm"].__aexit__(None, None, None)
+
+        if loop is not None and not loop.is_closed():
+            if loop.is_running():
+                fut = asyncio.run_coroutine_threadsafe(_close(), loop)
+                try:
+                    fut.result(timeout=10)
+                except Exception:
+                    pass
+            else:
+                loop.run_until_complete(asyncio.wait_for(_close(), 10))
+        log.info("MCP '%s' stopped", name)
+        return True
+    except Exception as exc:
+        log.debug("MCP stop '%s' failed: %s", name, exc)
+        return True        # handle already dropped — treated as stopped
+
+
 def shutdown_all():
     with _lock:
         for name, h in list(_servers.items()):

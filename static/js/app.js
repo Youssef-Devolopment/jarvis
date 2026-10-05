@@ -1066,25 +1066,41 @@ function renderTab(name,data){
   if(name==='library'){
     var lsk=data.skills||[],lmcp=data.mcp||[];
     var html='<div style="margin:0 0 10px"><input id="lib-search" placeholder="Search the library\u2026" style="width:100%;background:#000;color:#fff;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:var(--mono);font-size:11px;box-sizing:border-box"></div>';
+    html+='<div class="set-list" style="margin-bottom:12px"><div class="set-row"><div class="label">Import your own pack<small>JSON: {"id","name","description","code"} or {"packs":[\u2026]} \u2014 validated before it enters</small></div>'+
+      '<div class="actions"><input type="file" id="lib-import-file" accept=".json,application/json" style="max-width:150px;font-size:9px;color:var(--dim)">'+
+      '<button class="dbtn" data-action="lib-import">IMPORT</button></div></div></div>';
     html+='<div style="margin:4px 0 8px;color:var(--amber);font-size:9px;letter-spacing:2px">SKILL PACKS \u2014 ONE CLICK ('+lsk.length+')</div><div class="set-list" style="margin-bottom:12px">';
     if(!lsk.length)html+='<div class="set-row"><div class="label">No packs found<small>library/catalog.json missing?</small></div></div>';
     html+=lsk.map(function(s){
       var text=((s.name||s.id||'')+' '+(s.description||'')+' '+(s.tags||[]).join(' ')).toLowerCase();
+      var btn=s.installed
+        ? '<button class="dbtn on" data-action="lib-remove" data-kind="skill" data-id="'+esc(s.id||'')+'">REMOVE</button>'
+        : '<button class="dbtn" data-action="lib-install" data-id="'+esc(s.id||'')+'">INSTALL</button>';
       return '<div class="set-row lib-row" data-text="'+esc(text).replace(/"/g,'&quot;')+'"><div class="label">'+esc(s.name||s.id)+
-        '<small>'+esc((s.description||'').slice(0,90))+'</small></div>'+
-        '<div class="actions"><button class="dbtn'+(s.installed?' on':'')+'"'+(s.installed?' disabled':'')+' data-action="lib-install" data-id="'+esc(s.id||'')+'">'+(s.installed?'ADDED':'INSTALL')+'</button></div></div>';
+        '<small>'+esc((s.description||'').slice(0,90))+(s.imported?' \u00b7 imported':'')+'</small></div>'+
+        '<div class="actions">'+btn+'</div></div>';
     }).join('')+'</div>';
     html+='<div style="margin:4px 0 8px;color:var(--amber);font-size:9px;letter-spacing:2px">MCP SERVERS \u2014 ONE CLICK ('+lmcp.length+')</div><div class="set-list">';
     if(!lmcp.length)html+='<div class="set-row"><div class="label">No servers found<small>library/catalog.json missing?</small></div></div>';
     html+=lmcp.map(function(m){
       var env=m.env||{};
       var keys=Object.keys(env);
-      var needKey=keys.length>0&&keys.some(function(k){return !String(env[k]||'').trim();});
+      var needKey=!!m.needs_key||(keys.length>0&&keys.some(function(k){return !String(env[k]||'').trim();}));
       var official=(m.tags||[]).indexOf('official')>=0;
+      var status=needKey?' \u00b7 needs API key':(m.running?' \u00b7 running':(m.installed?' \u00b7 stopped':''));
       var text=((m.name||m.id||'')+' '+(m.description||'')+' '+(m.tags||[]).join(' ')).toLowerCase();
+      var btn;
+      if(!m.installed){
+        btn='<button class="dbtn" data-action="lib-add-mcp" data-id="'+esc(m.id||'')+'">ADD</button>';
+      }else{
+        btn=(m.running
+          ? '<button class="dbtn on" data-action="lib-stop-mcp" data-name="'+esc(m.name||'')+'">STOP</button>'
+          : '<button class="dbtn" data-action="lib-start-mcp" data-name="'+esc(m.name||'')+'">START</button>')+
+          '<button class="dbtn on" data-action="lib-remove" data-kind="mcp" data-id="'+esc(m.id||'')+'">REMOVE</button>';
+      }
       return '<div class="set-row lib-row" data-text="'+esc(text).replace(/"/g,'&quot;')+'"><div class="label">'+esc(m.name||m.id)+
-        '<small>'+esc((m.description||'').slice(0,90))+(needKey?' \u00b7 needs API key':'')+(official?' \u00b7 official':'')+'</small></div>'+
-        '<div class="actions"><button class="dbtn'+(m.installed?' on':'')+'"'+(m.installed?' disabled':'')+' data-action="lib-add-mcp" data-id="'+esc(m.id||'')+'">'+(m.installed?'ADDED':'ADD')+'</button></div></div>';
+        '<small>'+esc((m.description||'').slice(0,90))+status+(official?' \u00b7 official':'')+'</small></div>'+
+        '<div class="actions">'+btn+'</div></div>';
     }).join('')+'</div>';
     return html;
   }
@@ -1997,6 +2013,54 @@ document.addEventListener('DOMContentLoaded',function(){
         addLog(msg,d.ok?'system':'error');
         loadTab('library');
       }).catch(function(){addLog('MCP add request failed.','error');loadTab('library');});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='lib-remove'){
+      var rid=target.getAttribute('data-id');
+      var rkind=target.getAttribute('data-kind')||'skill';
+      target.textContent='\u2026';
+      var rurl=(rkind==='mcp')?'/api/library/mcp':'/api/library/skill';
+      fetch(rurl,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:rid,remove:true})}).then(function(r){return r.json();}).then(function(d){
+        var msg;
+        if(rkind==='mcp'){
+          msg=d.ok?('Removed MCP server: '+(d.server||rid)):('MCP remove failed: '+(d.detail||d.error||'unknown'));
+        }else{
+          msg=d.ok?('Removed pack: '+rid+' \u2014 '+((d.unregistered||[]).length)+' skills unregistered'+(d.file_deleted?', file deleted':''))
+                  :('Remove failed: '+(d.detail||d.error||'unknown'));
+        }
+        addLog(msg,d.ok?'system':'error');
+        loadTab('library');
+      }).catch(function(){addLog('Remove request failed.','error');loadTab('library');});
+    }
+    if(target.getAttribute&&(target.getAttribute('data-action')==='lib-start-mcp'
+        ||target.getAttribute('data-action')==='lib-stop-mcp')){
+      var sname=target.getAttribute('data-name');
+      var sstart=target.getAttribute('data-action')==='lib-start-mcp';
+      target.textContent='\u2026';
+      fetch(sstart?'/api/mcp/start':'/api/mcp/stop',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(sstart?{name:sname}:{name:sname})}).then(function(r){return r.json();}).then(function(d){
+        addLog((sstart?'Started: ':'Stopped: ')+sname+(d.ok?'':' \u2014 '+(d.error||'failed')),d.ok?'system':'error');
+        loadTab('library');
+      }).catch(function(){addLog('Server request failed.','error');loadTab('library');});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='lib-import'){
+      var lfile=document.getElementById('lib-import-file');
+      if(!lfile||!lfile.files||!lfile.files[0]){addLog('Pick a pack .json file first.','error');return;}
+      var lr=new FileReader();
+      lr.onload=function(){
+        var parsed=null;
+        try{parsed=JSON.parse(lr.result);}catch(e){addLog('Not valid JSON: '+e.message,'error');return;}
+        fetch('/api/library/import',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(parsed)}).then(function(r){return r.json();}).then(function(d){
+          var okN=d.imported||0;
+          var errs=(d.results||[]).filter(function(x){return x.error;})
+            .map(function(x){return (x.id||'?')+': '+x.error;});
+          var msg='Imported '+okN+' pack(s).'+(errs.length?' Rejected \u2014 '+errs.join('; '):' (hit INSTALL to add)');
+          addLog(msg,okN?'system':'error');
+          loadTab('library');
+        }).catch(function(){addLog('Import request failed.','error');loadTab('library');});
+      };
+      lr.readAsText(lfile.files[0]);
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='set-hour'){      var inp=document.getElementById('input-briefing-hour');
       var h=inp?parseInt(inp.value,10):8;

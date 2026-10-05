@@ -13,7 +13,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 class CatalogTests(unittest.TestCase):
     def test_catalog_loads_unique_ids(self):
         cat = L.load_catalog()
-        self.assertEqual(len(cat["skills"]), 13)
+        self.assertEqual(len(cat["skills"]), 18)
         self.assertGreaterEqual(len(cat["mcp"]), 10)
         ids = [e["id"] for e in cat["skills"]]
         self.assertEqual(len(ids), len(set(ids)))
@@ -54,9 +54,13 @@ class CatalogTests(unittest.TestCase):
 
     def test_catalog_flags_are_bools(self):
         d = L.catalog()
-        self.assertEqual(len(d["skills"]), 13)
+        self.assertEqual(len(d["skills"]), 18)
         for s in d["skills"] + d["mcp"]:
             self.assertIsInstance(s["installed"], bool, s.get("id"))
+        for m in d["mcp"]:
+            self.assertIsInstance(m["running"], bool, m.get("id"))
+            self.assertIsInstance(m["needs_key"], bool, m.get("id"))
+            self.assertNotIn("code", m)
 
 
 class InstallTests(unittest.TestCase):
@@ -139,7 +143,7 @@ class LibraryApiTests(unittest.TestCase):
         r = self.__class__.client.get("/api/library")
         self.assertEqual(r.status_code, 200)
         d = r.get_json()
-        self.assertEqual(len(d["skills"]), 13)
+        self.assertEqual(len(d["skills"]), 18)
         self.assertGreaterEqual(len(d["mcp"]), 10)
         self.assertIn("installed", d["skills"][0])
         self.assertIn("installed", d["mcp"][0])
@@ -164,6 +168,126 @@ class LibraryApiTests(unittest.TestCase):
         r = self.__class__.client.post("/api/library/mcp",
                                        json={"id": "not-a-server"})
         self.assertEqual(r.status_code, 400)
+
+
+class UninstallTests(unittest.TestCase):
+    def test_unknown_pack_errors(self):
+        self.assertIn("error", L.uninstall_skill_pack("nope_not_real"))
+
+    def test_uninstall_not_installed_is_idempotent(self):
+        r = L.uninstall_skill_pack("word_counter")
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["unregistered"], [])
+        self.assertFalse(r["file_deleted"])
+
+    def test_uninstall_deletes_installed_file(self):
+        # simulate a real install (restores anything pre-existing)
+        f = _ROOT / "plugins" / "word_counter.py"
+        orig = f.read_text(encoding="utf-8") if f.exists() else None
+        f.write_text("# scratch — created by test\n", encoding="utf-8")
+        try:
+            r = L.uninstall_skill_pack("word_counter")
+            self.assertTrue(r["ok"])
+            self.assertTrue(r["file_deleted"])
+            self.assertFalse(f.exists())
+        finally:
+            if orig is not None:
+                f.write_text(orig, encoding="utf-8")
+            elif f.exists():
+                f.unlink()
+
+    def test_remove_unknown_mcp_errors(self):
+        self.assertIn("error", L.remove_mcp_entry("nope_not_real"))
+
+    def test_remove_mcp_stops_and_drops(self):
+        fake = {"id": "ab12", "name": "time"}
+        with mock.patch("mcp.manager.all_servers", return_value=[fake]), \
+             mock.patch("mcp.manager.remove_server",
+                        return_value=True) as rm, \
+             mock.patch("mcp.runtime.stop_server",
+                        return_value=True) as st:
+            r = L.remove_mcp_entry("time")
+        self.assertTrue(r["ok"])
+        self.assertTrue(r["was_running"])
+        self.assertTrue(r["removed"])
+        st.assert_called_once_with("time")
+        rm.assert_called_once_with("ab12")
+
+    def test_remove_mcp_not_configured_still_ok(self):
+        with mock.patch("mcp.manager.all_servers", return_value=[]), \
+             mock.patch("mcp.runtime.stop_server", return_value=False):
+            r = L.remove_mcp_entry("time")
+        self.assertTrue(r["ok"])
+        self.assertFalse(r["was_running"])
+        self.assertFalse(r["removed"])
+
+
+_PROBE_SRC = (
+    '"""Imported test pack."""\n'
+    "from skills.registry import register\n"
+    "\n"
+    '@register("lib_import_probe",\n'
+    '          [r"^import probe$"],\n'
+    '          "probe")\n'
+    "def skill_probe(text, match):\n"
+    '    return "probe"\n'
+)
+
+
+class ImportTests(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        tmp = Path(tempfile.mkdtemp()) / "user_catalog.json"
+        patcher = mock.patch.object(L, "_USER_CATALOG", tmp)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.tmp = tmp
+
+    def test_valid_pack_imported_and_listed(self):
+        r = L.import_packs({"id": "lib_probe", "name": "Probe",
+                            "description": "d", "code": _PROBE_SRC})
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["imported"], 1)
+        self.assertTrue(r["results"][0]["ok"])
+        self.assertTrue(self.tmp.exists())
+        d = L.catalog()
+        row = next((s for s in d["skills"] if s["id"] == "lib_probe"), None)
+        self.assertIsNotNone(row)
+        self.assertIsNone(row["code"])       # code never reaches the UI
+        self.assertTrue(row.get("imported"))
+        self.assertFalse(row["installed"])   # listed, not auto-installed
+
+    def test_bad_id_rejected(self):
+        r = L.import_packs({"id": "Bad-ID!", "code": _PROBE_SRC})
+        self.assertEqual(r["imported"], 0)
+        self.assertIn("id", r["results"][0]["error"])
+
+    def test_bad_code_rejected(self):
+        r = L.import_packs({"id": "lib_evil",
+                            "code": "import os\nopen('x')\n"})
+        self.assertEqual(r["imported"], 0)
+        self.assertIn("rejected", r["results"][0]["error"])
+
+    def test_duplicate_shipped_id_rejected(self):
+        r = L.import_packs({"id": "word_counter", "code": _PROBE_SRC})
+        self.assertEqual(r["imported"], 0)
+        self.assertIn("already", r["results"][0]["error"])
+
+    def test_list_form_and_reimport_dupe(self):
+        r1 = L.import_packs({"packs": [{"id": "lib_probe",
+                                        "code": _PROBE_SRC}]})
+        self.assertEqual(r1["imported"], 1)
+        r2 = L.import_packs({"packs": [{"id": "lib_probe",
+                                        "code": _PROBE_SRC}]})
+        self.assertEqual(r2["imported"], 0)
+        self.assertIn("already", r2["results"][0]["error"])
+
+    def test_uninstall_imported_drops_record(self):
+        L.import_packs({"id": "lib_probe", "code": _PROBE_SRC})
+        r = L.uninstall_skill_pack("lib_probe")
+        self.assertTrue(r["ok"])
+        ids = [e["id"] for e in L._load_user_skills()]
+        self.assertNotIn("lib_probe", ids)
 
 
 if __name__ == "__main__":

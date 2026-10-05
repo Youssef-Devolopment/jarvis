@@ -39,6 +39,11 @@ def _launch(task: str) -> str:
             speak_async(msg)
         except Exception as exc:
             log.warning("Result speech failed: %s", exc)
+        try:
+            from system import overlay
+            overlay.notice(msg[:70])
+        except Exception:
+            pass
 
     run_goal_async(task, on_done=_finished)
     return "Working on it, sir — I'll tell you when it's done."

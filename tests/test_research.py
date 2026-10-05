@@ -127,6 +127,10 @@ class LoopTests(unittest.TestCase):
         st._DB_PATH = Path(tempfile.mkdtemp()) / "t.db"
         st._conn = None
         self.tmp = Path(tempfile.mkdtemp())
+        # _run_job alerts on completion — never pop real toasts in tests
+        patcher = mock.patch("system.notify.alert")
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def tearDown(self):
         st._DB_PATH = self._db

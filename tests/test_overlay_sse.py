@@ -142,5 +142,88 @@ class ChipsTableTests(unittest.TestCase):
         self.assertLessEqual(overlay.REFRESH_TICKS, 150)
 
 
+class StreamingTests(unittest.TestCase):
+    """HUD live streaming: pieces reach the deck as they arrive."""
+
+    def test_piece_returns_delta(self):
+        from system.overlay import _sse_piece
+        self.assertEqual(_sse_piece('data: {"delta": "hi"}'), "hi")
+
+    def test_piece_error_rendered(self):
+        from system.overlay import _sse_piece
+        self.assertEqual(_sse_piece('data: {"error": "boom"}'),
+                         "[error] boom")
+
+    def test_piece_metadata_is_none(self):
+        from system.overlay import _sse_piece
+        self.assertIsNone(_sse_piece('data: {"route": "llm"}'))
+        self.assertIsNone(_sse_piece('data: {"reasoning": "hmm"}'))
+        self.assertIsNone(_sse_piece(": keep-alive"))
+        self.assertIsNone(_sse_piece("event: message"))
+
+    def test_piece_done_sentinel(self):
+        from system.overlay import _DONE, _sse_piece
+        self.assertIs(_sse_piece("data: [DONE]"), _DONE)
+
+    def test_piece_plain_text_and_bytes(self):
+        from system.overlay import _sse_piece
+        self.assertEqual(_sse_piece("data: plain chunk"), "plain chunk")
+        self.assertEqual(_sse_piece(b'data: {"delta": "byte"}'), "byte")
+
+    def test_stream_from_yields_in_order_then_stops(self):
+        import io
+        from system.overlay import _stream_from
+        buf = io.BytesIO(
+            b'data: {"delta": "a"}\n'
+            b'data: {"delta": "b"}\n'
+            b"data: [DONE]\n"
+            b'data: {"delta": "after-done"}\n')
+        self.assertEqual(list(_stream_from(buf)), ["a", "b"])
+
+    def test_stream_from_mixed_types(self):
+        from system.overlay import _stream_from
+        lines = ['data: {"delta": "x"}', b'data: {"delta": "y"}']
+        self.assertEqual(list(_stream_from(lines)), ["x", "y"])
+
+    def test_command_stream_reads_live(self):
+        import io
+        from unittest import mock
+        from system import overlay
+        resp = io.BytesIO(b'data: {"delta": "live"}\ndata: [DONE]\n')
+        with mock.patch("urllib.request.urlopen", return_value=resp):
+            out = list(overlay._command_stream("time"))
+        self.assertEqual(out, ["live"])
+
+    def test_command_stream_http_error_is_reply(self):
+        import io
+        import urllib.error
+        from unittest import mock
+        from system import overlay
+        fp = io.BytesIO(b'{"detail": "rate limited"}')
+        err = urllib.error.HTTPError("http://x", 429, "slow down",
+                                     None, fp)
+        with mock.patch("urllib.request.urlopen", side_effect=err):
+            out = list(overlay._command_stream("x"))
+        self.assertEqual(len(out), 1)
+        self.assertIn("server said: rate limited", out[0])
+
+    def test_command_text_joins_stream(self):
+        import io
+        from unittest import mock
+        from system import overlay
+        resp = io.BytesIO(b'data: {"delta": "one "}\n'
+                          b'data: {"delta": "two"}\n'
+                          b"data: [DONE]\n")
+        with mock.patch("urllib.request.urlopen", return_value=resp):
+            self.assertEqual(overlay._command("hi"), "one two")
+
+
+class NoticeTests(unittest.TestCase):
+    def test_notice_without_hud_is_noop(self):
+        # HUD thread never runs in tests — must neither raise nor queue
+        from system import overlay
+        overlay.notice("timer done")
+
+
 if __name__ == "__main__":
     unittest.main()

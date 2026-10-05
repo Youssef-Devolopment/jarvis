@@ -12,7 +12,12 @@
     {"id": "random_pick", "name": "Random Picker", "description": "\"pick between pizza, sushi, tacos\" — let chance decide.", "tags": ["fun"], "file": "random_pick.py"},
     {"id": "json_format", "name": "JSON Formatter", "description": "\"format json {...}\" — pretty-print messy JSON.", "tags": ["dev"], "file": "json_format.py"},
     {"id": "roman_numeral", "name": "Roman Numerals", "description": "\"roman numeral 1987\" — numbers to Roman and back.", "tags": ["math", "fun"], "file": "roman_numeral.py"},
-    {"id": "palindrome", "name": "Palindrome Check", "description": "\"is racecar a palindrome\" — instant answer.", "tags": ["text", "fun"], "file": "palindrome.py"}
+    {"id": "palindrome", "name": "Palindrome Check", "description": "\"is racecar a palindrome\" — instant answer.", "tags": ["text", "fun"], "file": "palindrome.py"},
+    {"id": "caesar_cipher", "name": "Caesar Cipher", "description": "\"caesar 5 hello\" — shift encode, \"decode shift 5\" to reverse.", "tags": ["text", "fun"], "file": "caesar_cipher.py"},
+    {"id": "anagram", "name": "Anagram Check", "description": "\"are silent and listen anagrams\" — instant verdict.", "tags": ["text", "fun"], "file": "anagram.py"},
+    {"id": "weekday", "name": "Weekday Finder", "description": "\"what day is 2026-12-25\" — day of the week for any date.", "tags": ["time"], "file": "weekday.py"},
+    {"id": "prime_check", "name": "Prime Check", "description": "\"is 97 prime\" — with the factor pair when it isn't.", "tags": ["math"], "file": "prime_check.py"},
+    {"id": "leet_speak", "name": "Leetspeak", "description": "\"leet hello\" — 1337 speak on demand.", "tags": ["text", "fun"], "file": "leet_speak.py"}
   ],
   "mcp": [
     {"id": "memory", "name": "memory", "description": "Knowledge-graph persistent memory across sessions.", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-memory"], "auto_start": true, "tags": ["official"]},
