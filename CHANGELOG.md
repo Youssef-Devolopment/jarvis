@@ -4,6 +4,41 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.6.0] — 2026-10-05
+
+Backup story completed, HUD refresh made dynamic, dev mode visible,
+agent loop hardened, and the app catalog widened.
+
+### Added
+- **Backup restore** — the missing half of the backup story:
+  `restore_backup` engine (`POST /api/backup/restore`), voice skill
+  ("restore backup" → preview, "restore confirm" → apply), and a
+  BACKUPS section in the Marketplace (BACK UP + RESTORE per zip).
+  Restore is a two-step confirm; it snapshots current state first,
+  refuses zip-slip and invalid names, closes the live SQLite handle,
+  swaps files atomically, and reopens lazily. Live roundtrip proven.
+- **Dynamic HUD refresh**: header now refreshes ~10s (was ~30s) and
+  immediately after every command, so mood/model changes show at once.
+- **Dev-mode badge**: `/api/info` exposes `dev`; the dashboard brand
+  reads `v1.6.0 · DEV` under `FLASK_DEBUG=1`, and `run.py` prints
+  the mode at boot.
+- **~40 new native app aliases** (Office, 7-Zip, WinRAR, Blender,
+  GIMP, JetBrains, GitHub Desktop, Signal, regedit, mstsc, charmap,
+  magnifier, resmon…) plus 5 more instant-launch safe tools.
+
+### Fixed
+- **Aliases no longer dead-end**: `resolve_app` used to trust an
+  alias unconditionally, so uninstalling the app broke "open X"
+  even when the Start Menu had it. Aliases now verify (URI / PATH /
+  App Paths) and fall through to Start Menu / fuzzy search.
+- **Agent loop**: each sub-task retries once on transient failure
+  (or an empty answer), merge is told how many sub-tasks failed so
+  it answers with what survived, and `run()` never raises.
+
+### Changed
+- 19 new tests (284 total) covering restore roundtrip, zip-slip,
+  alias fall-through, retry, dev flag, refresh cadence.
+
 ## [1.5.1] — 2026-10-05
 
 Full error-and-logic sweep: a systematic audit of every subsystem
