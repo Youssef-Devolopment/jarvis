@@ -4,6 +4,49 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.7.0] — 2026-10-06
+
+Overlay rebuilt from zero as HUD 4.0, a one-click Library for skill
+packs and MCP servers, plus cross-cutting polish.
+
+### Added
+- **LIBRARY tab — one-click installs**: a curated catalog
+  (`library/catalog.json`) of **13 bundled skill packs** (word
+  counter, percent / tip / BMI calculators, date distance, age,
+  ROT13, password generator, coin flip, random picker, JSON
+  formatter, Roman numerals, palindrome check) and **12 MCP
+  servers** (memory, filesystem, everything, time, fetch, git,
+  sqlite, github, brave-search, puppeteer, playwright, postgres).
+  `GET /api/library`, `POST /api/library/skill`,
+  `POST /api/library/mcp` — packs hot-load through the same
+  validator as community plugins (no restart), MCP entries expand
+  `{HOME}`/`{DOCUMENTS}` placeholders, auto-start when they can and
+  clearly defer when an API key is required. The tab has
+  client-side search and per-entry ADDED state.
+- **HUD 4.0 "Glass Command Deck"** — `system/overlay.py` rebuilt
+  from zero: 20px rounded transparent corners with a double bezel
+  and top accent line, a wider 760px deck whose compact input mode
+  expands into a scrollable reply well, live JARVIS header (title,
+  mood · model, version, status dot that pulses amber while
+  thinking and turns red on errors), hover-lit chips, a key-hint
+  footer with COPY, typewriter replies that cancel when superseded,
+  100-entry history, dictation auto-send and header drag. Esc / ✕ /
+  Alt+Space still hide outright while focus-away only dismisses an
+  idle, empty deck.
+- **`secrets` allowed in generated skills** — the validator accepts
+  the crypto-RNG module so password packs can be truly random.
+
+### Fixed
+- **MCP `add_server` accepts list args** — arguments were split on
+  whitespace, breaking any path containing spaces; one-click
+  library entries now pass real argument lists.
+- Plugin template and generator prompt now document the complete
+  allowed-import list (including `time`, `random`, `secrets`).
+
+### Changed
+- 18 new tests (302 total) covering catalog shape, pack validation,
+  install/add flows, placeholder expansion and the library API.
+
 ## [1.6.0] — 2026-10-05
 
 Backup story completed, HUD refresh made dynamic, dev mode visible,
