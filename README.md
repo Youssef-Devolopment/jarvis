@@ -5,7 +5,7 @@
 ![tests](https://img.shields.io/badge/tests-246%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
-Talk to your PC and it obeys: **133 skills, 30 LLM tools, 133 API
+Talk to your PC and it obeys: **132 skills, 30 LLM tools, 133 API
 endpoints.** Open and close apps by name, dictate notes into
 Obsidian, search and read the web, run VSCode and terminal tasks —
 by voice, hotkey, or the `Alt+Space` HUD over any window. No API key?
@@ -129,7 +129,7 @@ a double-fire harmless. Status: `GET /autostart/status`.
 ```
 run.py / server.py / config.py      entry points + settings (.env)
 ai/          LLM client, tools, agents, council backends, integrations
-skills/      133 @register skills (+ skills/auto_generated/)
+skills/      132 @register skills (+ skills/auto_generated/)
 voice/       Groq mic input, Piper/edge-tts output (Ryan)
 memory/      SQLite facts, messages, prefs, outcomes, contacts, …
 moods/       personalities, router, escalation levels, classifier
