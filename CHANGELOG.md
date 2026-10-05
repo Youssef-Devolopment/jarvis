@@ -20,6 +20,17 @@ bump MINOR for big feature batches, PATCH for fixes
   Every action reuses the existing validated endpoints; verified
   live with zero console errors.
 
+### Fixed
+- **Default-mood chat 400s**: the `fast` preset passed a stray
+  string as `temperature`, so every default chat was rejected by
+  the provider. Removed it (0.1/60 back in their fields) plus a
+  regression test pinning numeric provider params on all presets.
+- **Temperature-sensitive models**: new `create_with_temp_fallback`
+  helper retries once without `temperature` on 400/invalid-request
+  rejections; wired into chat streaming, agents, dream summary,
+  reality check, vision and research synthesis. Other errors still
+  fail loudly.
+
 ## [1.4.0] — 2026-10-04
 
 Autonomy + resilience batch: research agent, HUD rebuild, loops
