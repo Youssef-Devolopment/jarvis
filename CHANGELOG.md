@@ -4,6 +4,72 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.12.0] — 2026-10-06
+
+Service lifecycle + failure-path batch: one service registry now
+boots every subsystem in both modes — console and desktop used to
+start DIFFERENT sets (desktop was silently missing reminders, the
+briefing scheduler, dreams, clipboard, time tracker, folder sentinel
+and MCP). Every start is isolated, timed and reported, health gained
+model + dependency rows, and a new failure-path suite proves the
+system degrades cleanly when its parts break. 487 tests, 143 API
+endpoints, 142 shipped skills.
+
+### Added
+- **`system/services.py` — shared service registry** — declarative
+  ServiceSpecs grouped `core` / `background` / `voice` / `browser` /
+  `mcp` / `desktop` with optional pref gates; `boot(mode)` starts the
+  set for that mode and never raises. Each service runs isolated (one
+  crash degrades exactly that row), threaded services report
+  asynchronously, and every result carries a start time in ms. Both
+  `run.py` and the desktop launcher boot through it and log/print a
+  one-line summary before serving.
+- **Desktop boot parity (bug fix)** — desktop mode now starts the
+  background set it never had: reminder loop, daily briefing
+  scheduler, dream scheduler, clipboard watcher, time tracker,
+  folder sentinel and MCP autostart. App-learner warm and overlay
+  pre-warm were folded into the same registry, so console and desktop
+  can no longer drift apart (regression-tested).
+- **Dependency probe** — health reports missing optional packages
+  (playwright, sounddevice, pystray, pynput, pygame, apscheduler,
+  psutil) as an amber `deps` row instead of failing silently at
+  first use.
+- **Model/provider row** — health shows the active model, base-URL
+  host, temperature and extra-provider count.
+- **Failure-path test suite** — `tests/test_failure_paths.py` proves:
+  provider down → structured 502 JSON (never an HTML page), missing
+  key → skills-only hint, corrupt memory DB → JSON 500 with detail,
+  browser engine missing / voice unavailable / scheduler failing /
+  MCP partially failed → that one row degrades while boot continues,
+  and slow requests get logged. `tests/test_services.py` covers the
+  registry itself (pref gates, isolation, timing, mode filtering).
+- **Slow-request logging** — requests slower than 2s log
+  `Slow request: GET /path took 2.31s` (threshold:
+  `server.SLOW_REQUEST_S`).
+
+### Changed
+- Health `services` items now include `group` and per-service `ms`,
+  shown in the SYSTEM tab as `background · detail · 12ms`; registry
+  results and legacy `health.mark()` entries merge into one view.
+- `health.reset()` also clears registry results so test runs stay
+  isolated from each other.
+- The boot config audit prints a one-line count after the individual
+  warnings ("Config audit: N warning(s) — full list in Settings >
+  SYSTEM").
+
+### Fixed
+- Desktop mode never started reminders, the briefing scheduler,
+  dream scheduler, clipboard watcher, time tracker, folder sentinel
+  or MCP autostart — those lived only in `run.py`, so features added
+  to console boot silently didn't exist in daily desktop use.
+- `mcp/runtime.py:_sdk()` briefly REMOVED the project root from the
+  process-global `sys.path` while importing the MCP SDK; now that
+  desktop boot starts MCP alongside Flask, that window raced the
+  server's first import (`ModuleNotFoundError: No module named
+  'routes'` — found live on the very first v1.12.0 desktop boot).
+  The SDK's site dir is now moved to the FRONT of `sys.path` with no
+  entries ever removed, and two regression tests pin the invariant.
+
 ## [1.11.0] — 2026-10-06
 
 Operational maturity batch: the system can now tell you how it is

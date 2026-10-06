@@ -5,7 +5,7 @@ user text → skills.dispatch() → skill reply
               │ miss (+not conversational)
               ├→ auto_generator.propose → approval → skills/auto_generated/
               └→ AIClient.stream() + TOOL_SCHEMAS → execute_tool()
-/command (SSE) · /chat-style JSON · 117 REST endpoints (routes/api.py)
+/command (SSE) · /chat-style JSON · 143 REST endpoints (routes/api.py)
 ```
 
 ## Stable seams (safe to build on)
@@ -23,6 +23,13 @@ user text → skills.dispatch() → skill reply
   `voice/input.py:listen_until_silence()`. Swap TTS/STT behind these.
 - **Config**: `config.py` + `.env` (all models OpenAI-compatible).
 - **Desktop**: `system/launcher.py` (tray, hotkey, autostart, notify).
+- **Service lifecycle**: `system/services.py` — one registry boots
+  every background subsystem in BOTH entry points (console +
+  desktop): declarative ServiceSpecs, optional pref gates, isolated
+  failure capture, per-service start timing. `boot(mode)` never
+  raises; its results merge with legacy `health.mark()` calls into
+  `/api/health` and the SYSTEM tab. New background service = add a
+  ServiceSpec here, not another try/except block.
 - **Overlay**: `system/overlay.py` — Alt+Space HUD; thread-safe action
   queue → Tk thread; talks to `/api/command` + `/api/listen` only.
 - **MCP server**: `mcp/server.py` — stdio JSON-RPC (newline frames,
