@@ -195,6 +195,19 @@ def recall(query: str, limit: int = 8) -> list[dict]:
             for _, r in scored[:limit]]
 
 
+def integrity() -> str:
+    """PRAGMA integrity_check result: 'ok' or the first problem line.
+
+    Cheap on this KB-sized DB; never raises (returns 'unreadable: ...').
+    """
+    try:
+        conn = _get_conn()
+        row = conn.execute("PRAGMA integrity_check").fetchone()
+        return (row[0] if row else "") or "no result"
+    except Exception as exc:
+        return f"unreadable: {exc}"[:160]
+
+
 def all_facts(limit: int = 100) -> list[dict]:
     return recall("", limit)
 

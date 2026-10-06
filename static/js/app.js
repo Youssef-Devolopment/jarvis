@@ -1265,10 +1265,21 @@ function prefToggle(key,on,label,sub){
         var it=items[k]||{};
         var meta=[it.group,it.detail,(it.ms>0?it.ms+'ms':'')]
           .filter(Boolean).join(' · ');
+        var btns='';
+        if(it.restartable){
+          btns+='<button class="dbtn" data-action="svc-restart" '+
+                'data-svc="'+esc(k)+'" '+
+                'style="padding:2px 7px;font-size:9px">RESTART</button>';
+        }
+        if(it.stoppable){
+          btns+='<button class="dbtn" data-action="svc-stop" '+
+                'data-svc="'+esc(k)+'" '+
+                'style="padding:2px 7px;font-size:9px">STOP</button>';
+        }
         h+='<div class="set-row"><div class="label" style="padding-left:16px">'+
            esc(k.replace(/_/g,' '))+'<small>'+esc(meta)+'</small>'+
            '</div><div class="actions">'+hchip(it.ok?'ok':'degraded')+
-           '</div></div>';
+           btns+'</div></div>';
       });
     }
     h+='</div>';
@@ -2000,6 +2011,31 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='health-refresh'){
       loadTab('system');
+    }
+    if(target.getAttribute&&(target.getAttribute('data-action')==='svc-stop'||target.getAttribute('data-action')==='svc-restart')){
+      var sname=target.getAttribute('data-svc');
+      var sact=(target.getAttribute('data-action')==='svc-stop')?'stop':'restart';
+      target.disabled=true;
+      target.textContent='…';
+      fetch('/api/services/'+encodeURIComponent(sname),{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:sact})})
+        .then(function(r){return r.json().then(function(d){return {s:r.status,d:d};});})
+        .then(function(res){
+          if(res.s===200){
+            setTimeout(function(){loadTab('system');},700);
+          }else{
+            target.disabled=false;
+            target.textContent='FAILED';
+            target.title=(res.d&&(res.d.detail||res.d.error))||'request failed';
+            setTimeout(function(){loadTab('system');},2500);
+          }
+        })
+        .catch(function(){
+          target.disabled=false;
+          target.textContent='FAILED';
+          setTimeout(function(){loadTab('system');},2500);
+        });
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='update-apply'){
       applyUpdate();

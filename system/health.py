@@ -108,10 +108,20 @@ def _probe_memory() -> dict:
         sch = schema.status()
     except Exception as exc:
         sch = {"ok": False, "detail": f"schema check failed: {exc}"[:120]}
-    status = "ok" if sch.get("ok") else "warn"
-    return {"status": status,
-            "detail": f"{facts} facts · schema {sch.get('detail', '?')}",
-            "facts": facts, "schema": sch}
+    try:
+        integ = memory.integrity()
+    except Exception as exc:
+        integ = f"unreadable: {exc}"[:160]
+    intact = (integ == "ok")
+    if not intact:
+        status = "degraded"
+    else:
+        status = "ok" if sch.get("ok") else "warn"
+    detail = (f"{facts} facts · schema {sch.get('detail', '?')}"
+              + (" · integrity ok" if intact
+                 else f" · integrity: {integ}"))
+    return {"status": status, "detail": detail,
+            "facts": facts, "schema": sch, "integrity": integ}
 
 
 def _probe_voice() -> dict:

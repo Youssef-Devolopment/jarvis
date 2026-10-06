@@ -116,6 +116,16 @@ class ProbeTests(unittest.TestCase):
         self.assertIn(res["status"], ("ok", "warn"))
         self.assertIn("facts", res)
         self.assertIn("schema", res)
+        self.assertEqual(res["integrity"], "ok")
+
+    def test_integrity_failure_degrades_memory_row(self):
+        import memory
+        with mock.patch.object(memory, "integrity",
+                               return_value="database disk image is "
+                                            "malformed"):
+            res = health._probe_memory()
+        self.assertEqual(res["status"], "degraded")
+        self.assertIn("integrity: database", res["detail"])
 
 
 class EndpointTests(unittest.TestCase):

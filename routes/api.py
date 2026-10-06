@@ -1847,6 +1847,35 @@ def health():
     return jsonify(healthmon.snapshot())
 
 
+@bp.post("/services/<name>")
+def service_control(name):
+    """Stop or restart one boot service (SYSTEM tab lifecycle buttons)."""
+    from system import services
+    d = request.get_json(silent=True) or {}
+    action = (d.get("action") or "").strip().lower()
+    if action not in ("stop", "restart"):
+        raise ValidationError(
+            "Bad service action.",
+            detail="Field 'action' must be 'stop' or 'restart'.")
+    if services.describe(name) is None:
+        raise ValidationError("Unknown service.",
+                              detail=f"Unknown service '{name}'.")
+    try:
+        if action == "stop":
+            rec = services.stop_service(name)
+        else:
+            rec = services.restart(name)
+    except ValueError as exc:  # no stop handler / boot-only service
+        raise ValidationError("Service cannot be cycled.",
+                              detail=str(exc))
+    if not rec.get("ok", False):
+        raise ValidationError(
+            f"Service {action} failed.",
+            detail=str(rec.get("detail") or "unknown error"))
+    return jsonify({"ok": True, "name": name, "action": action,
+                    "service": rec})
+
+
 @bp.post("/webhook/in")
 def webhook_in():
     """Inbound n8n/automation bridge (token or localhost gated)."""

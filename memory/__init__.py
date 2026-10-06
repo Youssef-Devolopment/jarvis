@@ -1,6 +1,6 @@
 from memory.store import (
     remember, recall, all_facts, count_facts, forget, forget_all,
-    facts_block,
+    facts_block, integrity,
     save_message, load_recent_messages, load_full_session, clear_session,
     all_sessions, ensure_session, delete_session,
     save_contact, list_contacts, find_contact,

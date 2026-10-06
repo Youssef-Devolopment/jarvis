@@ -6,15 +6,18 @@ store.ensure() adopts/updates it on first write; health reports it.
 
 When the schema changes: bump SCHEMA_VERSION and add an entry to
 _MIGRATIONS mapping the new version to a callable(conn). ensure() runs
-missing steps in order from the stored version. Versions higher than
-SCHEMA_VERSION (a newer JARVIS wrote this file) are left untouched and
-reported so the user can downgrade/restore instead of corrupting data.
+missing steps in order from the stored version — AFTER snapshotting the
+DB to memory/backups/ (last 3 kept), so a bad migration can be rolled
+back by hand. Versions higher than SCHEMA_VERSION (a newer JARVIS wrote
+this file) are left untouched and reported so the user can
+downgrade/restore instead of corrupting data.
 """
 from __future__ import annotations
 
 import sqlite3
+import time
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 
 from logger import get_logger
 
@@ -22,10 +25,54 @@ log = get_logger("schema")
 
 SCHEMA_VERSION = 1
 _DB = Path(__file__).resolve().parent / "jarvis_memory.db"
+_BACKUP_KEEP = 3  # pre-migration snapshots kept next to the DB
 
 # version -> migration step. v1 is the baseline (tables are created by
 # CREATE TABLE IF NOT EXISTS in store.py), so no entry is needed for it.
 _MIGRATIONS: Dict[int, Callable[[sqlite3.Connection], None]] = {}
+
+
+def _backup_before(conn: sqlite3.Connection, ver: int) -> Optional[Path]:
+    """Snapshot the DB to memory/backups/ before a migration runs.
+
+    Uses sqlite3's backup API so the copy is consistent even with WAL
+    frames outstanding. Never raises: a failed backup logs and skips —
+    the migration itself is more important than the snapshot.
+    """
+    try:
+        row = conn.execute("PRAGMA database_list").fetchone()
+        src = row[2] if row else ""
+        if not src or src == ":memory:":
+            return None
+        srcp = Path(src)
+        if not srcp.exists():
+            return None
+        bdir = srcp.parent / "backups"
+        bdir.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        dst = bdir / f"{srcp.stem}.v{ver}-{stamp}{srcp.suffix}"
+        bak = sqlite3.connect(str(dst))
+        try:
+            conn.backup(bak)
+        finally:
+            bak.close()
+        _prune(bdir, srcp.stem)
+        log.info("Memory DB backed up to %s before v%s migration",
+                 dst.name, ver)
+        return dst
+    except Exception as exc:
+        log.warning("Pre-migration backup skipped: %s", exc)
+        return None
+
+
+def _prune(bdir: Path, stem: str) -> None:
+    """Keep only the newest _BACKUP_KEEP snapshots (names sort by time)."""
+    try:
+        olds = sorted(bdir.glob(f"{stem}.v*.db"))
+        for p in olds[:-_BACKUP_KEEP]:
+            p.unlink()
+    except Exception:
+        pass
 
 
 def ensure(conn: sqlite3.Connection) -> dict:
@@ -48,6 +95,7 @@ def ensure(conn: sqlite3.Connection) -> dict:
         return {"ok": False, "version": ver, "migrated": False,
                 "detail": detail}
     try:
+        backup = _backup_before(conn, ver)
         for target in range(ver + 1, SCHEMA_VERSION + 1):
             step = _MIGRATIONS.get(target)
             if step is not None:
@@ -60,7 +108,8 @@ def ensure(conn: sqlite3.Connection) -> dict:
             pass  # some callers manage their own commits
         log.info("Memory schema v%s -> v%s", ver, SCHEMA_VERSION)
         return {"ok": True, "version": ver, "migrated": True,
-                "detail": f"v{ver} -> v{SCHEMA_VERSION}"}
+                "detail": f"v{ver} -> v{SCHEMA_VERSION}",
+                "backup": str(backup) if backup else None}
     except Exception as exc:
         log.warning("Memory migration failed: %s", exc)
         return {"ok": False, "version": ver, "migrated": False,
