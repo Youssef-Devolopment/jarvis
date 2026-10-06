@@ -5,7 +5,7 @@ user text → skills.dispatch() → skill reply
               │ miss (+not conversational)
               ├→ auto_generator.propose → approval → skills/auto_generated/
               └→ AIClient.stream() + TOOL_SCHEMAS → execute_tool()
-/command (SSE) · /chat-style JSON · 143 REST endpoints (routes/api.py)
+/command (SSE) · /chat-style JSON · 144 REST endpoints (routes/api.py)
 ```
 
 ## Stable seams (safe to build on)
@@ -18,7 +18,9 @@ user text → skills.dispatch() → skill reply
 - **Escalation**: `moods/levels.py` (8 specs) → `classifier.classify`
   → `council.run_council` → `moderator.synthesize`.
 - **Memory**: `memory/store.py` (SQLite: facts, messages, prefs,
-  outcomes, contacts, reminders, snippets, layouts, time_entries).
+  outcomes, contacts, reminders, snippets, layouts, time_entries,
+  `integrity()`); `memory/schema.py` versions the DB and snapshots it
+  to `memory/backups/` before any migration.
 - **Voice**: `voice/output.py:speak_async(text)`,
   `voice/input.py:listen_until_silence()`. Swap TTS/STT behind these.
 - **Config**: `config.py` + `.env` (all models OpenAI-compatible).
@@ -28,8 +30,12 @@ user text → skills.dispatch() → skill reply
   desktop): declarative ServiceSpecs, optional pref gates, isolated
   failure capture, per-service start timing. `boot(mode)` never
   raises; its results merge with legacy `health.mark()` calls into
-  `/api/health` and the SYSTEM tab. New background service = add a
-  ServiceSpec here, not another try/except block.
+  `/api/health` and the SYSTEM tab. Specs that can be cycled carry a
+  `stop` handler and expose stop/restart at runtime
+  (`POST /api/services/<name>` with `{"action": "stop"|"restart"}`);
+  boot-only listeners (hotkeys, tray) set `restartable=False`. New
+  background service = add a ServiceSpec here, not another
+  try/except block.
 - **Overlay**: `system/overlay.py` — Alt+Space HUD; thread-safe action
   queue → Tk thread; talks to `/api/command` + `/api/listen` only.
 - **MCP server**: `mcp/server.py` — stdio JSON-RPC (newline frames,

@@ -4,6 +4,51 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.13.0] — 2026-10-06
+
+Lifecycle + data-integrity batch: every background service can now be
+stopped or restarted at runtime — from the SYSTEM tab or one POST —
+migrations snapshot the memory DB before touching it, and the health
+probe runs `PRAGMA integrity_check` so silent corruption is reported
+instead of discovered mid-query. 520 tests, 144 API endpoints, 142
+shipped skills.
+
+### Added
+- **Service stop/restart API** — `POST /api/services/<name>` with
+  `{"action": "stop" | "restart"}`. ServiceSpecs gained an optional
+  `stop` handler: 9 services are stoppable (reminders, dream,
+  scheduler, guard, clipboard, time tracker, screen context, MCP
+  servers, folder sentinel), everything except the boot-only
+  hotkey/tray listeners is restartable. Unknown names, missing
+  handlers and boot-only listeners refuse with a structured 400 that
+  says exactly why — never a half-cycled service. A failed stop does
+  not abort a restart; the start's own record wins so the row always
+  reflects what is actually running.
+- **SYSTEM tab lifecycle buttons** — RESTART on every restartable
+  service row, STOP on the stoppable ones: click → POST → automatic
+  health refresh, FAILED in place when the server refuses. The
+  buttons come from `stoppable`/`restartable` flags in the health
+  snapshot, so API and UI can never disagree; mark-only rows (the
+  desktop Flask thread) get no buttons.
+- **Pre-migration DB backup** — `memory/schema.ensure()` snapshots
+  the database to `memory/backups/` with sqlite3's backup API
+  (consistent even with WAL frames outstanding) before running any
+  migration, keeps the newest 3 copies, and never blocks the
+  migration if the copy fails (logged, `backup: null`). The backups
+  directory is gitignored alongside the DB itself.
+- **Integrity probe** — `memory/store.integrity()` runs
+  `PRAGMA integrity_check` (cheap on this KB-sized DB) on the health
+  path: a corrupt file degrades the memory row with
+  `integrity: <error>` instead of failing later somewhere unrelated.
+
+### Changed
+- Registry results carry `stoppable` / `restartable` alongside
+  `ok` / `detail` / `ms` / `group`, merged unchanged into
+  `/api/health` and the SYSTEM tab.
+- Hotkeys and tray are explicitly marked boot-only
+  (`restartable=False`): a second listener start would race the
+  first, and tray's stop/start cycle can drop the icon thread.
+
 ## [1.12.0] — 2026-10-06
 
 Service lifecycle + failure-path batch: one service registry now

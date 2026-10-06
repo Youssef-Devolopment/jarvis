@@ -1,12 +1,12 @@
 # JARVIS — Voice-first AI assistant for Windows
 
-![version](https://img.shields.io/badge/version-v1.12.0-blue)
+![version](https://img.shields.io/badge/version-v1.13.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-487%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-520%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 Talk to your PC and it obeys: **142 skills + 18 one-click library
-packs, 30 LLM tools, 143 API endpoints.** Open and close apps by
+packs, 30 LLM tools, 144 API endpoints.** Open and close apps by
 name, dictate notes into
 Obsidian, search and read the web, run VSCode and terminal tasks —
 by voice, hotkey, or the `Alt+Space` HUD over any window. No API key?
@@ -114,9 +114,11 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
   offender named) before the machine chokes, plus *"mic test"*
   pre-flight for dictation; toggle in Settings → GENERAL
 - **Health dashboard** — `GET /api/health` reports every subsystem
-  (config drift, key, memory schema, voice, guard, updater, MCP,
-  boot services) in one snapshot; Settings → **SYSTEM** renders it,
-  and secrets are masked in `logs/jarvis.log` by default
+  (config drift, key, memory schema + integrity check, voice,
+  guard, updater, MCP, boot services) in one snapshot; Settings →
+  **SYSTEM** renders it with RESTART/STOP buttons per service
+  (`POST /api/services/<name>`), and secrets are masked in
+  `logs/jarvis.log` by default
 - **Workspace Orchestrator** — *"scaffold a flask project called
   X"* for 7 project kinds (git included), and *"append X to file Y"*
   / *"insert X after anchor"* with a `.bak` every time, allow-listed
@@ -174,11 +176,11 @@ system/      tray, hotkey, overlay, singleton, autostart, launcher,
              snapshot), services (one boot registry shared by both
              entry points), app_learner (scan + skills), app_close
              (kill by name)
-routes/      Flask blueprints (143 endpoints)
+routes/      Flask blueprints (144 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
-- `main` builds green: syntax-check every file + **487 unit tests**
+- `main` builds green: syntax-check every file + **520 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -204,5 +206,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 487 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 520 tests
 ```
