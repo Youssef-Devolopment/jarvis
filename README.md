@@ -1,8 +1,8 @@
 # JARVIS — Voice-first AI assistant for Windows
 
-![version](https://img.shields.io/badge/version-v1.13.0-blue)
+![version](https://img.shields.io/badge/version-v1.14.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-520%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-530%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 Talk to your PC and it obeys: **142 skills + 18 one-click library
@@ -117,8 +117,10 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
   (config drift, key, memory schema + integrity check, voice,
   guard, updater, MCP, boot services) in one snapshot; Settings →
   **SYSTEM** renders it with RESTART/STOP buttons per service
-  (`POST /api/services/<name>`), and secrets are masked in
-  `logs/jarvis.log` by default
+  (`POST /api/services/<name>`), a page-wide banner flags
+  warn/degraded states until they clear, ~20s after boot a
+  `Health after boot:` line lands in `logs/jarvis.log`, and secrets
+  are masked in the log by default
 - **Workspace Orchestrator** — *"scaffold a flask project called
   X"* for 7 project kinds (git included), and *"append X to file Y"*
   / *"insert X after anchor"* with a `.bak` every time, allow-listed
@@ -180,7 +182,7 @@ routes/      Flask blueprints (144 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
-- `main` builds green: syntax-check every file + **520 unit tests**
+- `main` builds green: syntax-check every file + **530 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -206,5 +208,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 520 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 530 tests
 ```

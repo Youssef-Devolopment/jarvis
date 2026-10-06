@@ -4,6 +4,48 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.14.0] — 2026-10-06
+
+Reliability batch: health problems are no longer something you have
+to go looking for — a persistent page banner shows warn (amber) /
+degraded (red) states everywhere, a "Health after boot" line lands in
+the log shortly after startup, and the config audit learned two more
+external-key format checks. A silent-fallback audit confirmed the
+remaining fallbacks already log honestly. 530 tests, 144 API
+endpoints, 142 shipped skills.
+
+### Added
+- **Persistent health banner** — polls `/api/health` on load and every
+  60s (paused while the tab is hidden, refreshed on visibility):
+  amber strip with the config-warning count for `warn`, red strip
+  naming the degraded checks and failed boot services for
+  `degraded`. Auto-hides when healthy; "Open SYSTEM" jumps straight
+  to the dashboard; not dismissable while unhealthy — by design.
+- **Post-boot health line** — both entry points (run.py console and
+  the desktop launcher) schedule `server._log_health_summary()`:
+  after `HEALTH_LOG_DELAY_S` (20s) one line lands in
+  logs/jarvis.log — `Health after boot: ok` at INFO, or a WARNING
+  naming degraded checks, the specific failed boot services,
+  the config-warning count, and any service still starting (async
+  MCP/voice warmups). Daemon thread: never blocks boot, never
+  raises.
+- **Key-format checks in the config audit** — `GROQ_API_KEY` must
+  start with `gsk_` and `TAVILY_API_KEY` with `tvly-` when set
+  (Tavily is read from the environment; the test pins it for
+  hermeticity). Unset keys stay silent, and the deliberate
+  deepseek-model-on-foreign-proxy silence rule is untouched.
+
+### Changed
+- **Silent-fallback audit (no code needed)** — the remaining
+  fallbacks were verified to already be honest: browser
+  goto failures log "trying webbrowser fallback", skill replies
+  carry `source: "skill"`, skills-only answers carry
+  `no_key: true` + a setup hint, MCP partial starts degrade their
+  row, voice warmup failures degrade theirs. Out of scope by
+  standing constraint: internals of `voice/output.py`.
+
+Tests: +5 config-audit, +5 health-summary.
+
 ## [1.13.0] — 2026-10-06
 
 Lifecycle + data-integrity batch: every background service can now be
