@@ -4,6 +4,45 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.10.0] — 2026-10-06
+
+The agentic suites batch: four self-contained capability packs —
+System Guard, Workspace Orchestrator, n8n Bridge, Deep Web
+Intelligence — built on the existing skill router, search tiers and
+alert pipeline. 408 tests, 142 API endpoints, 142 shipped skills.
+
+### Added
+- **System Guard** — a RAM watchdog samples once a minute and fires
+  ONE desktop alert (naming the hungriest process) when usage
+  crosses the threshold, hysteresis so it never spams
+  (`system/guard.py`, on in both `run.py` and desktop mode;
+  `guard_enabled` / `guard_ram_threshold` prefs + Settings →
+  GENERAL toggle). Skills: *"ram guard status"*, *"set ram guard to
+  85"*; *"mic test"* reads 0.4s of the default input device and
+  reports peak level so a dead mic is caught before dictation.
+- **Workspace Orchestrator** — *"scaffold a flask project called
+  taskboard"* lays down README/gitignore/entrypoint/tests/env
+  template for python, flask, fastapi, node, react, web or plain
+  and runs `git init`; *"append X to file Y"* / *"insert X after
+  anchor in file Z"* edit existing files with a `.bak` snapshot
+  every time, confined to the Code-Mode allow-list plus
+  `Documents\JARVIS Projects`. Also exposed as `POST
+  /api/interleave` for scripts.
+- **n8n Bridge** — `POST /api/webhook/in` receives automation
+  payloads: stored ring buffer (`GET /api/webhook/recent`), optional
+  speak (toast + HUD + voice) and optional `run` that dispatches the
+  payload's text through the real skill router — so an n8n flow can
+  trigger system actions. Disabled by default; token-gated via
+  `X-Jarvis-Token` or localhost-only. Outbound: *"send to n8n: …"*,
+  *"set n8n url …"*, *"test n8n"* (`webhook_enabled`,
+  `webhook_token`, `webhook_out_url` prefs).
+- **Deep Web Intelligence** — *"docs for flask"* pulls real
+  documentation (PyPI metadata + docs link, or GitHub README for
+  `owner/repo` slugs) and briefs it with the LLM (extractive
+  fallback when keyless); *"explore <topic>"* fans 4 query variants
+  across the search tiers CONCURRENTLY, dedupes by URL and
+  synthesizes one answer with sources.
+
 ## [1.9.0] — 2026-10-06
 
 Self-update: JARVIS now watches GitHub for new versions and pulls

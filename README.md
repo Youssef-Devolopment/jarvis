@@ -1,12 +1,12 @@
 # JARVIS — Voice-first AI assistant for Windows
 
-![version](https://img.shields.io/badge/version-v1.9.0-blue)
+![version](https://img.shields.io/badge/version-v1.10.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-352%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-408%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
-Talk to your PC and it obeys: **133 skills + 18 one-click library
-packs, 30 LLM tools, 139 API endpoints.** Open and close apps by
+Talk to your PC and it obeys: **142 skills + 18 one-click library
+packs, 30 LLM tools, 142 API endpoints.** Open and close apps by
 name, dictate notes into
 Obsidian, search and read the web, run VSCode and terminal tasks —
 by voice, hotkey, or the `Alt+Space` HUD over any window. No API key?
@@ -110,6 +110,19 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
   forwards itself to the newest version, but never over your local
   edits or unpushed commits; toggle in Settings → GENERAL, manual
   CHECK/UPDATE in Settings → ABOUT (`GET /api/update/check`)
+- **System Guard** — a RAM watchdog that warns (once, with the top
+  offender named) before the machine chokes, plus *"mic test"*
+  pre-flight for dictation; toggle in Settings → GENERAL
+- **Workspace Orchestrator** — *"scaffold a flask project called
+  X"* for 7 project kinds (git included), and *"append X to file Y"*
+  / *"insert X after anchor"* with a `.bak` every time, allow-listed
+  to safe roots (`POST /api/interleave`)
+- **n8n Bridge** — automations POST to `/api/webhook/in` to store,
+  speak or RUN actions through the skill router (token/localhost
+  gated, off by default); *"send to n8n: …"* goes the other way
+- **Deep Web Intelligence** — *"docs for X"* reads the real PyPI/
+  GitHub docs and briefs them; *"explore X"* fans 4 queries across
+  search tiers at once and returns one sourced answer
 
 ## Login autostart (power button)
 
@@ -144,7 +157,7 @@ a double-fire harmless. Status: `GET /autostart/status`.
 ```
 run.py / server.py / config.py      entry points + settings (.env)
 ai/          LLM client, tools, agents, council backends, integrations
-skills/      133 @register skills (+ skills/auto_generated/)
+skills/      142 @register skills (+ skills/auto_generated/)
 library/     one-click catalog: 18 skill packs + 12 MCP entries
              (library/user_catalog.json = your imports, gitignored)
 voice/       Groq mic input, Piper/edge-tts output (Ryan)
@@ -153,12 +166,13 @@ moods/       personalities, router, escalation levels, classifier
 mcp/         client runtime, presets, native stdio MCP server
 plugins/     community plugins (validated, isolated, MIT-replaceable)
 system/      tray, hotkey, overlay, singleton, autostart, launcher,
-             updater, app_learner (scan + skills), app_close (kill by name)
-routes/      Flask blueprints (139 endpoints)
+             updater, guard (RAM watchdog), app_learner (scan +
+             skills), app_close (kill by name)
+routes/      Flask blueprints (142 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
-- `main` builds green: syntax-check every file + **352 unit tests**
+- `main` builds green: syntax-check every file + **408 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -184,5 +198,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 352 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 408 tests
 ```
