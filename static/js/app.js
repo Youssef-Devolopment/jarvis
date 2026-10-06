@@ -947,8 +947,40 @@ function loadTab(name){
     clipboard:'/api/clipboard/recent',dream:'/api/dream/status'};
   fetch(endpoints[name]||'/api/info')
     .then(function(r){return r.json();})
-    .then(function(data){inner.innerHTML=renderTab(name,data);if(name==='general')refreshKeyStatus();})
+    .then(function(data){inner.innerHTML=renderTab(name,data);if(name==='general')refreshKeyStatus();if(name==='about')runUpdateCheck();})
     .catch(function(){inner.innerHTML='<div style="color:var(--red)">Failed to load</div>';});
+}
+
+function runUpdateCheck(){
+  var el=$('update-status');
+  if(el)el.textContent='Checking GitHub\u2026';
+  return fetch('/api/update/check').then(function(r){return r.json();}).then(function(d){
+    var e=$('update-status');var ap=$('update-apply-btn');
+    if(!e)return;
+    if(d.ok&&d.available){
+      e.textContent='v'+d.latest+' available \u2014 '+d.reason;
+      if(ap)ap.style.display='';
+    }else if(d.ok){
+      e.textContent='v'+d.current+' \u2014 up to date';
+      if(ap)ap.style.display='none';
+    }else{
+      e.textContent='Check failed: '+(d.reason||'unknown');
+      if(ap)ap.style.display='none';
+    }
+    return d;
+  }).catch(function(){var e=$('update-status');if(e)e.textContent='Check failed (network?)';});
+}
+
+function applyUpdate(){
+  var el=$('update-status');
+  if(el)el.textContent='Updating\u2026';
+  return fetch('/api/update/apply',{method:'POST'}).then(function(r){return r.json();}).then(function(d){
+    var e=$('update-status');var ap=$('update-apply-btn');
+    if(!e)return d;
+    e.textContent=d.reason||(d.ok?'Done':'Update failed');
+    if(ap&&d.ok)ap.style.display='none';
+    return d;
+  }).catch(function(){var e=$('update-status');if(e)e.textContent='Update failed (network?)';});
 }
 
 function refreshKeyStatus(){
@@ -1168,6 +1200,7 @@ function prefToggle(key,on,label,sub){
       '<div class="set-row"><div class="label">Autostart<small>'+(p3.autostart_enabled?'On':'Off')+'</small></div></div>'+
       '<div class="set-row"><div class="label">System tray<small>'+(p3.tray_enabled?'On':'Off')+'</small></div></div>'+
       '<div class="set-row"><div class="label">Hotkey (Ctrl+Alt+J)<small>'+(p3.hotkey_enabled?'On':'Off')+'</small></div></div>'+
+      prefToggle('auto_update',p3.auto_update!==false,'Auto-update','Pull new versions at boot')+
       '<div class="set-row"><div class="label">Wake word<small>'+(p3.wake_word_enabled?'On':'Off')+'</small></div></div>'+
       prefToggle('briefings_enabled',!!p3.briefings_enabled,'Morning briefing','Spoken daily briefing')+
       '<div class="set-row"><div class="label">Briefing hour<small>'+esc(String(p3.briefing_hour!=null?p3.briefing_hour:8))+':00</small></div>'+
@@ -1184,6 +1217,11 @@ function prefToggle(key,on,label,sub){
   if(name==='about'){
     return '<div class="set-list">'+
       '<div class="set-row"><div class="label">Version<small>v'+esc(data.version||'--')+'</small></div></div>'+
+      '<div class="set-row"><div class="label">Update<small id="update-status">Checking&hellip;</small></div>'+
+      '<div class="actions">'+
+      '<button class="dbtn" data-action="update-check" id="update-check-btn">CHECK</button>'+
+      '<button class="dbtn" data-action="update-apply" id="update-apply-btn" style="display:none">UPDATE</button>'+
+      '</div></div>'+
       '<div class="set-row"><div class="label">Model<small>'+esc(data.model||'--')+'</small></div></div>'+
       '<div class="set-row"><div class="label">Skills<small>'+esc(String((data.skills||[]).length))+'</small></div></div>'+
       '<div class="set-row"><div class="label">Voice<small>'+esc(data.voice&&data.voice.label?data.voice.label:'--')+'</small></div></div>'+
@@ -1902,6 +1940,12 @@ document.addEventListener('DOMContentLoaded',function(){
         fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({key:pkey,value:val})}).then(function(){loadTab(tab);}).catch(function(){});
       })();
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='update-check'){
+      runUpdateCheck();
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='update-apply'){
+      applyUpdate();
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='cycle-duck'){
       var cur=parseFloat(target.getAttribute('data-level'))||0.25;

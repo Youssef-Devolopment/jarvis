@@ -50,6 +50,7 @@ _DEFAULTS = {
     "opencode_model": "",
     "auto_gen_enabled": True,
     "auto_approve_skills": True,
+    "auto_update": True,
     "dream_enabled": False,
     "dream_start_hour": 3,
     "dream_end_hour": 5,

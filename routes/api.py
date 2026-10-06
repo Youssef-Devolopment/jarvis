@@ -1824,3 +1824,17 @@ def opencode_chat():
         "X-Accel-Buffering": "no",
         "Connection": "keep-alive",
     })
+
+
+@bp.get("/update/check")
+def update_check():
+    """Fetch origin and report whether a newer JARVIS exists."""
+    from system import updater
+    return jsonify(updater.check())
+
+
+@bp.post("/update/apply")
+def update_apply():
+    """Fast-forward the checkout to origin/main (never over local edits)."""
+    from system import updater
+    return jsonify(updater.update())

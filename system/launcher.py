@@ -72,6 +72,12 @@ def start_background():
             log.warning("Voice warm failed: %s", exc)
     threading.Thread(target=_voice_warm, name="voice-warm",
                      daemon=True).start()
+    # Self-update: check GitHub once at boot, pull when allowed + clean
+    try:
+        from system import updater
+        updater.boot_check()
+    except Exception as exc:
+        log.warning("Update check skipped: %s", exc)
     # Give it a moment to bind the port
     time.sleep(1.5)
 

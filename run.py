@@ -73,6 +73,13 @@ def main():
             logging.getLogger("run").warning("MCP autostart failed: %s", exc)
     threading.Thread(target=_start_mcp, daemon=True).start()
 
+    # Self-update: check GitHub once at boot, pull when allowed + clean
+    try:
+        from system import updater
+        updater.boot_check()
+    except Exception as exc:
+        log.warning("Update check skipped: %s", exc)
+
     # Start Dream Mode scheduler
     try:
         from system import dream_scheduler
