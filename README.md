@@ -1,19 +1,19 @@
 # JARVIS — Voice-first AI assistant for Windows
 
-![version](https://img.shields.io/badge/version-v1.7.0-blue)
+![version](https://img.shields.io/badge/version-v1.9.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-332%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-352%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 Talk to your PC and it obeys: **133 skills + 18 one-click library
-packs, 30 LLM tools, 137 API endpoints.** Open and close apps by
+packs, 30 LLM tools, 139 API endpoints.** Open and close apps by
 name, dictate notes into
 Obsidian, search and read the web, run VSCode and terminal tasks —
 by voice, hotkey, or the `Alt+Space` HUD over any window. No API key?
 It still boots in **skills-only mode** and tells you how to unlock
 the rest.
 
-A slim **Lite** build (27 skills, port 5002) lives next to it in
+A slim **Lite** build (28 skills, port 5002) lives next to it in
 `../lite jarvis/`.
 
 ## Install (Windows, 3 steps)
@@ -106,6 +106,10 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
   own packs as JSON**, with REMOVE / START / STOP per entry
 - **Alerts that reach you** — desktop toast plus a green HUD pulse
   when timers, reminders, research jobs or computer tasks finish
+- **Always up to date** — JARVIS checks GitHub at boot and fast-
+  forwards itself to the newest version, but never over your local
+  edits or unpushed commits; toggle in Settings → GENERAL, manual
+  CHECK/UPDATE in Settings → ABOUT (`GET /api/update/check`)
 
 ## Login autostart (power button)
 
@@ -149,12 +153,12 @@ moods/       personalities, router, escalation levels, classifier
 mcp/         client runtime, presets, native stdio MCP server
 plugins/     community plugins (validated, isolated, MIT-replaceable)
 system/      tray, hotkey, overlay, singleton, autostart, launcher,
-             app_learner (scan + skills), app_close (kill by name)
-routes/      Flask blueprints (137 endpoints)
+             updater, app_learner (scan + skills), app_close (kill by name)
+routes/      Flask blueprints (139 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
-- `main` builds green: syntax-check every file + **332 unit tests**
+- `main` builds green: syntax-check every file + **352 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -180,5 +184,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 332 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 352 tests
 ```

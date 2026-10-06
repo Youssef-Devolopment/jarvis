@@ -4,6 +4,30 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.9.0] — 2026-10-06
+
+Self-update: JARVIS now watches GitHub for new versions and pulls
+them itself — carefully.
+
+### Added
+- **Auto-update** — at boot JARVIS fetches `origin/main`, compares
+  it to `config.VERSION`, and (when the toggle is on) fast-forwards
+  the checkout to the newest release, then toasts *updated — restart
+  to finish*. The pull **never runs over local edits or unpushed
+  commits** (tracked files only — your untracked `.env` and personal
+  files never block it), and every refusal says exactly why
+  (`system/updater.py`, wired into both `run.py` and desktop mode).
+- **Update UI + API** — Settings → ABOUT shows the live version
+  status with CHECK / UPDATE buttons (auto-checks when the tab
+  opens), Settings → GENERAL gains an Auto-update toggle (default
+  on), and `GET /api/update/check` + `POST /api/update/apply` expose
+  the same to scripts.
+
+### Changed
+- README version badge finally tracks `config.VERSION` (was stuck
+  at v1.7.0) and all counts refreshed (352 tests, 139 endpoints,
+  Lite at 28 skills).
+
 ## [1.8.0] — 2026-10-06
 
 Library v2 (uninstall + import + live status), real token streaming
