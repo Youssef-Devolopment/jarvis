@@ -1838,3 +1838,42 @@ def update_apply():
     """Fast-forward the checkout to origin/main (never over local edits)."""
     from system import updater
     return jsonify(updater.update())
+
+
+@bp.post("/webhook/in")
+def webhook_in():
+    """Inbound n8n/automation bridge (token or localhost gated)."""
+    from skills import webhook_bridge
+    body, code = webhook_bridge.ingest(
+        request.get_json(silent=True) or {},
+        request.headers.get("X-Jarvis-Token"),
+        request.remote_addr)
+    return jsonify(body), code
+
+
+@bp.get("/webhook/recent")
+def webhook_recent():
+    """Last events delivered by automations this session."""
+    from skills import webhook_bridge
+    return jsonify({"events": webhook_bridge.recent()})
+
+
+@bp.post("/interleave")
+def interleave():
+    """Append/insert into an allow-listed file with a .bak backup."""
+    from skills.workspace_tools import append_to_file, insert_near
+    d = request.get_json(silent=True) or {}
+    path = (d.get("path") or "").strip()
+    body = (d.get("body") or "").strip()
+    if not path or not body:
+        raise ValidationError("Need 'path' and 'body'.")
+    anchor = (d.get("anchor") or "").strip()
+    if anchor:
+        where = "before" if str(d.get("position", "after")).lower() \
+            == "before" else "after"
+        out = insert_near(path, body, anchor, where)
+    else:
+        out = append_to_file(path, body)
+    ok = not out.startswith(("Blocked:", "No such", "Nothing",
+                             "Anchor not", "Need both", "No such file"))
+    return jsonify({"ok": ok, "result": out})

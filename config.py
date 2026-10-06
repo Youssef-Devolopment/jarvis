@@ -10,7 +10,7 @@ log = get_logger(__name__)
 load_dotenv()
 
 # Single source of truth for the app version. Bump on major releases.
-VERSION = "1.9.0"
+VERSION = "1.10.0"
 
 # Project .env file (gitignored). API keys live here, never in prefs.
 ENV_PATH = Path(__file__).resolve().parent / ".env"

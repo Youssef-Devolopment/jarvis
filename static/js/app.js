@@ -1207,6 +1207,7 @@ function prefToggle(key,on,label,sub){
       '<div class="actions"><input id="input-briefing-hour" type="number" min="0" max="23" value="'+esc(String(p3.briefing_hour!=null?p3.briefing_hour:8))+'" style="width:52px;background:#000;color:#fff;border:1px solid var(--border);border-radius:4px;padding:6px;">'+
       '<button class="dbtn" data-action="set-hour">SET</button></div></div>'+
       prefToggle('sentinel_enabled',!!p3.sentinel_enabled,'Folder sentinel','Master switch for watched folders')+
+      prefToggle('guard_enabled',!!p3.guard_enabled,'Memory guard','Warn when RAM crosses the threshold')+
       prefToggle('autonomy_enabled',!!p3.autonomy_enabled,'Autonomy','Background agent loop (supervised)')+
       prefToggle('dnd',!!p3.dnd,'Do not disturb','Silence unprompted speech')+
       prefToggle('desktop_control_enabled',!!p3.desktop_control_enabled,'Desktop control','Mouse/keyboard/window control')+

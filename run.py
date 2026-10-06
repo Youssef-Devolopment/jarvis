@@ -80,6 +80,13 @@ def main():
     except Exception as exc:
         log.warning("Update check skipped: %s", exc)
 
+    # System Guard: RAM watchdog (pref-gated, one sample a minute)
+    try:
+        from system import guard
+        guard.start()
+    except Exception as exc:
+        log.warning("Guard start failed: %s", exc)
+
     # Start Dream Mode scheduler
     try:
         from system import dream_scheduler

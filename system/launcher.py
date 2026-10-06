@@ -78,6 +78,12 @@ def start_background():
         updater.boot_check()
     except Exception as exc:
         log.warning("Update check skipped: %s", exc)
+    # System Guard: RAM watchdog (pref-gated, one sample a minute)
+    try:
+        from system import guard
+        guard.start()
+    except Exception as exc:
+        log.warning("Guard start failed: %s", exc)
     # Give it a moment to bind the port
     time.sleep(1.5)
 
