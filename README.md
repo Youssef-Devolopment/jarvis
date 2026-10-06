@@ -1,6 +1,6 @@
 # JARVIS — Voice-first AI assistant for Windows
 
-![version](https://img.shields.io/badge/version-v1.14.0-blue)
+![version](https://img.shields.io/badge/version-v1.14.1-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![tests](https://img.shields.io/badge/tests-530%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
@@ -191,7 +191,9 @@ static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
   browser caches are gitignored; keys live only in your local `.env`
 - Community-friendly: MIT license, issue/PR templates,
   `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
-  `ARCHITECTURE.md`, `CHANGELOG.md`, hot-reloadable `plugins/`
+  `ARCHITECTURE.md`, `CHANGELOG.md`, `TESTING.md` (how the repo is
+  verified), `DECISIONS.md` (why the architecture is shaped this
+  way), `ROADMAP.md` (30/90-day direction), hot-reloadable `plugins/`
   with a validated template
 - AI-continuable: `AGENTS.md` holds the full developer loop
   (layout, commands, constraints, verification) so any coding

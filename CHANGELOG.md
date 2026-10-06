@@ -4,6 +4,39 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.14.1] — 2026-10-07
+
+Documentation batch — the repo now carries its own operating manual.
+No code behavior changes; counts unchanged (530 tests, 144 API
+endpoints, 142 shipped skills).
+
+### Added
+- **`TESTING.md`** — how this repo is verified: dependency groups and
+  the minimal test install, full/single test runs with the PowerShell
+  5.1 quirks that actually bite here, all 45 test files grouped by the
+  seam they protect, the fresh-copy/clean-env procedure (and what
+  class of bug it catches), health verification across its five
+  layers, an exact definition of "CI green", manual smoke tests for
+  voice/browser/MCP/scheduler/hotkeys/tray/UI, a degraded-system
+  playbook, hermetic test-writing conventions, and a per-change
+  definition of done.
+- **`DECISIONS.md`** — the architecture story as deliberate choices
+  with costs: skills-first execution, SQLite local memory, graceful
+  degradation, one service registry, health surfaced not hidden,
+  config auditing (including deliberate silences), Windows-native,
+  secrets/local data hygiene — plus how to use the document when
+  proposing or reviewing changes.
+- **`ROADMAP.md`** — Completed (v1.0→v1.14.1 table), open threads,
+  Next 30 days (lite health parity, MCP preflight, backup restore,
+  health history, single-shot auto-heal, docs polish), Next 90 days
+  (network auth, packaging, plugin SDK freeze, metrics, E2E smoke),
+  long-term vision (great personal assistant → trusted platform),
+  and explicit non-goals.
+
+### Changed
+- README: version badge → v1.14.1; community-friendly bullet links
+  the three new documents.
+
 ## [1.14.0] — 2026-10-06
 
 Reliability batch: health problems are no longer something you have
