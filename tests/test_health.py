@@ -90,11 +90,14 @@ class ProbeTests(unittest.TestCase):
         self.assertIn("fetch failed", res["detail"])
 
     def test_config_probe_surfaces_audit_warnings(self):
-        with mock.patch("config.audit_settings",
-                        return_value=["PORT 9 is outside 1-65535."]):
+        # Stub settings too: without a local .env try_settings() returns
+        # None and the probe returns before the audit is consulted.
+        with mock.patch("config.try_settings", return_value=object()), \
+             mock.patch("config.audit_settings",
+                        return_value=["PORT 70000 is outside 1-65535."]):
             res = health._probe_config()
         self.assertEqual(res["status"], "warn")
-        self.assertIn("PORT 9", res["warnings"][0])
+        self.assertIn("PORT 70000", res["warnings"][0])
 
     def test_memory_probe_reports_facts_and_schema(self):
         res = health._probe_memory()
