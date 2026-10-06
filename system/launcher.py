@@ -58,6 +58,12 @@ def start_background():
     # desktop mode can never drift apart again.
     from system import services
     services.boot(mode="desktop")
+    # Health glance in the log once async services settle (~20s).
+    try:
+        from server import schedule_health_log
+        schedule_health_log()
+    except Exception as exc:
+        log.debug("Health log not scheduled: %s", exc)
     # Give it a moment to bind the port
     time.sleep(1.5)
 

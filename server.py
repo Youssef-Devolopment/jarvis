@@ -11,6 +11,57 @@ log = get_logger(__name__)
 # Requests slower than this get a WARNING line (tests patch this down).
 SLOW_REQUEST_S = 2.0
 
+# Post-boot health glance (entry points schedule it; tests call the
+# function directly with delay=0).
+HEALTH_LOG_DELAY_S = 20.0
+
+
+def _log_health_summary(delay: float = HEALTH_LOG_DELAY_S) -> None:
+    """One line of health truth in the log shortly after boot.
+
+    Waits for `delay` seconds so async services (MCP, voice warmup)
+    have landed, then logs overall + degraded check names + config
+    warning count. Never raises.
+    """
+    try:
+        if delay:
+            time.sleep(delay)
+        from system import health as _health
+        snap = _health.snapshot()
+        checks = snap.get("checks") or {}
+        overall = snap.get("overall") or "unknown"
+        line = f"Health after boot: {overall}"
+        bad = sorted(k for k, v in checks.items()
+                     if isinstance(v, dict) and v.get("status") == "degraded"
+                     and k != "services")
+        if bad:
+            line += " — degraded: " + ", ".join(bad)
+        svc = checks.get("services") or {}
+        if svc.get("status") == "degraded":
+            line += " — " + str(svc.get("detail") or "boot services degraded")
+        warns = (checks.get("config") or {}).get("warnings") or []
+        if warns:
+            line += f" — {len(warns)} config warning(s)"
+        pending = sorted(
+            k for k, v in ((checks.get("services") or {}).get("items")
+                           or {}).items()
+            if (v or {}).get("detail") == "starting")
+        if pending:
+            line += " — still starting: " + ", ".join(pending)
+        if overall == "ok" and not warns:
+            log.info(line)
+        else:
+            log.warning(line)
+    except Exception as exc:
+        log.debug("Health summary skipped: %s", exc)
+
+
+def schedule_health_log() -> None:
+    """Fire _log_health_summary once on a daemon thread (never blocks)."""
+    import threading
+    threading.Thread(target=_log_health_summary, name="health-log",
+                     daemon=True).start()
+
 
 def create_app() -> Flask:
     try:

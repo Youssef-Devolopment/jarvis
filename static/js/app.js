@@ -221,6 +221,52 @@ function updateKeyBanner(info){
   });
 })();
 
+/* Persistent health banner: reflects /api/health (warn = amber,
+   degraded = red) instead of hiding problems inside Settings. */
+var healthPollTimer=null;
+function refreshHealthBanner(){
+  var b=$('health-banner');if(!b)return;
+  if(document.hidden)return;   /* don't poll from hidden tabs */
+  fetch('/api/health').then(function(r){return r.json();}).then(function(d){
+    var bb=$('health-banner');if(!bb)return;
+    var ov=(d&&d.overall)||'ok';
+    var checks=(d&&d.checks)||{};
+    var svc=checks.services||{};
+    var cw=(checks.config&&checks.config.warnings)||[];
+    var show=(ov==='warn'||ov==='degraded');
+    if(!show){bb.setAttribute('hidden','');return;}
+    var names=[];
+    Object.keys(checks).forEach(function(k){
+      var c=checks[k];
+      if(c&&c.status==='degraded'&&k!=='services')names.push(k.replace(/_/g,' '));
+    });
+    var msg;
+    if(ov==='degraded'){
+      if(svc.status==='degraded')names.push('services');
+      msg='System degraded'+(names.length?' \u2014 '+names.join(', '):'');
+      if(svc.status==='degraded'&&svc.detail)msg+=' ('+svc.detail+')';
+    }else{
+      msg='Config warnings: '+cw.length+(cw[0]?' \u2014 '+cw[0]:'');
+    }
+    var t=$('health-banner-text');
+    if(t)t.textContent=msg;
+    bb.classList.toggle('health-banner--bad',ov==='degraded');
+    bb.removeAttribute('hidden');
+  }).catch(function(){});
+}
+(function wireHealthBanner(){
+  document.addEventListener('DOMContentLoaded',function(){
+    var o=$('health-banner-open');
+    if(o)o.addEventListener('click',function(){openSettings();loadTab('system');});
+    refreshHealthBanner();
+    if(healthPollTimer)clearInterval(healthPollTimer);
+    healthPollTimer=setInterval(refreshHealthBanner,60000);
+    document.addEventListener('visibilitychange',function(){
+      if(!document.hidden)refreshHealthBanner();
+    });
+  });
+})();
+
 function maybeOnboard(info,prefs){
   try{
     if(prefs&&prefs.onboarded)return;

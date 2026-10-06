@@ -49,6 +49,11 @@ def main():
     print(f"  Services : {summary['launched']} launched{degraded}"
           f" ({summary['ms']}ms)")
 
+    # A health glance lands in logs/jarvis.log ~20s after boot, once
+    # async services (MCP, voice warmup) have settled.
+    from server import schedule_health_log
+    schedule_health_log()
+
     try:
         from memory import context as ctx_tracker
         _sid = ctx_tracker.start_session()

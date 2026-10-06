@@ -57,6 +57,13 @@
   <button class="key-banner-btn key-banner-x" id="key-banner-hide" title="Dismiss">&times;</button>
 </div>
 
+<!-- Health banner (hidden unless /api/health reports warn/degraded) -->
+<div class="key-banner health-banner" id="health-banner" hidden>
+  <span class="key-banner-dot" id="health-banner-dot"></span>
+  <span id="health-banner-text">Checking system health&hellip;</span>
+  <button class="key-banner-btn" id="health-banner-open">Open SYSTEM</button>
+</div>
+
 <!-- Left sidebar -->
 <aside class="sidebar">
   <div class="side-block">

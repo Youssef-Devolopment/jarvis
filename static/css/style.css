@@ -848,6 +848,19 @@ input[type="range"].range::-moz-range-thumb{
 }
 .key-banner-btn:hover{background:rgba(255,184,77,.15);box-shadow:0 0 10px rgba(255,184,77,.35)}
 .key-banner-x{border-color:transparent;padding:3px 8px}
+/* health banner: same strip; red tone when the system is degraded */
+.health-banner.health-banner--bad{
+  color:var(--red);
+  background:linear-gradient(180deg,rgba(255,80,80,.12),rgba(255,80,80,.04));
+  border-bottom-color:rgba(255,80,80,.35);
+  text-shadow:0 0 6px rgba(255,80,80,.4);
+}
+.health-banner.health-banner--bad .key-banner-dot{
+  background:var(--red);box-shadow:0 0 8px var(--red)}
+.health-banner.health-banner--bad .key-banner-btn{
+  color:var(--red);border-color:rgba(255,80,80,.45)}
+.health-banner.health-banner--bad .key-banner-btn:hover{
+  background:rgba(255,80,80,.15);box-shadow:0 0 10px rgba(255,80,80,.35)}
 /* guided tour: dim veil + highlight ring + tooltip card, all removable */
 #tour-veil{position:fixed;inset:0;background:rgba(4,6,12,.72);z-index:9990}
 #tour-ring{position:absolute;z-index:9991;border:2px solid var(--accent-hi);

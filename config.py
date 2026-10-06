@@ -10,7 +10,7 @@ log = get_logger(__name__)
 load_dotenv()
 
 # Single source of truth for the app version. Bump on major releases.
-VERSION = "1.13.0"
+VERSION = "1.14.0"
 
 # Project .env file (gitignored). API keys live here, never in prefs.
 ENV_PATH = Path(__file__).resolve().parent / ".env"
@@ -256,6 +256,15 @@ def audit_settings(s: Settings) -> list[str]:
             warns.append(f"OBSIDIAN_VAULT is set but not found: {vault}")
     if s.log_level not in _LOG_LEVELS:
         warns.append(f"LOG_LEVEL '{s.log_level}' is invalid — using INFO.")
+    # Optional key formats — only checked when the key is actually set.
+    groq = (s.groq_api_key or "").strip()
+    if groq and not groq.startswith("gsk_"):
+        warns.append("GROQ_API_KEY does not start with 'gsk_' — it looks "
+                     "wrong (Groq keys are gsk_…).")
+    tavily = (os.getenv("TAVILY_API_KEY") or "").strip()
+    if tavily and not tavily.startswith("tvly-"):
+        warns.append("TAVILY_API_KEY does not start with 'tvly-' — it "
+                     "looks wrong (Tavily keys are tvly-…).")
     if s.debug and s.host not in _LOOPBACK:
         warns.append(
             f"FLASK_DEBUG=1 while listening on {s.host} — debug mode is "

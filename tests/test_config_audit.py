@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import dataclasses
+import os
 import unittest
+from unittest import mock
 
 from config import Settings, audit_settings
 
@@ -35,6 +37,15 @@ def _clean(**over) -> Settings:
 
 
 class AuditTests(unittest.TestCase):
+    def setUp(self):
+        # Tavily is read from the environment — keep these tests
+        # hermetic regardless of the machine's real .env.
+        self._tav = os.environ.pop("TAVILY_API_KEY", None)
+
+    def tearDown(self):
+        if self._tav is not None:
+            os.environ["TAVILY_API_KEY"] = self._tav
+
     def test_clean_config_has_no_warnings(self):
         self.assertEqual(audit_settings(_clean()), [])
 
@@ -84,6 +95,30 @@ class AuditTests(unittest.TestCase):
     def test_debug_on_non_loopback_host(self):
         warns = audit_settings(_clean(debug=True, host="0.0.0.0"))
         self.assertTrue(any("FLASK_DEBUG" in w for w in warns))
+
+    def test_groq_key_with_wrong_prefix_warns(self):
+        warns = audit_settings(_clean(groq_api_key="not-a-groq-key"))
+        self.assertTrue(any("GROQ_API_KEY" in w for w in warns))
+
+    def test_groq_key_with_gsk_prefix_is_silent(self):
+        warns = audit_settings(_clean(groq_api_key="gsk_test123456"))
+        self.assertFalse(any("GROQ_API_KEY" in w for w in warns))
+
+    def test_tavily_key_with_wrong_prefix_warns(self):
+        with mock.patch.dict(os.environ, {"TAVILY_API_KEY": "oops"}):
+            warns = audit_settings(_clean())
+        self.assertTrue(any("TAVILY_API_KEY" in w for w in warns))
+
+    def test_tavily_key_with_tvly_prefix_is_silent(self):
+        with mock.patch.dict(os.environ,
+                             {"TAVILY_API_KEY": "tvly-test-12345"}):
+            warns = audit_settings(_clean())
+        self.assertFalse(any("TAVILY_API_KEY" in w for w in warns))
+
+    def test_unset_optional_keys_stay_silent(self):
+        # _clean() leaves groq empty and setUp dropped TAVILY — no noise.
+        warns = audit_settings(_clean(groq_api_key=""))
+        self.assertEqual(warns, [])
 
     def test_skills_only_mode_does_not_spam(self):
         # No key: placeholder/URL mismatches are meaningless — stay quiet.

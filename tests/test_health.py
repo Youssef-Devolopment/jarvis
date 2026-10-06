@@ -128,6 +128,74 @@ class ProbeTests(unittest.TestCase):
         self.assertIn("integrity: database", res["detail"])
 
 
+class HealthLogSummaryTests(unittest.TestCase):
+    """server._log_health_summary — the post-boot one-liner in the log."""
+
+    @staticmethod
+    def _fake(overall, checks):
+        return {"overall": overall, "checks": checks}
+
+    def test_ok_summary_logs_info_line(self):
+        from server import _log_health_summary
+        snap = self._fake("ok", {
+            "config": {"status": "ok", "warnings": []},
+            "services": {"status": "ok", "detail": "17 services tracked",
+                         "items": {}}})
+        with mock.patch("system.health.snapshot", return_value=snap), \
+             self.assertLogs("server", level="INFO") as cm:
+            _log_health_summary(delay=0)
+        self.assertTrue(any("Health after boot: ok" in m
+                            for m in cm.output), cm.output)
+
+    def test_degraded_summary_is_a_warning_naming_the_service(self):
+        from server import _log_health_summary
+        snap = self._fake("degraded", {
+            "config": {"status": "ok", "warnings": []},
+            "mcp": {"status": "degraded", "detail": "2 failed"},
+            "services": {"status": "degraded",
+                         "detail": "17 services tracked · 1 failed: scheduler",
+                         "items": {}}})
+        with mock.patch("system.health.snapshot", return_value=snap), \
+             self.assertLogs("server", level="WARNING") as cm:
+            _log_health_summary(delay=0)
+        joined = " ".join(cm.output)
+        self.assertIn("Health after boot: degraded", joined)
+        self.assertIn("scheduler", joined)
+        self.assertIn("mcp", joined)
+
+    def test_config_warnings_counted_at_warning_level(self):
+        from server import _log_health_summary
+        snap = self._fake("warn", {
+            "config": {"status": "warn", "warnings": ["PORT is weird"]},
+            "services": {"status": "ok", "detail": "3 services tracked",
+                         "items": {}}})
+        with mock.patch("system.health.snapshot", return_value=snap), \
+             self.assertLogs("server", level="WARNING") as cm:
+            _log_health_summary(delay=0)
+        self.assertTrue(any("1 config warning(s)" in m
+                            for m in cm.output), cm.output)
+
+    def test_pending_async_services_are_named(self):
+        from server import _log_health_summary
+        snap = self._fake("ok", {
+            "config": {"status": "ok", "warnings": []},
+            "services": {"status": "ok", "detail": "17 services tracked",
+                         "items": {"mcp": {"detail": "starting"},
+                                   "voice": {"detail": "TTS warmed"}}}})
+        with mock.patch("system.health.snapshot", return_value=snap), \
+             self.assertLogs("server", level="INFO") as cm:
+            _log_health_summary(delay=0)
+        joined = " ".join(cm.output)
+        self.assertIn("still starting: mcp", joined)
+        self.assertNotIn("voice", joined.split("still starting:")[1])
+
+    def test_summary_never_raises(self):
+        from server import _log_health_summary
+        with mock.patch("system.health.snapshot",
+                        side_effect=RuntimeError("boom")):
+            _log_health_summary(delay=0)   # must swallow
+
+
 class EndpointTests(unittest.TestCase):
     def test_health_route(self):
         try:
