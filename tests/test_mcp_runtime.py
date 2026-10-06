@@ -64,5 +64,31 @@ class StopServerTests(unittest.TestCase):
             self.assertFalse(runtime.is_running("fake"))
 
 
+class SdkPathTests(unittest.TestCase):
+    """Regression: _sdk() used to REMOVE the project root from the
+    global sys.path while importing the SDK, which raced every other
+    thread's imports (desktop boot vs Flask's first import died with
+    "No module named 'routes'"). The window must be loss-free."""
+
+    def test_sdk_window_removes_nothing_and_pins_sdk_first(self):
+        import sys
+        from mcp import runtime
+        before = list(sys.path)
+        with runtime._sdk_path() as sdk_base:
+            during = list(sys.path)
+        self.assertEqual(set(during), set(before))     # nothing removed
+        self.assertEqual(during[0], sdk_base)          # SDK wins import
+        self.assertEqual(sys.path, before)             # fully restored
+
+    def test_sdk_import_still_returns_the_real_sdk(self):
+        from mcp import runtime
+        ClientSession, Params, stdio_client, TextContent = runtime._sdk()
+        self.assertTrue(callable(ClientSession))
+        self.assertTrue(callable(stdio_client))
+        # the SDK's own types, not our local package's
+        self.assertTrue(hasattr(TextContent, "model_fields")
+                        or hasattr(TextContent, "__fields__"))
+
+
 if __name__ == "__main__":
     unittest.main()

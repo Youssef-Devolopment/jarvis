@@ -4,9 +4,10 @@ GET /api/health and Settings > SYSTEM read this module. Probes are cheap
 (local state only, never network) and fail independently: a broken probe
 reports status "unknown" instead of taking the endpoint down.
 
-Boot paths (run.py, system/launcher.py) call mark() as each service starts
-so background services with no queryable state (scheduler, dream loop,
-hotkeys, tray…) still show up here.
+Boot paths (run.py, system/launcher.py) start services through
+system.services, which records every result there; mark() remains for
+marks with no registry entry (e.g. the desktop Flask thread) and for
+legacy callers. Both feed _services_snapshot().
 """
 from __future__ import annotations
 
@@ -34,16 +35,33 @@ def mark(name: str, ok: bool, detail: str = "") -> None:
 
 
 def reset() -> None:
-    """Clear marks and restart the uptime clock (tests)."""
+    """Clear marks + registry results and restart the uptime clock (tests)."""
     global _started_at
     with _lock:
         _services.clear()
+    try:
+        from system import services as _svc
+        _svc.reset()
+    except Exception:
+        pass
     _started_at = time.time()
 
 
 def _services_snapshot() -> Dict[str, Any]:
     with _lock:
         items = {k: dict(v) for k, v in _services.items()}
+    # Registry results (system.services) carry group + start timing and
+    # win over a plain mark for the same name; mark-only entries (the
+    # desktop Flask thread, legacy callers) still show up unchanged.
+    try:
+        from system import services as _svc
+        for name, rec in _svc.results().items():
+            merged = dict(rec)
+            if not merged.get("detail"):
+                merged["detail"] = (items.get(name) or {}).get("detail", "")
+            items[name] = merged
+    except Exception:
+        pass
     if not items:
         return {"status": "unknown",
                 "detail": "no boot marks recorded yet", "items": {}}
@@ -161,9 +179,69 @@ def _probe_pending() -> dict:
     return {"status": "ok", "detail": "no pending verdicts"}
 
 
+# Optional runtime dependencies — everything here can be missing while
+# the app still boots (flask/dotenv are load-time fatal, so they would
+# never be observable anyway).
+_DEPS = {
+    "playwright": "browser automation",
+    "sounddevice": "mic input",
+    "pystray": "system tray",
+    "pynput": "global hotkeys",
+    "pygame": "voice playback",
+    "apscheduler": "briefings/scheduler",
+    "psutil": "guard/time tracking",
+}
+
+
+def _has_module(name: str):
+    """True/False if findable, None when the check itself failed."""
+    import importlib.util
+    try:
+        return importlib.util.find_spec(name) is not None
+    except Exception:
+        return None
+
+
+def _probe_deps() -> dict:
+    missing, unknown = [], []
+    for mod in _DEPS:
+        found = _has_module(mod)
+        if found is None:
+            unknown.append(mod)
+        elif not found:
+            missing.append(mod)
+    if missing:
+        detail = "missing: " + ", ".join(missing)
+        if unknown:
+            detail += " · check failed: " + ", ".join(unknown)
+        return {"status": "warn", "detail": detail[:160], "missing": missing}
+    if unknown:
+        return {"status": "unknown",
+                "detail": "check failed: " + ", ".join(unknown)[:120]}
+    return {"status": "ok",
+            "detail": f"all {len(_DEPS)} optional dependencies present"}
+
+
+def _probe_model() -> dict:
+    from config import try_settings
+    s = try_settings()
+    if s is None:
+        return {"status": "unknown", "detail": "settings unreadable"}
+    if not (s.model or "").strip():
+        return {"status": "warn", "detail": "no model configured"}
+    base = (s.base_url or "").strip().rstrip("/")
+    host = base.split("//", 1)[-1].split("/", 1)[0] or "api.deepseek.com"
+    detail = (f"{s.model} @ {host} · temp {s.temperature} · "
+              f"{len(s.providers or ())} extra provider(s)")
+    return {"status": "ok", "detail": detail,
+            "model": s.model, "base_host": host}
+
+
 _PROBES = {
     "config": _probe_config,
+    "model": _probe_model,
     "api_key": _probe_key,
+    "deps": _probe_deps,
     "memory": _probe_memory,
     "voice": _probe_voice,
     "guard": _probe_guard,

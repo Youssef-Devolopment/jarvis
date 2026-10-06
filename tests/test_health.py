@@ -21,8 +21,9 @@ class SnapshotTests(unittest.TestCase):
         self.assertIn("version", snap)
         self.assertIn("uptime_s", snap)
         self.assertIn(snap["overall"], ("ok", "warn", "degraded"))
-        for key in ("config", "api_key", "memory", "voice", "guard",
-                    "updater", "mcp", "pending_skills", "services"):
+        for key in ("config", "model", "api_key", "deps", "memory",
+                    "voice", "guard", "updater", "mcp", "pending_skills",
+                    "services"):
             self.assertIn(key, snap["checks"])
             self.assertIn("status", snap["checks"][key])
 
@@ -98,6 +99,17 @@ class ProbeTests(unittest.TestCase):
             res = health._probe_config()
         self.assertEqual(res["status"], "warn")
         self.assertIn("PORT 70000", res["warnings"][0])
+
+    def test_boot_audit_prints_warning_count_line(self):
+        # create_app logs each warning; a one-line COUNT follows so the
+        # boot log states how bad the drift is at a glance.
+        from server import create_app
+        with mock.patch("config.audit_settings",
+                        return_value=["PORT is weird"]), \
+             self.assertLogs("server", level="WARNING") as cm:
+            create_app()
+        self.assertTrue(any("Config audit: 1 warning(s)" in m
+                            for m in cm.output), cm.output)
 
     def test_memory_probe_reports_facts_and_schema(self):
         res = health._probe_memory()

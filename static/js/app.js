@@ -1248,8 +1248,8 @@ function prefToggle(key,on,label,sub){
        '<div class="actions">'+hchip(data.overall)+
        '<button class="dbtn" data-action="health-refresh">REFRESH</button>'+
        '</div></div>';
-    ['config','api_key','memory','voice','guard','updater','mcp',
-     'pending_skills'].forEach(function(k){
+    ['config','model','api_key','deps','memory','voice','guard',
+     'updater','mcp','pending_skills'].forEach(function(k){
       var c=chk[k];if(!c)return;
       h+='<div class="set-row"><div class="label">'+esc(k.replace(/_/g,' '))+
          '<small>'+esc(c.detail||'')+'</small></div>'+
@@ -1263,8 +1263,10 @@ function prefToggle(key,on,label,sub){
       var items=svc.items||{};
       Object.keys(items).sort().forEach(function(k){
         var it=items[k]||{};
+        var meta=[it.group,it.detail,(it.ms>0?it.ms+'ms':'')]
+          .filter(Boolean).join(' · ');
         h+='<div class="set-row"><div class="label" style="padding-left:16px">'+
-           esc(k.replace(/_/g,' '))+'<small>'+esc(it.detail||'')+'</small>'+
+           esc(k.replace(/_/g,' '))+'<small>'+esc(meta)+'</small>'+
            '</div><div class="actions">'+hchip(it.ok?'ok':'degraded')+
            '</div></div>';
       });
