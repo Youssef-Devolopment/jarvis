@@ -1,19 +1,19 @@
 # JARVIS — Voice-first AI assistant for Windows
 
-![version](https://img.shields.io/badge/version-v1.10.0-blue)
+![version](https://img.shields.io/badge/version-v1.11.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-408%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-454%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 Talk to your PC and it obeys: **142 skills + 18 one-click library
-packs, 30 LLM tools, 142 API endpoints.** Open and close apps by
+packs, 30 LLM tools, 143 API endpoints.** Open and close apps by
 name, dictate notes into
 Obsidian, search and read the web, run VSCode and terminal tasks —
 by voice, hotkey, or the `Alt+Space` HUD over any window. No API key?
 It still boots in **skills-only mode** and tells you how to unlock
 the rest.
 
-A slim **Lite** build (28 skills, port 5002) lives next to it in
+A slim **Lite** build (32 skills, port 5002) lives next to it in
 `../lite jarvis/`.
 
 ## Install (Windows, 3 steps)
@@ -113,6 +113,10 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
 - **System Guard** — a RAM watchdog that warns (once, with the top
   offender named) before the machine chokes, plus *"mic test"*
   pre-flight for dictation; toggle in Settings → GENERAL
+- **Health dashboard** — `GET /api/health` reports every subsystem
+  (config drift, key, memory schema, voice, guard, updater, MCP,
+  boot services) in one snapshot; Settings → **SYSTEM** renders it,
+  and secrets are masked in `logs/jarvis.log` by default
 - **Workspace Orchestrator** — *"scaffold a flask project called
   X"* for 7 project kinds (git included), and *"append X to file Y"*
   / *"insert X after anchor"* with a `.bak` every time, allow-listed
@@ -166,13 +170,14 @@ moods/       personalities, router, escalation levels, classifier
 mcp/         client runtime, presets, native stdio MCP server
 plugins/     community plugins (validated, isolated, MIT-replaceable)
 system/      tray, hotkey, overlay, singleton, autostart, launcher,
-             updater, guard (RAM watchdog), app_learner (scan +
-             skills), app_close (kill by name)
-routes/      Flask blueprints (142 endpoints)
+             updater, guard (RAM watchdog), health (/api/health
+             snapshot), app_learner (scan + skills), app_close
+             (kill by name)
+routes/      Flask blueprints (143 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
-- `main` builds green: syntax-check every file + **408 unit tests**
+- `main` builds green: syntax-check every file + **454 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -198,5 +203,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 408 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 454 tests
 ```

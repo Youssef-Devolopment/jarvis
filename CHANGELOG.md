@@ -4,6 +4,40 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.11.0] — 2026-10-06
+
+Operational maturity batch: the system can now tell you how it is
+doing. One health snapshot covers every subsystem, the config audits
+itself for drift, the memory DB knows its own schema version, and
+secrets are scrubbed from every log line. 454 tests, 143 API
+endpoints, 142 shipped skills.
+
+### Added
+- **Health dashboard** — `GET /api/health` returns one snapshot of
+  config, API key, memory (+schema), voice, guard, updater, MCP,
+  pending skill verdicts and every boot service; boot paths mark each
+  service as it starts (`run.py` and desktop mode both), so a failed
+  subsystem shows up as *degraded* with the reason instead of
+  disappearing silently. Settings → **SYSTEM** tab renders it with a
+  REFRESH button and an amber config-warnings block.
+- **Config audit** — `config.audit_settings()` statically checks for
+  drift (model/base-URL mismatch, out-of-range port/temperature/
+  max_tokens, empty voice, unknown browser engine, missing Obsidian
+  vault, debug on a non-loopback host, bad log level). Logged once at
+  boot, served live via `/api/health` — warnings only, never blocks.
+- **Memory schema versioning** — `memory/schema.py` stamps
+  `PRAGMA user_version` on `jarvis_memory.db`, runs forward-only
+  migrations when the schema bumps, and refuses to touch a DB written
+  by a NEWER JARVIS (reported instead, so a downgrade never corrupts).
+- **Secret redaction in logs** — every log handler now runs a
+  `RedactFilter`: OpenAI/Tavily/GitHub-style keys, `Bearer` tokens,
+  `*_API_KEY=…`/`TOKEN=…` assignments and `?key=…` query params are
+  masked before they can reach `logs/jarvis.log` or the console.
+
+### Changed
+- `updater.check()` remembers its last result for `last_check()`, so
+  health can report update state without another network fetch.
+
 ## [1.10.0] — 2026-10-06
 
 The agentic suites batch: four self-contained capability packs —
