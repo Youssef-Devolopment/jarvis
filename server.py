@@ -26,6 +26,12 @@ def create_app() -> Flask:
     app.register_blueprint(views_bp)
     app.register_blueprint(api_bp)
     app.config["NO_KEY_MODE"] = not s.has_key
+    try:  # static config-drift audit — warnings only, never blocks boot
+        from config import audit_settings
+        for w in audit_settings(s):
+            log.warning("Config audit: %s", w)
+    except Exception as exc:
+        log.debug("Config audit skipped: %s", exc)
     log.info("App created (skills-only: %s).", app.config["NO_KEY_MODE"])
     return app
 

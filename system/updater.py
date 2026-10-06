@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -24,6 +25,7 @@ log = get_logger("updater")
 
 ROOT = Path(__file__).resolve().parents[1]
 _GIT_TIMEOUT = 45  # network fetches can be slow on bad connections
+_last: Dict[str, Any] = {}  # most recent check() result, for /api/health
 
 
 def _run_git(args: List[str], timeout: int = _GIT_TIMEOUT) -> subprocess.CompletedProcess:
@@ -71,8 +73,21 @@ def _dirty_files(limit: int = 10) -> List[str]:
 def check() -> Dict[str, Any]:
     """Fetch origin/main and report whether a newer version exists.
 
-    Returns {ok, current, latest, available, dirty, reason}.
+    Returns {ok, current, latest, available, dirty, reason}. The result is
+    remembered for last_check() so health can show it without a fetch.
     """
+    global _last
+    result = _check_once()
+    _last = dict(result, ts=time.time())
+    return result
+
+
+def last_check() -> Dict[str, Any]:
+    """Most recent check() this session ({} when never checked)."""
+    return dict(_last)
+
+
+def _check_once() -> Dict[str, Any]:
     result: Dict[str, Any] = {
         "ok": False,
         "current": _local_version(),

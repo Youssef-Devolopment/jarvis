@@ -1840,6 +1840,13 @@ def update_apply():
     return jsonify(updater.update())
 
 
+@bp.get("/health")
+def health():
+    """One snapshot of every subsystem (config, memory, guard, MCP, ...)."""
+    from system import health as healthmon
+    return jsonify(healthmon.snapshot())
+
+
 @bp.post("/webhook/in")
 def webhook_in():
     """Inbound n8n/automation bridge (token or localhost gated)."""

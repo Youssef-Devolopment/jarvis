@@ -30,11 +30,18 @@ def _start_flask():
         host = s.host if s else "127.0.0.1"
         port = s.port if s else 5000
         log.info("Starting Flask on %s:%d", host, port)
+        from system import health as _health
+        _health.mark("flask", True, f"{host}:{port}")
         app.run(host=host, port=port, debug=False,
                 threaded=True, use_reloader=False)
         _flask_started = True
     except Exception as exc:
         log.exception("Flask failed: %s", exc)
+        try:
+            from system import health as _health
+            _health.mark("flask", False, str(exc)[:120])
+        except Exception:
+            pass
 
 
 def start_background():
@@ -50,8 +57,12 @@ def start_background():
         try:
             from ai import screen_context
             screen_context.start()
+            from system import health as _health
+            _health.mark("screen_context", True)
         except Exception as exc:
             log.warning("Screen context failed to start: %s", exc)
+            from system import health as _health
+            _health.mark("screen_context", False, str(exc)[:120])
     threading.Thread(target=_screen_context, name="screen-context",
                      daemon=True).start()
     # Warm the autonomous app learner so "open X" resolves instantly
@@ -59,8 +70,12 @@ def start_background():
         try:
             from system import app_learner
             app_learner.warm()
+            from system import health as _health
+            _health.mark("app_learner", True, "warmed")
         except Exception as exc:
             log.warning("App learner warm failed: %s", exc)
+            from system import health as _health
+            _health.mark("app_learner", False, str(exc)[:120])
     threading.Thread(target=_app_warm, name="app-learner-warm",
                      daemon=True).start()
     # Prime the TTS engine so the first spoken reply is instant
@@ -68,22 +83,36 @@ def start_background():
         try:
             from voice import warmup
             warmup()
+            from system import health as _health
+            _health.mark("voice", True, "TTS warmed")
         except Exception as exc:
             log.warning("Voice warm failed: %s", exc)
+            from system import health as _health
+            _health.mark("voice", False, str(exc)[:120])
     threading.Thread(target=_voice_warm, name="voice-warm",
                      daemon=True).start()
     # Self-update: check GitHub once at boot, pull when allowed + clean
     try:
         from system import updater
         updater.boot_check()
+        from system import health as _health
+        _health.mark("updater", True, "check running in background")
     except Exception as exc:
         log.warning("Update check skipped: %s", exc)
+        from system import health as _health
+        _health.mark("updater", False, str(exc)[:120])
     # System Guard: RAM watchdog (pref-gated, one sample a minute)
     try:
         from system import guard
         guard.start()
+        from system import health as _health
+        _health.mark("guard", True,
+                     "enabled" if guard.status().get("enabled")
+                     else "disabled by pref")
     except Exception as exc:
         log.warning("Guard start failed: %s", exc)
+        from system import health as _health
+        _health.mark("guard", False, str(exc)[:120])
     # Give it a moment to bind the port
     time.sleep(1.5)
 
@@ -128,8 +157,12 @@ def _setup_hotkey():
         hotkey.start_open_jarvis()
         hotkey.start_overlay_hotkey()
         log.info("Global hotkeys registered: Ctrl+Alt+J, Alt+Space")
+        from system import health as _health
+        _health.mark("hotkeys", True, "Ctrl+Alt+J, Alt+Space")
     except Exception as exc:
         log.warning("Hotkey setup failed: %s", exc)
+        from system import health as _health
+        _health.mark("hotkeys", False, str(exc)[:120])
 
     # Pre-warm the overlay HUD so the first Alt+Space is instant.
     def _prewarm_overlay():
@@ -137,8 +170,12 @@ def _setup_hotkey():
             from system import overlay
             if overlay.ensure_started():
                 log.info("Overlay HUD pre-warmed")
+            from system import health as _health
+            _health.mark("overlay", True, "HUD pre-warmed")
         except Exception as exc:
             log.warning("Overlay pre-warm failed: %s", exc)
+            from system import health as _health
+            _health.mark("overlay", False, str(exc)[:120])
     threading.Thread(target=_prewarm_overlay, name="overlay-prewarm",
                      daemon=True).start()
 
@@ -149,8 +186,12 @@ def _setup_tray():
         from system import tray
         tray.start()
         log.info("System tray icon started")
+        from system import health as _health
+        _health.mark("tray", True)
     except Exception as exc:
         log.warning("Tray setup failed: %s", exc)
+        from system import health as _health
+        _health.mark("tray", False, str(exc)[:120])
 
 
 def _system_uptime() -> str:

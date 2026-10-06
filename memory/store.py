@@ -71,6 +71,11 @@ def _get_conn() -> sqlite3.Connection:
                 _conn.execute("CREATE INDEX IF NOT EXISTS idx_facts_status_id "
                               "ON facts(status, id DESC)")
                 _conn.commit()
+                try:  # stamp PRAGMA user_version / run pending migrations
+                    from .schema import ensure as _ensure_schema
+                    _ensure_schema(_conn)
+                except Exception as exc:
+                    log.warning("Schema versioning skipped: %s", exc)
                 log.info("Memory store ready at %s", _DB_PATH)
     return _conn
 

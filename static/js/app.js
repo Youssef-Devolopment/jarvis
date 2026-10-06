@@ -942,7 +942,7 @@ function loadTab(name){
     mcp:'/api/mcp',appearance:'/api/prefs',audio:'/api/prefs',
     market:'/api/market',
     library:'/api/library',
-    general:'/api/prefs',about:'/api/info',council:'/api/council/levels',
+    general:'/api/prefs',system:'/api/health',about:'/api/info',council:'/api/council/levels',
     capture:'/api/contacts',workspace:'/api/layouts',
     clipboard:'/api/clipboard/recent',dream:'/api/dream/status'};
   fetch(endpoints[name]||'/api/info')
@@ -1227,6 +1227,57 @@ function prefToggle(key,on,label,sub){
       '<div class="set-row"><div class="label">Skills<small>'+esc(String((data.skills||[]).length))+'</small></div></div>'+
       '<div class="set-row"><div class="label">Voice<small>'+esc(data.voice&&data.voice.label?data.voice.label:'--')+'</small></div></div>'+
       '</div>';
+  }
+  if(name==='system'){
+    var chk=data.checks||{};
+    var hcol=function(st){
+      return (st==='ok'||st==='info')?'var(--green)':
+             (st==='degraded')?'var(--red)':
+             (st==='warn')?'var(--amber)':'var(--dim)';
+    };
+    var hchip=function(st){
+      return '<span style="color:'+hcol(st)+';font-size:10px;letter-spacing:.08em">'+
+             esc(String(st||'unknown').toUpperCase())+'</span>';
+    };
+    var u=data.uptime_s||0;
+    var upt=u<60?(u+'s'):(Math.floor(u/60)+'m '+(u%60)+'s');
+    var h='<div class="set-list">';
+    h+='<div class="set-row"><div class="label">Overall'+
+       '<small>v'+esc(data.version||'?')+' · up '+esc(upt)+
+       (data.ok?' · healthy':'')+'</small></div>'+
+       '<div class="actions">'+hchip(data.overall)+
+       '<button class="dbtn" data-action="health-refresh">REFRESH</button>'+
+       '</div></div>';
+    ['config','api_key','memory','voice','guard','updater','mcp',
+     'pending_skills'].forEach(function(k){
+      var c=chk[k];if(!c)return;
+      h+='<div class="set-row"><div class="label">'+esc(k.replace(/_/g,' '))+
+         '<small>'+esc(c.detail||'')+'</small></div>'+
+         '<div class="actions">'+hchip(c.status)+'</div></div>';
+    });
+    var svc=chk.services;
+    if(svc){
+      h+='<div class="set-row"><div class="label">Boot services'+
+         '<small>'+esc(svc.detail||'')+'</small></div>'+
+         '<div class="actions">'+hchip(svc.status)+'</div></div>';
+      var items=svc.items||{};
+      Object.keys(items).sort().forEach(function(k){
+        var it=items[k]||{};
+        h+='<div class="set-row"><div class="label" style="padding-left:16px">'+
+           esc(k.replace(/_/g,' '))+'<small>'+esc(it.detail||'')+'</small>'+
+           '</div><div class="actions">'+hchip(it.ok?'ok':'degraded')+
+           '</div></div>';
+      });
+    }
+    h+='</div>';
+    var cw=(chk.config||{}).warnings||[];
+    if(cw.length){
+      h+='<div style="margin-top:10px;padding:10px;'+
+         'border:1px solid var(--border);border-radius:4px;'+
+         'font-size:10px;line-height:1.7;color:var(--amber)">'+
+         cw.map(function(w){return '&#8226; '+esc(w);}).join('<br>')+'</div>';
+    }
+    return h;
   }
   if(name==='council'){renderCouncilPanel();return '<div style="color:var(--dim)">Loading…</div>';}
   if(name==='capture'){renderCapturePanel();return '<div style="color:var(--dim)">Loading…</div>';}
@@ -1944,6 +1995,9 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='update-check'){
       runUpdateCheck();
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='health-refresh'){
+      loadTab('system');
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='update-apply'){
       applyUpdate();

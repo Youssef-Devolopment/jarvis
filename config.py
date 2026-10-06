@@ -10,7 +10,7 @@ log = get_logger(__name__)
 load_dotenv()
 
 # Single source of truth for the app version. Bump on major releases.
-VERSION = "1.10.0"
+VERSION = "1.11.0"
 
 # Project .env file (gitignored). API keys live here, never in prefs.
 ENV_PATH = Path(__file__).resolve().parent / ".env"
@@ -197,6 +197,70 @@ def validate_key_format(key: str) -> str:
             "That is still the template placeholder.",
             detail="Paste a real key.")
     return key
+
+
+# Browser engines the search layer actually implements (see tools/browser).
+KNOWN_BROWSER_ENGINES = ("duckduckgo", "ddg", "brave", "bing", "google",
+                         "searxng", "searx")
+_LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+_LOOPBACK = ("127.0.0.1", "localhost", "::1")
+
+
+def audit_settings(s: Settings) -> list[str]:
+    """Static config-drift checks — warnings only, never raises.
+
+    Catches the silent mismatches a flexible env causes: wrong model for
+    the base URL, out-of-range numbers, a vault/engine that no longer
+    exists, debug mode on a non-loopback host. Called once at boot
+    (server.create_app) and served live via /api/health.
+    """
+    warns: list[str] = []
+    try:
+        if not (1 <= int(s.port or 0) <= 65535):
+            warns.append(f"PORT {s.port} is outside 1-65535.")
+    except (TypeError, ValueError):
+        warns.append(f"PORT {s.port!r} is not an integer.")
+    try:
+        if not (0.0 <= float(s.temperature) <= 2.0):
+            warns.append(f"DEEPSEEK_TEMPERATURE {s.temperature} is outside 0-2.")
+    except (TypeError, ValueError):
+        warns.append(f"DEEPSEEK_TEMPERATURE {s.temperature!r} is not a number.")
+    try:
+        if not (1 <= int(s.max_tokens) <= 65536):
+            warns.append(f"MAX_TOKENS {s.max_tokens} is outside 1-65536.")
+    except (TypeError, ValueError):
+        warns.append(f"MAX_TOKENS {s.max_tokens!r} is not an integer.")
+    base = (s.base_url or "").strip().rstrip("/")
+    if s.has_key and base and not base.startswith(("http://", "https://")):
+        warns.append(f"DEEPSEEK_BASE_URL is not an http(s) URL: {base[:60]}")
+    model = (s.model or "").lower()
+    if s.has_key and base and "deepseek.com" in base:
+        other = ("gpt" in model or model.startswith(("claude", "qwen", "llama",
+                                                     "gemini", "mistral")))
+        if other:
+            warns.append(
+                f"MODEL '{s.model}' looks non-DeepSeek but BASE_URL points at "
+                f"{base} — check DEEPSEEK_MODEL/DEEPSEEK_BASE_URL pairing.")
+    # Deliberately NOT warning about "deepseek-*" model names on a foreign
+    # base URL: proxies/rebadged providers (any OpenAI-compatible URL) are
+    # a documented setup, so that pairing is legitimate by design.
+    if not (s.voice_name or "").strip():
+        warns.append("VOICE_NAME is empty — speech output is disabled.")
+    if (s.browser_engine or "").strip().lower() not in KNOWN_BROWSER_ENGINES:
+        warns.append(
+            f"BROWSER_ENGINE '{s.browser_engine}' is unknown "
+            f"(expected one of: {', '.join(KNOWN_BROWSER_ENGINES)}).")
+    if (s.obsidian_vault or "").strip():
+        vault = Path(s.obsidian_vault).expanduser()
+        if not vault.exists():
+            warns.append(f"OBSIDIAN_VAULT is set but not found: {vault}")
+    if s.log_level not in _LOG_LEVELS:
+        warns.append(f"LOG_LEVEL '{s.log_level}' is invalid — using INFO.")
+    if s.debug and s.host not in _LOOPBACK:
+        warns.append(
+            f"FLASK_DEBUG=1 while listening on {s.host} — debug mode is "
+            "reachable from the network; use 127.0.0.1.")
+    return warns
 
 
 def write_env_key(key: str, path: Path | None = None) -> Path:

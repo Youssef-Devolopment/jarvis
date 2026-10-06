@@ -41,22 +41,27 @@ def main():
 
     # Pre-warm browser in background so first search is instant
     import threading
+    from system import health as healthmon
+
     def _prewarm():
         try:
             from skills.browser_agent import get_agent
             get_agent().prewarm()
-        except Exception:
-            pass
+            healthmon.mark("browser", True, "prewarmed")
+        except Exception as _exc:
+            healthmon.mark("browser", False, str(_exc)[:120])
         try:
             from voice import warmup
             warmup()  # prime TTS engine + first synth off the critical path
-        except Exception:
-            pass
+            healthmon.mark("voice", True, "TTS warmed")
+        except Exception as _exc:
+            healthmon.mark("voice", False, str(_exc)[:120])
         try:
             from ai import screen_context
             screen_context.start()   # RAM-only screen context loop
-        except Exception:
-            pass
+            healthmon.mark("screen_context", True)
+        except Exception as _exc:
+            healthmon.mark("screen_context", False, str(_exc)[:120])
     threading.Thread(target=_prewarm, daemon=True).start()
 
     # Auto-start enabled MCP servers in background
@@ -68,64 +73,83 @@ def main():
                 import logging
                 logging.getLogger("run").info(
                     "MCP started: %s", ", ".join(summary["started"]))
+            healthmon.mark("mcp", True,
+                           f"{len(summary.get('started', []))} server(s) started")
         except Exception as exc:
             import logging
             logging.getLogger("run").warning("MCP autostart failed: %s", exc)
+            healthmon.mark("mcp", False, str(exc)[:120])
     threading.Thread(target=_start_mcp, daemon=True).start()
 
     # Self-update: check GitHub once at boot, pull when allowed + clean
     try:
         from system import updater
         updater.boot_check()
+        healthmon.mark("updater", True, "check running in background")
     except Exception as exc:
         log.warning("Update check skipped: %s", exc)
+        healthmon.mark("updater", False, str(exc)[:120])
 
     # System Guard: RAM watchdog (pref-gated, one sample a minute)
     try:
         from system import guard
         guard.start()
+        healthmon.mark("guard", True,
+                       "enabled" if guard.status().get("enabled")
+                       else "disabled by pref")
     except Exception as exc:
         log.warning("Guard start failed: %s", exc)
+        healthmon.mark("guard", False, str(exc)[:120])
 
     # Start Dream Mode scheduler
     try:
         from system import dream_scheduler
         dream_scheduler.start()
+        healthmon.mark("dream_scheduler", True)
     except Exception as _exc:
         import logging
         logging.getLogger("run").warning(
             "Dream scheduler failed: %s", _exc)
+        healthmon.mark("dream_scheduler", False, str(_exc)[:120])
 
     try:
         from ai import clipboard_watcher
         clipboard_watcher.start()
+        healthmon.mark("clipboard", True)
     except Exception as _exc:
         import logging
         logging.getLogger("run").warning("Clipboard failed: %s", _exc)
+        healthmon.mark("clipboard", False, str(_exc)[:120])
 
     try:
         from system import reminder_loop
         reminder_loop.start()
+        healthmon.mark("reminders", True)
     except Exception as _exc:
         import logging
         logging.getLogger("run").warning("Reminders failed: %s", _exc)
+        healthmon.mark("reminders", False, str(_exc)[:120])
 
     try:
         from ai import time_tracker
         time_tracker.start()
+        healthmon.mark("time_tracker", True)
     except Exception as _exc:
         import logging
         logging.getLogger("run").warning("Time tracker failed: %s", _exc)
+        healthmon.mark("time_tracker", False, str(_exc)[:120])
 
     # Background scheduler: daily briefings + one-shot timers
     def _start_scheduler():
         try:
             from system.scheduler import start
             start()
+            healthmon.mark("scheduler", True)
         except Exception as exc:
             import logging
             logging.getLogger("run").warning("Scheduler autostart failed: %s",
                                              exc)
+            healthmon.mark("scheduler", False, str(exc)[:120])
     threading.Thread(target=_start_scheduler, daemon=True).start()
 
     # Folder sentinel: re-watch persisted folders
@@ -135,10 +159,13 @@ def main():
             n = start_saved()
             if n:
                 log.info("Sentinel restored %d folder(s)", n)
+            healthmon.mark("folder_sentinel", True,
+                           f"{n} folder(s) restored" if n else "idle")
         except Exception as exc:
             import logging
             logging.getLogger("run").warning("Sentinel autostart failed: %s",
                                              exc)
+            healthmon.mark("folder_sentinel", False, str(exc)[:120])
     threading.Thread(target=_start_sentinel, daemon=True).start()
 
     # System integration: hotkey + tray
@@ -149,17 +176,26 @@ def main():
                 from system.hotkey import start_hotkey_listener
                 threading.Thread(target=start_hotkey_listener, daemon=True).start()
                 log.info("Hotkey thread started")
+                healthmon.mark("hotkeys", True, "listener started")
             except Exception as exc:
                 log.warning("Hotkey start failed: %s", exc)
+                healthmon.mark("hotkeys", False, str(exc)[:120])
+        else:
+            healthmon.mark("hotkeys", True, "disabled by pref")
         if get_pref("tray_enabled", True):
             try:
                 from system.tray import start_tray
                 threading.Thread(target=start_tray, daemon=True).start()
                 log.info("Tray thread started")
+                healthmon.mark("tray", True)
             except Exception as exc:
                 log.warning("Tray start failed: %s", exc)
+                healthmon.mark("tray", False, str(exc)[:120])
+        else:
+            healthmon.mark("tray", True, "disabled by pref")
     except Exception as exc:
         log.warning("System integration skipped: %s", exc)
+        healthmon.mark("hotkeys", False, str(exc)[:120])
 
     try:
         from memory import context as ctx_tracker
