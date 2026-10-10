@@ -1,8 +1,8 @@
 # JARVIS — Voice-first AI assistant for Windows
 
-![version](https://img.shields.io/badge/version-v1.14.1-blue)
+![version](https://img.shields.io/badge/version-v1.15.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-530%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-572%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 Talk to your PC and it obeys: **142 skills + 18 one-click library
@@ -176,13 +176,14 @@ plugins/     community plugins (validated, isolated, MIT-replaceable)
 system/      tray, hotkey, overlay, singleton, autostart, launcher,
              updater, guard (RAM watchdog), health (/api/health
              snapshot), services (one boot registry shared by both
-             entry points), app_learner (scan + skills), app_close
+             entry points), startup (first-run boot messaging),
+             app_learner (scan + skills), app_close
              (kill by name)
 routes/      Flask blueprints (144 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
-- `main` builds green: syntax-check every file + **530 unit tests**
+- `main` builds green: syntax-check every file + **572 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -209,6 +210,6 @@ Full list with defaults: `.env.example`.
 ## Health
 
 ```bat
-.venv\Scripts\python.exe check.py     :: 11 preflight checks
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 530 tests
+.venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 572 tests
 ```

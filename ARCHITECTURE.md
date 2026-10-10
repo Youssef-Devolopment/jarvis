@@ -36,6 +36,13 @@ user text → skills.dispatch() → skill reply
   boot-only listeners (hotkeys, tray) set `restartable=False`. New
   background service = add a ServiceSpec here, not another
   try/except block.
+- **Boot voice**: `system/startup.py` — pure, tested messaging helpers
+  shared by both entry points: the guarded console status block, the
+  post-boot verdict derived from the `/api/health` snapshot (ok /
+  still-starting / warn / SAFE MODE with next step), the busy-port
+  probe (`ensure_port()` → friendly exit 3 before subsystems boot),
+  and desktop toast text. New boot message = helper here, not a
+  print in `run.py`.
 - **Overlay**: `system/overlay.py` — Alt+Space HUD; thread-safe action
   queue → Tk thread; talks to `/api/command` + `/api/listen` only.
 - **MCP server**: `mcp/server.py` — stdio JSON-RPC (newline frames,

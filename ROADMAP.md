@@ -1,6 +1,6 @@
 # JARVIS Roadmap
 
-Where the project stands and where it's going. Written at v1.14.1 —
+Where the project stands and where it's going. Written at v1.15.0 —
 a documented, observably healthy, architecture-driven system rather
 than a pile of features. Priorities in order: **trust → operability →
 capability**. A feature that makes the system harder to trust or
@@ -23,12 +23,13 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.13.0** | **Integrity**: per-service STOP/RESTART (`POST /api/services/<name>` + SYSTEM tab buttons), `PRAGMA integrity_check` in health, backup-before-migration |
 | **v1.14.0** | **Reliability**: persistent warn/degraded page banner, `Health after boot:` log line, key-format audit checks, silent-fallback audit |
 | **v1.14.1** | **Documentation set**: this roadmap, `DECISIONS.md` (architecture story), `TESTING.md` (verification manual) |
+| **v1.15.0** | **Productization, phase 1**: `system/startup.py` boot voice — guarded status block, safe-mode verdict + toasts from the one health snapshot, fail-fast port probe (exit 3); capability-aware `check.py` (0/1/2 exit codes, per-check hints); launch-first setup summary; DB errors → actionable 503 |
 
-Stable today: 530 tests (in-tree + fresh-copy, no `.env`), 144 API
+Stable today: 572 tests (in-tree + fresh-copy, no `.env`), 144 API
 endpoints, 142 shipped skills, green CI on `windows-latest`, health
-visible in five layers (preflight / API / dashboard / banner / log),
-lifecycle controls for 14 services, structured errors on every known
-failure path.
+visible in six layers (preflight / API / dashboard / banner / console
+/ log), lifecycle controls for 14 services, structured errors on every
+known failure path.
 
 ---
 
@@ -39,6 +40,12 @@ failure path.
   machine: `npx`/network issues, not code. The mcp row is honestly
   degraded until fixed. Roadmap: preflight checks (§30d #2) make
   this class of failure self-diagnosing.
+- **Health snapshot stalls while MCP starts** — `mcp/runtime.py`
+  holds `_lock` across each server's full start (a 45s join, server
+  after server), so `/api/health` and the boot verdict block until
+  MCP settles (~60–90s on a loaded machine). Honest but slow; a fix
+  wants lock-free status reads (separate state dict) without touching
+  the start path.
 - **README media refresh** — `docs/overlay.png` + GIF still show the
   older HUD; recapture on a quiet session.
 - **Lite repo parity** — `jarvis-lite` runs (32 skills, 15 routes)

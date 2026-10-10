@@ -5,8 +5,9 @@ reproduction, health checks, CI, and the manual smoke tests that only
 a human on Windows can do. Follow this and "works on my machine"
 stays a scare story instead of a bug report.
 
-**Ground truth:** 45 test files · **530 tests** · 144 API endpoints ·
-142 shipped skills · `check.py` 11 preflight checks.
+**Ground truth:** 46 test files · **572 tests** · 144 API endpoints ·
+142 shipped skills · `check.py` 11 preflight checks (exit 0 ready /
+1 fix core / 2 skills-only).
 
 ---
 
@@ -47,7 +48,7 @@ Expected tail:
 
 ```
 ----------------------------------------------------------------------
-Ran 530 tests in ~30s
+Ran 572 tests in ~30s
 OK
 ```
 
@@ -59,7 +60,7 @@ its verdict to stderr and a truncated pipe can hide it.
 
 ```powershell
 & ".\.venv\Scripts\python.exe" -m unittest tests.test_service_control -v
-& "._.venv\Scripts\python.exe" -m unittest tests.test_health.HealthLogSummaryTests -v
+& ".\.venv\Scripts\python.exe" -m unittest tests.test_health.HealthLogSummaryTests -v
 ```
 
 **PowerShell 5.1 quirks that bite this repo:**
@@ -76,7 +77,7 @@ its verdict to stderr and a truncated pipe can hide it.
 
 ## 3. What each test group covers
 
-45 files under `tests/`, grouped by the seam they protect.
+46 files under `tests/`, grouped by the seam they protect.
 
 **Core engine & routing**
 
@@ -131,6 +132,7 @@ its verdict to stderr and a truncated pipe can hide it.
 | `test_logging.py` | Log rotation + secret redaction |
 | `test_backup.py` | Backup: zips memory DB + `.env` into tmp, prunes, lists |
 | `test_launch.py` | Universal open resolver + URL rules |
+| `test_first_run.py` | First-run surface: boot status block, safe-mode verdicts, toasts, port probe, `check.py` buckets/exit codes/capabilities |
 | `test_app_learner.py` | App-learning engine (no real launches) |
 | `test_scaffold.py` | Boilerplate scaffolder output shape |
 
@@ -183,14 +185,15 @@ a genuinely new machine.
 
 ---
 
-## 5. Health verification — five layers
+## 5. Health verification — six layers
 
 | Layer | How | What "healthy" looks like |
 |---|---|---|
-| Preflight | `.venv\Scripts\python.exe check.py` | `All 11 checks passed` |
+| Preflight | `.venv\Scripts\python.exe check.py` | Exit 0 + `All 11 checks passed` (a fresh placeholder-key install exits 2 with a capabilities block — that is skills-only, not broken) |
 | API | `GET http://127.0.0.1:5001/api/health` | `"overall": "ok"`, every `checks.*.status` ok/warn |
 | UI | Settings → **SYSTEM** tab | All rows green; degraded rows name the failing service |
 | UI | Page banner (under the topbar) | **Hidden** when ok; amber = config warnings; red = degraded |
+| Console | `python run.py` | `Health : OK — all systems healthy` (or `still starting: X`, a WARN count, or a SAFE MODE block with the next step) |
 | Log | `logs/jarvis.log` | `Health after boot: ok` (INFO) or a WARNING naming the failures |
 
 The health snapshot covers: config drift + key status, memory (facts,
@@ -218,7 +221,7 @@ Python 3.10) — same OS family as the product:
 4. `python -m unittest discover -s tests -v` — the whole suite.
 
 "CI green" therefore means: *every file compiles, the UI script
-parses, and all 530 tests pass on a machine that has never seen your
+parses, and all 572 tests pass on a machine that has never seen your
 checkout*. It does **not** mean smoke tests ran — §7 stays manual.
 
 Check the latest run:
@@ -327,7 +330,7 @@ API keys, no running server**:
 
 A change is done when **all** of these hold:
 
-1. full suite: `Ran 530 tests … OK` (or the new count);
+1. full suite: `Ran 572 tests … OK` (or the new count);
 2. fresh-copy suite: OK without `.env`;
 3. `check.py`: 11/11;
 4. `node --check static/js/app.js`: clean (if JS changed);

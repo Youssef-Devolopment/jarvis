@@ -4,6 +4,81 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.15.0] — 2026-10-10
+
+Phase 1 of productization — JARVIS now explains itself. The moments a
+first-time user meets (install, first boot, first failure) got one
+honest, actionable voice: the console boot block, the desktop toasts,
+the preflight script and the post-boot health verdict all answer the
+same three questions — which mode am I in, what works, what do I do
+next — and all derive from the same `/api/health` snapshot the UI
+banner uses. 572 tests, 144 API endpoints, 142 shipped skills.
+
+### Added
+- **`system/startup.py`** — pure, tested boot-messaging helpers (the
+  product-facing voice of startup):
+  - `status_lines()` — console boot block: URL, model, voice, mood,
+    memory, mode, logs. Every subsystem read is guarded: a broken
+    memory DB or mood store degrades to an "unavailable" line, never a
+    crashed boot.
+  - `health_block()` / `safe_mode_block()` — the post-boot verdict
+    from the health snapshot: "OK" (or "still starting: X" while async
+    services are in flight — never claim healthy early), "WARN — N
+    config warning(s)" with the first warning and where to look, or an
+    explicit SAFE MODE block naming what broke, what the user loses,
+    what still works, and the exact next step.
+  - `ensure_port()` — probe-bind before booting the world: a busy port
+    now fails in seconds with plain words and exit code 3, instead of
+    werkzeug's terse exit 1 after every subsystem already started.
+  - toast helpers — the desktop boot toast states the mode (safe
+    mode + failed services, or skills-only); a deferred toast fires
+    only when async services actually failed.
+- **Capability-aware preflight (`check.py`)** — same 11 checks, now
+  with three exit codes anyone can branch on: `0` ready (optional
+  gaps reported as capabilities, not failures), `1` core broken,
+  `2` key missing/invalid → JARVIS starts skills-only. Adds a
+  "Capabilities:" block (AI chat, voice input, browser skills,
+  memory), one actionable hint per check printed only when that check
+  failed, a lenient "Config loads" (a fresh placeholder install is
+  key-pending, not broken), and explicit core/key/optional buckets.
+- **Setup summary speaks first-run** (`setup.ps1`) — launch-first:
+  JARVIS starts with no API key at all (skills-only), then add one in
+  Settings → GENERAL; branches on the new check.py exit codes so a
+  fresh install is never told to "fix the ✗ items" for a placeholder
+  key.
+
+### Changed
+- **`run.py` console boot** — friendly first-run block (version, URL,
+  model, voice, mood, memory, logs) with guarded reads; skills-only
+  mode prints what works now, what doesn't, and both fix paths; busy
+  port fails fast before services boot (exit 3, lock auto-released).
+- **Post-boot health verdict** (`server.schedule_health_log`) — the
+  reporter that writes the log line now takes an `on_summary` callback
+  receiving the same snapshot, so console output and desktop toasts
+  can never disagree with the log line or the UI banner. Console
+  prints the verdict (ok / still-starting / warn / safe mode);
+  desktop toasts only when degraded.
+- **Config audit +2** (`config.audit_settings`) — template-placeholder
+  GROQ/TAVILY keys ("paste/your/example/replace") are called out even
+  when they pass the prefix checks; enabled npx-based MCP servers with
+  no Node.js on PATH warn with an install hint instead of leaving
+  those servers silently degraded at boot.
+- **DB failure degrades with instructions** (`errors.register`) —
+  `sqlite3.Error` now returns a structured 503 ("Memory store is
+  unavailable", locked/corrupt diagnosis, restart or restore from
+  `memory/backups/` next step) instead of an opaque 500 traceback.
+- **Desktop boot toast** (`system/launcher.py`) — "JARVIS is running"
+  now states the mode: safe mode with the failed services named, or
+  skills-only, or the plain Ctrl+Alt+J hint when healthy.
+
+### Verified
+- 572 tests (+42) including the new `tests/test_first_run.py`
+  (boot messaging, verdicts, toasts, port probe, preflight
+  buckets/exit codes/capabilities); fresh-copy suite (no `.env`)
+  572 OK; check.py live 11/11 exit 0; live console: friendly busy-port
+  exit 3, boot block, "still starting"/verdict honesty; desktop
+  restart healthy on 1.15.0.
+
 ## [1.14.1] — 2026-10-07
 
 Documentation batch — the repo now carries its own operating manual.
