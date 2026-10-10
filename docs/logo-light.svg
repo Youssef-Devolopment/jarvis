@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" role="img" aria-label="JARVIS">
+  <title>JARVIS — for light backgrounds</title>
+  <defs>
+    <linearGradient id="jlt-g" x1="10" y1="6" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1c2a3f"/>
+      <stop offset="1" stop-color="#0e1626"/>
+    </linearGradient>
+    <mask id="jlt-cut">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M35.5 15.5 V34 C35.5 40.5 32 44 26.5 42.5"
+            fill="none" stroke="#000" stroke-width="6.6"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <g transform="translate(6 8) scale(.875)">
+    <path mask="url(#jlt-cut)" fill="url(#jlt-g)" stroke="url(#jlt-g)"
+          stroke-width="3" stroke-linejoin="round"
+          d="M32 3 L61 32 L32 61 L3 32 Z"/>
+  </g>
+  <text x="82" y="48"
+        font-family="Inter,'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif"
+        font-size="34" font-weight="800" letter-spacing="8" fill="#0e1626">JARVIS</text>
+</svg>

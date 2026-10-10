@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="JARVIS mark">
+  <title>JARVIS mark</title>
+  <defs>
+    <linearGradient id="jmk-g" x1="10" y1="6" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7dffb8"/>
+      <stop offset=".55" stop-color="#66ffa3"/>
+      <stop offset="1" stop-color="#66e0ff"/>
+    </linearGradient>
+    <mask id="jmk-cut">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M35.5 15.5 V34 C35.5 40.5 32 44 26.5 42.5"
+            fill="none" stroke="#000" stroke-width="6.6"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <path mask="url(#jmk-cut)" fill="url(#jmk-g)" stroke="url(#jmk-g)"
+        stroke-width="3" stroke-linejoin="round"
+        d="M32 3 L61 32 L32 61 L3 32 Z"/>
+</svg>

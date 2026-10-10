@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 170" role="img" aria-label="JARVIS">
+  <title>JARVIS</title>
+  <defs>
+    <linearGradient id="jbn-g" x1="46" y1="46" x2="126" y2="124" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7dffb8"/>
+      <stop offset=".55" stop-color="#66ffa3"/>
+      <stop offset="1" stop-color="#66e0ff"/>
+    </linearGradient>
+    <radialGradient id="jbn-glow" cx="88" cy="85" r="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#66ffa3" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#66ffa3" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="jbn-cut">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M35.5 15.5 V34 C35.5 40.5 32 44 26.5 42.5"
+            fill="none" stroke="#000" stroke-width="6.6"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <rect width="600" height="170" rx="28" fill="#0a0e15"/>
+  <rect width="600" height="170" rx="28" fill="url(#jbn-glow)"/>
+  <rect x=".5" y=".5" width="599" height="169" rx="27.5"
+        fill="none" stroke="#ffffff" stroke-opacity=".08"/>
+  <g transform="translate(40 33) scale(1.625)">
+    <path mask="url(#jbn-cut)" fill="url(#jbn-g)" stroke="url(#jbn-g)"
+          stroke-width="3" stroke-linejoin="round"
+          d="M32 3 L61 32 L32 61 L3 32 Z"/>
+  </g>
+  <text x="176" y="107"
+        font-family="Inter,'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif"
+        font-size="62" font-weight="800" letter-spacing="14" fill="#ffffff">JARVIS</text>
+</svg>
