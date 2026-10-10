@@ -4,6 +4,53 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.17.0] — 2026-10-11
+
+The "genuinely ready" pass — product-trust and surface polish across
+the app UI, the Alt+Space HUD and the first-run flow. No new features;
+the same functionality now reads as a product instead of a prototype.
+
+### Fixed
+- **Status banners were buried behind the topbar** — the key/health
+  strips rendered at document top under the fixed topbar's gradient,
+  so the honest "skills-only mode" and "system degraded" messages
+  were effectively invisible. Both banners now live in a pinned
+  strip just below the topbar (`class="banners"` wrapper), stacking
+  when both show. Guarded by tests.
+- Stale hardcoded version in the template fallback (`v1.16.0`) —
+  now `v{{ version }}`, so it can never lie again.
+- Stray brace in `style.css` (starter-chip block).
+
+### Changed
+- **Alt+Space HUD 5.0** (`system/overlay.py`) — brand-aligned
+  refresh: diamond mark (matches the logo), brand-green accent with
+  cyan tails, a friendly "Ask JARVIS anything — Enter to send" hint
+  in the empty input (cleared by the first keystroke, restored when
+  emptied), and a pulsing **"JARVIS is thinking…"** line in the
+  reply well so the deck is never a dead empty panel while the first
+  token is in flight. Errors render as a plain-English red ⚠ line
+  (never raw `[error]` plumbing), "(no reply)" becomes an actionable
+  sentence, and every status string is title-case plain English
+  (Ready / Thinking… / Listening… / Done / Something went wrong).
+  Thread model, SSE stitching and the public API are untouched.
+- **First-run card** — a dedicated onboarding card (not a bare
+  settings list) that leads with "Local skills already work — no
+  key needed. Add one any time to unlock AI chat" and marks the key
+  step **Optional**, so skills-only mode reads as a product state,
+  not an error state.
+- **SYSTEM tab** — opens with a verdict card (READY / ATTENTION /
+  SAFE MODE + one plain-English line + version/uptime + REFRESH),
+  every row carries a status-colored left border (green/amber/red),
+  and config warnings sit in a titled "CONFIGURATION — WORTH FIXING"
+  box instead of an anonymous amber block.
+- README HUD description updated to match the shipped behavior.
+
+### Tests
+- **587 passing (+9)** — new `tests/test_ui_surface.py` guards the
+  template landmarks, the banner wrapper, the cache-buster, the
+  version fallback, the new CSS components, and the overlay's brand
+  palette and input hint.
+
 ## [1.16.2] — 2026-10-10
 
 The public site, rebuilt for prime time — and now verified live at
