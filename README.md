@@ -1,20 +1,46 @@
-# JARVIS — Voice-first AI assistant for Windows
+# JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.15.0-blue)
+![version](https://img.shields.io/badge/version-v1.16.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-572%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-574%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
-Talk to your PC and it obeys: **142 skills + 18 one-click library
-packs, 30 LLM tools, 144 API endpoints.** Open and close apps by
-name, dictate notes into
-Obsidian, search and read the web, run VSCode and terminal tasks —
-by voice, hotkey, or the `Alt+Space` HUD over any window. No API key?
-It still boots in **skills-only mode** and tells you how to unlock
-the rest.
+JARVIS is a voice-first assistant that lives on your Windows machine.
+Say or type what you want in plain English — it opens and closes
+apps, dictates notes into your Obsidian vault, searches and reads
+the web, sets reminders that speak up on their own, and answers
+everyday questions instantly. It sits in your tray, and
+**Alt+Space** summons it over any window.
 
-A slim **Lite** build (32 skills, port 5002) lives next to it in
-`../lite jarvis/`.
+It works out of the box with no API key (100+ local commands), and
+grows into a full AI assistant the moment you add one.
+
+## What it does for you
+
+- **"Open Spotify." "Close Chrome."** — apps open by name (aliases,
+  Start Menu, PATH, registry), close gracefully with force only as a
+  last resort, and never touch system processes.
+- **"Remind me to stand up in 20 minutes."** — the reminder shows in
+  the UI and speaks up on its own when the time comes.
+- **"Note: idea for the redesign — bolder header."** — captured
+  straight into your Obsidian vault (or a local fallback), never
+  lost in a chat window.
+- **"Search the web for the Artemis mission."** — real search with
+  sources, pages fetched and summarized when you ask.
+- **"What time is it?"** — instant, spoken, no key required. Over
+  100 local skills like this work from the first boot.
+- **Anything else** — the AI chat (DeepSeek or any OpenAI-compatible
+  model) picks up what skills don't cover, streaming answers aloud.
+
+## Who it's for
+
+- Tinkerers who want a real assistant on their own PC — not a
+  cloud subscription.
+- Voice users and accessibility users who prefer speaking to
+  clicking.
+- Developers who want a local, inspectable, extensible agent:
+  every skill is a small Python file, every endpoint is documented,
+  nothing is a black box.
 
 ## Install (Windows, 3 steps)
 
@@ -34,9 +60,9 @@ Existing files are never touched; already have the repo? Run
 (`desktop.bat` below), open **Settings → GENERAL**, paste
 `DEEPSEEK_API_KEY`, SAVE+TEST. The key is verified live against
 your provider (any OpenAI-compatible base URL works), saved to
-`.env` with a backup, and chat unlocks immediately. Keyless? Skip
-this — skills-only mode already answers 100+ local commands, and a
-banner + a first-run card walk you through the rest.
+`.env` with a backup, and chat unlocks immediately. Skip this if
+you like — skills-only mode already answers 100+ local commands,
+and a banner + a first-run card walk you through the rest.
 
 **Step 3 — launch.**
 
@@ -47,12 +73,58 @@ start.bat           :: console server on http://127.0.0.1:5000
 ```
 
 Say *"open notepad"*, *"what time is it"*, *"close chrome"*.
-Press **Alt+Space** anywhere for the floating HUD.
+Press **Alt+Space** anywhere for the floating HUD. On a fresh
+console, one-click starter commands show you a taste of each
+capability — time, app control, web search, reminders.
 
 Prefer it manual? `install.bat`, `copy .env.example .env`,
 `start.bat` — same result, your hands on every step.
 
-## What it can do
+**See it end to end:** [DEMO.md](DEMO.md) is a scripted 90-second
+tour — every command in it is verified to work on a clean install.
+
+## Core vs optional
+
+| | Needs | You get |
+|---|---|---|
+| **Core (always on)** | nothing | 100+ local skills: time, apps, timers, reminders, notes, math, clipboard, focus mode |
+| **AI chat** | `DEEPSEEK_API_KEY` (or any OpenAI-compatible key) | conversations, reasoning, tool use, anything the skills miss |
+| **Voice input** | `GROQ_API_KEY` + mic | push-to-talk dictation anywhere |
+| **Better web answers** | `BRAVE_API_KEY` or `TAVILY_API_KEY` | higher-tier search results (keyless DDG/Bing fallback works) |
+| **Notes to Obsidian** | `OBSIDIAN_VAULT` | notes as Markdown in your vault (SQLite fallback built in) |
+| **Todoist sync** | `TODOIST_API_TOKEN` | reminders/tasks mirrored to Todoist |
+
+Full list with defaults: `.env.example`. No key? The startup
+summary tells you exactly what works and what a key would add.
+
+## How it works (the short version)
+
+JARVIS is a local Flask server with a tray icon, a global hotkey
+and an **Alt+Space** HUD. Your words (voice or text) go through a
+**skill router first** — deterministic Python skills answer
+instantly and offline. Anything unmatched falls through to the LLM,
+which can also call 30 built-in tools. Everything it learns lives
+in a local SQLite database on your machine.
+
+Details, diagrams and data flow: [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Trust and safety
+
+- **Local-first.** Memory, notes, history and keys never leave your
+  PC except the LLM calls you configure yourself.
+- **No secrets in the repo.** `.env` is gitignored; the setup script
+  never asks you to paste keys into files by hand.
+- **Honest about its health.** One status pill in the topbar tells
+  you READY / ATTENTION / SAFE MODE; the SYSTEM tab shows every
+  subsystem; a degraded feature says so instead of failing silently.
+- **Safe by default.** Destructive terminal commands are blocked or
+  confirmed, closing apps asks first (until you enable auto mode),
+  and a RAM watchdog warns before your machine chokes.
+- **Survives bad days.** A broken skill can't kill the boot, a dead
+  model falls back down a chain, and a missing key lands you in
+  skills-only mode — not a crash screen.
+
+## What it can do (the full list)
 
 - **Talk** — chat bar, mic dictation (Groq), or HUD; skills answer
   first, the LLM fills the gaps (SSE stream, `POST /command`)
@@ -92,12 +164,10 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
   speech (engine pre-warmed at boot), multi-model councils,
   outcome memory, Dream Mode summaries, morning briefing
 - **HUD + dashboard** — glassmorphism UI with mood-reactive accent;
-  `Alt+Space` opens the rebuilt **HUD 4.0 glass command deck** —
-  rounded transparent corners, compact input mode that expands into
-  a scrollable reply well, replies that **stream token-by-token** as
-  the model answers, pulsing status dot, hover chips, COPY —
-  first boot gives a self-removing guided tour; a GETTING STARTED
-  card stays until dismissed
+  `Alt+Space` opens the **HUD glass command deck** — replies
+  stream token-by-token, the status pill reads READY / ATTENTION /
+  SAFE MODE from live health, and a first boot gives a
+  self-removing guided tour
 - **Library (one click)** — Settings → LIBRARY: install any of 18
   bundled skill packs (passwords, calculators, ciphers…) or add any
   of 12 MCP servers (memory, filesystem, fetch, git, playwright…)
@@ -114,9 +184,8 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
   offender named) before the machine chokes, plus *"mic test"*
   pre-flight for dictation; toggle in Settings → GENERAL
 - **Health dashboard** — `GET /api/health` reports every subsystem
-  (config drift, key, memory schema + integrity check, voice,
-  guard, updater, MCP, boot services) in one snapshot; Settings →
-  **SYSTEM** renders it with RESTART/STOP buttons per service
+  in one snapshot; Settings → **SYSTEM** renders it with plain
+  verdicts and RESTART/STOP buttons per service
   (`POST /api/services/<name>`), a page-wide banner flags
   warn/degraded states until they clear, ~20s after boot a
   `Health after boot:` line lands in `logs/jarvis.log`, and secrets
@@ -177,13 +246,12 @@ system/      tray, hotkey, overlay, singleton, autostart, launcher,
              updater, guard (RAM watchdog), health (/api/health
              snapshot), services (one boot registry shared by both
              entry points), startup (first-run boot messaging),
-             app_learner (scan + skills), app_close
-             (kill by name)
+             app_learner (scan + skills), app_close (kill by name)
 routes/      Flask blueprints (144 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 ```
 
-- `main` builds green: syntax-check every file + **572 unit tests**
+- `main` builds green: syntax-check every file + **574 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -211,5 +279,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 572 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 574 tests
 ```

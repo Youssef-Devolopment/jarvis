@@ -4,6 +4,64 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.16.0] — 2026-10-10
+
+Phase 2 of productization — JARVIS now *reads* like a product. The
+interface tells the truth at a glance (the topbar pill carries the
+live health verdict), an empty console doubles as a one-click tour,
+errors explain themselves in plain English, and the repo finally
+leads with what JARVIS does for a person instead of what it is made
+of: a rewritten README, a GitHub-Pages-ready landing page, and a
+verified 90-second demo script. 574 tests, 144 API endpoints, 142
+shipped skills.
+
+### Added
+- **Health verdict in the topbar** — the status pill now shows the
+  product state from `/api/health` whenever idle: green **READY**,
+  amber **ATTENTION** ("Minor issues"), red **SAFE MODE** ("Some
+  features are off"), each with a plain-English tooltip; clicking
+  the pill opens Settings → SYSTEM. Transient states (LISTENING,
+  PROCESSING, TOOL CALL) keep their own colors on top.
+- **Starter chips** — a fresh console offers one click per
+  capability: *What time is it? / Open Notepad / Search the web /
+  Remind me in 1 min*. They hide the moment a command runs and come
+  back on a cleared console; the first-run onboarding card takes
+  priority when present.
+- **Plain-English SYSTEM tab** — check rows use human names
+  (Configuration, API key, MCP servers, Skill drafts…) and the
+  Overall row always explains its verdict in words, not just a
+  colored chip.
+- **Landing page (`docs/index.html`)** — a self-contained product
+  page (hero, live-session terminal card, three value points,
+  3-step install with copy button, footer links), complete without
+  screenshots; serve it via GitHub Pages from `/docs` when ready.
+- **Demo script (`DEMO.md`)** — the one flow to show people: a
+  timed 90-second run-of-show (voice → app control → web → note →
+  self-spoken reminder), per-step fallbacks so nothing is fragile,
+  and a recording/capture plan. Every command in it was verified
+  end-to-end on a live session.
+- **Static-asset cache buster** — `app.js`/`style.css` are served
+  as `?v=<version>`, so an upgrade always loads fresh CSS/JS with
+  no manual hard-refresh (`routes/views.py` passes `VERSION`).
+
+### Changed
+- **README rewritten product-first** — 10-second value prop, daily
+  use cases, who it's for, a core-vs-optional table, "how it works"
+  in three lines, and a trust-and-safety section; the deep
+  developer material moved below the product story. First-run
+  banner and console placeholder reworded in plain English.
+- **Errors surface their reason** — a failed command shows the
+  server's message ("Command too long.") instead of a bare
+  "Error: HTTP 400".
+
+### Fixed
+- **Pill stuck on SPEAKING** — skill replies stream text without
+  audio; the UI flipped to SPEAKING on the first delta and the
+  end-of-stream guard then never reset it. Text now stays
+  PROCESSING while streaming, SPEAKING is set only when audio
+  actually starts, and muted voice no longer enters the state at
+  all.
+
 ## [1.15.0] — 2026-10-10
 
 Phase 1 of productization — JARVIS now explains itself. The moments a

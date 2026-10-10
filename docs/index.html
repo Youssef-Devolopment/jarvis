@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JARVIS — talk to your Windows PC</title>
+<meta name="description" content="JARVIS is a voice-first assistant for Windows that lives on your machine: open apps, capture notes, search the web, and set reminders that speak up — in plain English, no cloud subscription.">
+<style>
+  :root{
+    --bg:#07090f; --panel:#0d1119; --panel2:#111623;
+    --text:#e8eaf2; --dim:#9487b3; --line:rgba(255,255,255,.09);
+    --accent:#66ffa3; --accent-glow:rgba(102,255,163,.35);
+    --amber:#ffb84d; --red:#ff5c7a; --cyan:#66e0ff;
+    --mono:"Cascadia Code","Cascadia Mono",Consolas,"SF Mono",monospace;
+    --sans:"Segoe UI",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);color:var(--text);font-family:var(--sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(900px 500px at 50% -10%,rgba(102,255,163,.07),transparent 60%);
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ── nav ─────────────────────────── */
+  nav{display:flex;justify-content:space-between;align-items:center;
+      padding:20px 0;font-family:var(--mono);font-size:12px;letter-spacing:.12em}
+  nav .brand{color:var(--text);font-weight:700}
+  nav .brand b{color:var(--accent)}
+  nav .links{display:flex;gap:22px}
+  nav .links a{color:var(--dim)}
+  nav .links a:hover{color:var(--accent);text-decoration:none}
+
+  /* ── hero ────────────────────────── */
+  header{padding:72px 0 40px;text-align:center}
+  .pill{
+    display:inline-flex;align-items:center;gap:9px;
+    border:1px solid rgba(102,255,163,.35);border-radius:999px;
+    padding:6px 16px;font-family:var(--mono);font-size:11px;
+    letter-spacing:.14em;color:var(--accent);margin-bottom:26px;
+  }
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);
+             box-shadow:0 0 9px var(--accent);animation:blink 1.6s ease-in-out infinite}
+  @keyframes blink{50%{opacity:.35}}
+  h1{font-size:clamp(34px,6vw,58px);line-height:1.12;font-weight:800;
+     letter-spacing:-.01em;margin-bottom:18px}
+  h1 em{font-style:normal;color:var(--accent);
+        text-shadow:0 0 26px var(--accent-glow)}
+  .sub{color:var(--dim);font-size:clamp(16px,2.4vw,19px);
+       max-width:640px;margin:0 auto 34px}
+  .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-block;border-radius:10px;padding:13px 26px;
+       font-family:var(--mono);font-size:12.5px;letter-spacing:.1em;
+       cursor:pointer;border:1px solid var(--line);color:var(--text);
+       background:var(--panel);transition:all .2s ease}
+  .btn:hover{border-color:var(--accent);color:var(--accent);
+             box-shadow:0 0 22px var(--accent-glow);text-decoration:none}
+  .btn.primary{background:var(--accent);color:#04140b;border-color:var(--accent);font-weight:700}
+  .btn.primary:hover{color:#04140b;box-shadow:0 0 30px var(--accent-glow)}
+
+  /* ── terminal demo card ──────────── */
+  .terminal{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    margin:52px auto 0;max-width:680px;overflow:hidden;text-align:left;
+    box-shadow:0 30px 80px rgba(0,0,0,.55);
+  }
+  .terminal .bar{display:flex;align-items:center;gap:8px;
+      padding:11px 16px;border-bottom:1px solid var(--line);
+      font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.1em}
+  .terminal .bar i{width:10px;height:10px;border-radius:50%;background:#2a3042;display:inline-block}
+  .terminal .bar i.g{background:var(--accent);box-shadow:0 0 8px var(--accent-glow)}
+  .terminal .body{padding:20px 22px;font-family:var(--mono);font-size:13px;line-height:1.9}
+  .terminal .u{color:var(--text)}
+  .terminal .u::before{content:"› ";color:var(--accent)}
+  .terminal .j{color:var(--dim)}
+  .terminal .j::before{content:"JARVIS  ";color:var(--accent);letter-spacing:.08em}
+  .terminal .j b{color:var(--text);font-weight:600}
+
+  /* ── sections ────────────────────── */
+  section{padding:76px 0 10px}
+  h2{font-size:clamp(24px,4vw,34px);text-align:center;margin-bottom:8px;letter-spacing:-.01em}
+  .lede{color:var(--dim);text-align:center;max-width:600px;margin:0 auto 44px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+        padding:26px 24px;transition:border-color .2s ease}
+  .card:hover{border-color:rgba(102,255,163,.35)}
+  .card .glyph{font-size:22px;margin-bottom:14px;display:block}
+  .card h3{font-size:17px;margin-bottom:8px}
+  .card p{color:var(--dim);font-size:14.5px}
+
+  /* ── quick start ─────────────────── */
+  .steps{counter-reset:s;display:grid;gap:16px;max-width:720px;margin:0 auto}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+        padding:22px 24px;display:flex;gap:18px;align-items:flex-start}
+  .step::before{counter-increment:s;content:counter(s);
+      flex:none;width:30px;height:30px;border-radius:50%;
+      border:1px solid rgba(102,255,163,.4);color:var(--accent);
+      display:flex;align-items:center;justify-content:center;
+      font-family:var(--mono);font-size:13px}
+  .step h3{font-size:15.5px;margin-bottom:4px}
+  .step p{color:var(--dim);font-size:14px}
+  .cmdrow{display:flex;align-items:center;gap:10px;background:#05070c;
+      border:1px solid var(--line);border-radius:9px;
+      padding:11px 14px;margin-top:10px}
+  .cmdrow code{font-family:var(--mono);font-size:12px;color:var(--cyan);
+      overflow-x:auto;white-space:nowrap;flex:1}
+  .copy{flex:none;background:transparent;border:1px solid var(--line);
+      color:var(--dim);border-radius:7px;padding:5px 12px;cursor:pointer;
+      font-family:var(--mono);font-size:10.5px;letter-spacing:.08em}
+  .copy:hover{color:var(--accent);border-color:var(--accent)}
+
+  /* ── footer ──────────────────────── */
+  footer{margin-top:80px;border-top:1px solid var(--line);
+      padding:34px 0 44px;text-align:center;color:var(--dim);font-size:13px}
+  footer .links{display:flex;gap:24px;justify-content:center;
+      flex-wrap:wrap;margin-bottom:14px;font-family:var(--mono);font-size:11.5px;
+      letter-spacing:.1em}
+  .fine{font-size:11.5px;color:#5d5476}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav>
+    <span class="brand">◆ <b>JARVIS</b></span>
+    <span class="links">
+      <a href="https://github.com/Youssef-Devolopment/jarvis">GITHUB</a>
+      <a href="https://github.com/Youssef-Devolopment/jarvis/blob/main/README.md">DOCS</a>
+      <a href="https://github.com/Youssef-Devolopment/jarvis/blob/main/DEMO.md">DEMO</a>
+    </span>
+  </nav>
+
+  <header>
+    <span class="pill"><span class="dot"></span> LOCAL · WINDOWS 10/11 · MIT</span>
+    <h1>Talk to your Windows PC.<br><em>It actually listens.</em></h1>
+    <p class="sub">JARVIS is a voice-first assistant that lives on your machine —
+      not in a subscription. Open apps, capture notes, search the web,
+      set reminders that speak up on their own. Works with no API key;
+      grows into a full AI assistant the moment you add one.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">INSTALL IN 3 STEPS</a>
+      <a class="btn" href="https://github.com/Youssef-Devolopment/jarvis/blob/main/DEMO.md">SEE THE 90-SEC DEMO</a>
+    </div>
+
+    <div class="terminal" aria-label="Example session">
+      <div class="bar"><i class="g"></i><i></i><i></i>&nbsp; JARVIS — a real session</div>
+      <div class="body">
+        <div class="u">open notepad</div>
+        <div class="j">Opened Notepad.</div>
+        <div class="u">search the web for james webb telescope discoveries</div>
+        <div class="j">Top results, with sources… <b>[streaming]</b></div>
+        <div class="u">remind me to drink water in 1 minute</div>
+        <div class="j">Reminder set — and I'll speak up when it's time.</div>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <h2>Why people keep it running</h2>
+    <p class="lede">Three things JARVIS does that browser assistants can't.</p>
+    <div class="cards">
+      <div class="card">
+        <span class="glyph">🎙️</span>
+        <h3>Voice-first, instant</h3>
+        <p>Over 100 local skills answer in under a second — no round trip,
+          no key required. <b>Alt+Space</b> summons it over any window;
+          the mic is one button.</p>
+      </div>
+      <div class="card">
+        <span class="glyph">🏠</span>
+        <h3>Local-first, honest</h3>
+        <p>Your memory, notes and keys stay on your PC. One status pill
+          always tells the truth — READY, ATTENTION or SAFE MODE — and a
+          degraded feature says so instead of failing silently.</p>
+      </div>
+      <div class="card">
+        <span class="glyph">🧩</span>
+        <h3>Yours to extend</h3>
+        <p>Every skill is a small Python file you can read, tweak or add.
+          18 one-click skill packs and 12 MCP servers in the built-in
+          library. MIT licensed — fork it, own it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Install in 3 steps</h2>
+    <p class="lede">Windows 10/11. Existing files are never touched.</p>
+    <div class="steps">
+      <div class="step">
+        <div>
+          <h3>Run the one-liner</h3>
+          <p>Paste into PowerShell or cmd — it clones, builds the
+             environment and runs an 11-point health check.</p>
+          <div class="cmdrow">
+            <code id="c1">powershell -c "iex (irm https://raw.githubusercontent.com/Youssef-Devolopment/jarvis/main/setup.ps1)"</code>
+            <button class="copy" data-copy="c1">COPY</button>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>Add your AI key (optional)</h3>
+          <p>Start JARVIS once, open <b>Settings → GENERAL</b>, paste your
+             <code style="font-family:var(--mono);color:var(--cyan)">DEEPSEEK_API_KEY</code>
+             (any OpenAI-compatible provider works). Skip it and you're
+             already in skills-only mode — 100+ commands, no key.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h3>Launch and talk</h3>
+          <p>Double-click <b>desktop.bat</b> — tray icon, hotkeys and the
+             Alt+Space HUD. Say <i>"open notepad"</i>,
+             <i>"what time is it"</i>, <i>"remind me to stretch in 20
+             minutes"</i>.</p>
+        </div>
+      </div>
+    </div>
+    <p class="lede" style="margin-top:34px;margin-bottom:0">
+      Full guide, configuration and troubleshooting in the
+      <a href="https://github.com/Youssef-Devolopment/jarvis/blob/main/README.md">README</a>.
+    </p>
+  </section>
+
+  <footer>
+    <div class="links">
+      <a href="https://github.com/Youssef-Devolopment/jarvis">GITHUB</a>
+      <a href="https://github.com/Youssef-Devolopment/jarvis/blob/main/README.md">README</a>
+      <a href="https://github.com/Youssef-Devolopment/jarvis/blob/main/DEMO.md">DEMO</a>
+      <a href="https://github.com/Youssef-Devolopment/jarvis/blob/main/ARCHITECTURE.md">ARCHITECTURE</a>
+      <a href="https://github.com/Youssef-Devolopment/jarvis/blob/main/CHANGELOG.md">CHANGELOG</a>
+    </div>
+    <div class="fine">MIT licensed · Windows 10/11 · built in the open at
+      Youssef-Devolopment/jarvis</div>
+  </footer>
+
+</div>
+<script>
+  document.querySelectorAll('.copy').forEach(function(b){
+    b.addEventListener('click',function(){
+      var el=document.getElementById(b.getAttribute('data-copy'));
+      if(!el)return;
+      navigator.clipboard.writeText(el.textContent).then(function(){
+        var t=b.textContent;b.textContent='COPIED';
+        setTimeout(function(){b.textContent=t;},1200);
+      }).catch(function(){});
+    });
+  });
+</script>
+</body>
+</html>

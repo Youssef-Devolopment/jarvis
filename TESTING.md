@@ -5,7 +5,7 @@ reproduction, health checks, CI, and the manual smoke tests that only
 a human on Windows can do. Follow this and "works on my machine"
 stays a scare story instead of a bug report.
 
-**Ground truth:** 46 test files · **572 tests** · 144 API endpoints ·
+**Ground truth:** 46 test files · **574 tests** · 144 API endpoints ·
 142 shipped skills · `check.py` 11 preflight checks (exit 0 ready /
 1 fix core / 2 skills-only).
 
@@ -48,7 +48,7 @@ Expected tail:
 
 ```
 ----------------------------------------------------------------------
-Ran 572 tests in ~30s
+Ran 574 tests in ~30s
 OK
 ```
 
@@ -221,7 +221,7 @@ Python 3.10) — same OS family as the product:
 4. `python -m unittest discover -s tests -v` — the whole suite.
 
 "CI green" therefore means: *every file compiles, the UI script
-parses, and all 572 tests pass on a machine that has never seen your
+parses, and all 574 tests pass on a machine that has never seen your
 checkout*. It does **not** mean smoke tests ran — §7 stays manual.
 
 Check the latest run:
@@ -234,6 +234,20 @@ Check the latest run:
 
 Automated tests prove logic; these prove the machine actually works.
 Start JARVIS (`desktop.bat` or `run.py`), then:
+
+**Product surface** (the 90-second demo covers all of these — see
+`DEMO.md` for the exact script and per-step fallbacks)
+- Fresh console shows the four starter chips; clicking one runs it
+  and the chips disappear (`/clear` brings them back).
+- Topbar pill reads READY (green); with a degraded subsystem it
+  reads ATTENTION/SAFE MODE with a plain-English tooltip; clicking
+  it opens Settings → SYSTEM.
+- SYSTEM tab: human check names, Overall row explains its verdict
+  in words.
+- Ask a skill command ("tell me the time") → pill cycles
+  PROCESSING → READY, never sticks on SPEAKING (muted or unmuted).
+- Over-long command (>4000 chars) → error entry shows the server's
+  reason, not "HTTP 400".
 
 **Voice**
 - Say **"mic test"** → pre-flight answers: mic name, STT latency,
@@ -330,7 +344,7 @@ API keys, no running server**:
 
 A change is done when **all** of these hold:
 
-1. full suite: `Ran 572 tests … OK` (or the new count);
+1. full suite: `Ran 574 tests … OK` (or the new count);
 2. fresh-copy suite: OK without `.env`;
 3. `check.py`: 11/11;
 4. `node --check static/js/app.js`: clean (if JS changed);

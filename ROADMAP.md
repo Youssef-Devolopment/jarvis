@@ -1,10 +1,10 @@
 # JARVIS Roadmap
 
-Where the project stands and where it's going. Written at v1.15.0 —
-a documented, observably healthy, architecture-driven system rather
-than a pile of features. Priorities in order: **trust → operability →
-capability**. A feature that makes the system harder to trust or
-operate waits.
+Where the project stands and where it's going. Written at v1.16.0 —
+a documented, observably healthy, architecture-driven system that
+also reads like a product. Priorities in order: **trust →
+operability → capability**. A feature that makes the system harder
+to trust or operate waits.
 
 ---
 
@@ -24,8 +24,9 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.14.0** | **Reliability**: persistent warn/degraded page banner, `Health after boot:` log line, key-format audit checks, silent-fallback audit |
 | **v1.14.1** | **Documentation set**: this roadmap, `DECISIONS.md` (architecture story), `TESTING.md` (verification manual) |
 | **v1.15.0** | **Productization, phase 1**: `system/startup.py` boot voice — guarded status block, safe-mode verdict + toasts from the one health snapshot, fail-fast port probe (exit 3); capability-aware `check.py` (0/1/2 exit codes, per-check hints); launch-first setup summary; DB errors → actionable 503 |
+| **v1.16.0** | **Productization, phase 2**: health verdict in the topbar pill (READY/ATTENTION/SAFE MODE, click → SYSTEM); one-click starter chips on a fresh console; plain-English SYSTEM tab + errors; product-first README, landing page (`docs/index.html`), verified 90-second `DEMO.md`; static cache buster; stuck-SPEAKING fix |
 
-Stable today: 572 tests (in-tree + fresh-copy, no `.env`), 144 API
+Stable today: 574 tests (in-tree + fresh-copy, no `.env`), 144 API
 endpoints, 142 shipped skills, green CI on `windows-latest`, health
 visible in six layers (preflight / API / dashboard / banner / console
 / log), lifecycle controls for 14 services, structured errors on every
@@ -46,14 +47,18 @@ known failure path.
   MCP settles (~60–90s on a loaded machine). Honest but slow; a fix
   wants lock-free status reads (separate state dict) without touching
   the start path.
-- **README media refresh** — `docs/overlay.png` + GIF still show the
-  older HUD; recapture on a quiet session.
+- **README / landing media refresh** — `docs/overlay.png` + GIF still
+  show the older HUD; recapture on a quiet session. The landing page
+  (`docs/index.html`) is designed to be complete without screenshots —
+  optional stills would go in `docs/screens/` (see `DEMO.md` §capture).
 - **Lite repo parity** — `jarvis-lite` runs (32 skills, 15 routes)
   but lags the full repo's health/lifecycle work (§30d #1).
 - **Skill verdict queue** — pending verdicts in
   `logs/auto_skills/pending.json` (user-side, never auto-merged).
-- **Environment chores (user-side)** — elevated logon scheduled task
-  for autostart; optional `TAVILY_API_KEY`; lite provider keys.
+- **Environment chores (user-side)** — enable GitHub Pages for the
+  landing page (Settings → Pages → deploy from `/docs` on `main`);
+  elevated logon scheduled task for autostart; optional
+  `TAVILY_API_KEY`; lite provider keys.
 
 ---
 
@@ -77,8 +82,9 @@ known failure path.
    service* one time with backoff and logs it; boot-only services and
    repeat failures stay manual (no infinite restart loops). This is
    the natural completion of the lifecycle work.
-6. **Docs polish** — link `TESTING.md`/`DECISIONS.md` from
-   `CONTRIBUTING.md` and `AGENTS.md`; recapture README media.
+6. **Docs cross-linking** — link `TESTING.md`/`DECISIONS.md` from
+   `CONTRIBUTING.md` and `AGENTS.md` (the product-facing docs —
+   README, landing page, `DEMO.md` — shipped in v1.16.0).
 
 **Deliberately not in 30 days:** new feature suites, provider
 expansion, marketplace work — capability waits behind trust.
