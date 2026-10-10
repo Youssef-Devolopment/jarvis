@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sqlite3
 import traceback
 from flask import Flask, jsonify, request
 from werkzeug.exceptions import HTTPException
@@ -57,6 +58,21 @@ def register_error_handlers(app: Flask) -> None:
     def _handle_http(err):
         log.warning("HTTP %s on %s %s", err.code, request.method, request.path)
         return jsonify({"error": err.name, "detail": err.description}), err.code
+
+    @app.errorhandler(sqlite3.Error)
+    def _handle_db(err):
+        # A broken/locked memory DB must degrade with instructions,
+        # not an opaque 500 traceback — the app stays up and the user
+        # learns exactly what to do next.
+        log.error("Database error on %s %s: %s",
+                  request.method, request.path, err)
+        return jsonify({
+            "error": "Memory store is unavailable.",
+            "detail": f"The local database could not be read or written "
+                      f"({err}). It may be locked or corrupt — restart "
+                      "JARVIS; if it persists, restore the newest backup "
+                      "from memory/backups/. Health: GET /api/health.",
+            "type": "DatabaseError"}), 503
 
     @app.errorhandler(Exception)
     def _handle_uncaught(err):

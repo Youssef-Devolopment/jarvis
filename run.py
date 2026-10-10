@@ -28,16 +28,24 @@ def main():
         from config import Settings
         s = Settings.load(require_key=False)
         skills_only = True
-        print("\n  [!] No API key — skills-only mode "
-              "(local skills work, LLM chat needs DEEPSEEK_API_KEY).")
-    import moods, memory
-    print(f"\n  JARVIS online  ->  http://{s.host}:{s.port}")
-    print(f"  Model   : {s.model}{'  (skills-only)' if skills_only else ''}")
-    print(f"  Voice   : {s.voice_name}  (British)")
-    print(f"  Mood    : {moods.current_name()}")
-    print(f"  Memory  : {len(memory.all_facts())} facts on file")
-    print(f"  Mode    : {'DEV (debug on)' if getattr(s, 'debug', False) else 'production'}")
-    print(f"  Logs    : logs/jarvis.log\n")
+
+    from system import startup
+
+    # Fail fast: a busy port says so BEFORE we boot the world (werkzeug
+    # would otherwise exit 1 after everything started, with a message
+    # nobody can act on).
+    err = startup.ensure_port(s.host, s.port)
+    if err:
+        print(startup.bind_error(err, s.host, s.port), end="", flush=True)
+        sys.exit(3)
+
+    # First-run status block: mode, model, voice, mood, memory — each
+    # line guarded so a broken subsystem degrades to "unavailable"
+    # instead of crashing the boot.
+    print()
+    for line in startup.status_lines(s, skills_only):
+        print(line)
+    print()
 
     # One registry boots every background service — the same set the
     # desktop launcher uses. Each service is isolated and timed;
@@ -49,10 +57,14 @@ def main():
     print(f"  Services : {summary['launched']} launched{degraded}"
           f" ({summary['ms']}ms)")
 
-    # A health glance lands in logs/jarvis.log ~20s after boot, once
-    # async services (MCP, voice warmup) have settled.
+    # One consistent health voice: the same reporter that writes the
+    # log line prints the friendly verdict here ~20s after boot, once
+    # async services (MCP, voice warmup) have settled. ok/warn/degraded
+    # all get an explicit, actionable line.
     from server import schedule_health_log
-    schedule_health_log()
+    schedule_health_log(
+        on_summary=lambda snap: print(*startup.health_block(snap),
+                                      sep="\n", flush=True))
 
     try:
         from memory import context as ctx_tracker
@@ -62,7 +74,12 @@ def main():
     except Exception:
         pass
 
-    app.run(host=s.host, port=s.port, debug=s.debug, threaded=True)
+    try:
+        app.run(host=s.host, port=s.port, debug=s.debug, threaded=True)
+    except OSError as exc:
+        # Port race after the probe — plain words, not a traceback.
+        print(startup.bind_error(exc, s.host, s.port), end="", flush=True)
+        sys.exit(3)
 
 
 if __name__ == "__main__":

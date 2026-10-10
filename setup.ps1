@@ -138,26 +138,25 @@ try {
 }
 
 # ---------- post-install health ------------------------------------------
-# check.py is REPORT-ONLY here: a fresh install has a placeholder API
-# key by design, so some checks fail until Settings gets a real key.
-# Never fail the install over it — print what to do next instead.
+# check.py exit codes: 0 = ready (optional gaps reported as
+# capabilities), 1 = core broken, 2 = key missing -> skills-only mode.
+# A fresh install has a placeholder API key by design, so exit 2 is the
+# EXPECTED first-install result — never fail the install over it.
 Step 'Running post-install health check (informational)'
 Push-Location $root
 try {
     & $venvPy check.py
-    if ($LASTEXITCODE -eq 0) {
-        Ok 'All preflight checks passed - JARVIS is ready.'
+    $code = $LASTEXITCODE
+    if ($code -eq 0) {
+        Ok 'Preflight passed - JARVIS is ready to start.'
+    } elseif ($code -eq 2) {
+        Warn 'Core checks passed - JARVIS starts in skills-only mode (no key yet).'
+        Write-Host '  AI chat unlocks with one step (no file editing):' -ForegroundColor Yellow
+        Write-Host '    1. Start JARVIS:  desktop.bat'
+        Write-Host '    2. Open Settings (gear) -> GENERAL -> paste key -> SAVE+TEST'
+        Write-Host '  ...or edit .env by hand:  notepad .env'
     } else {
-        Warn 'Some checks need attention (normal on first install).'
-        $content = Get-Content (Join-Path $root '.env') -Raw -ErrorAction SilentlyContinue
-        if (-not $content -or $content.Contains('sk-paste')) {
-            Write-Host '  Next: add your API key with ZERO file editing:' -ForegroundColor Yellow
-            Write-Host '    1. Start JARVIS once:  desktop.bat'
-            Write-Host '    2. Open Settings (gear) -> GENERAL -> paste key -> SAVE+TEST'
-            Write-Host '  ...or edit .env by hand:  notepad .env'
-        } else {
-            Write-Host '  Re-run check.py after fixing the items above.' -ForegroundColor Yellow
-        }
+        Warn 'Core checks failed - fix the X items above, then re-run check.py.'
     }
 } finally {
     Pop-Location
@@ -167,12 +166,17 @@ try {
 Write-Host ''
 Ok "JARVIS installed at $root"
 Write-Host ''
-if ($createdEnv) {
-    Write-Host '  1. Add your API keys :' -ForegroundColor Yellow
-    Write-Host "       notepad `"$envFile`""
-    Write-Host '       (DEEPSEEK_API_KEY at minimum; see .env.example)'
-}
-Write-Host '  2. Launch JARVIS     :' -ForegroundColor Yellow
+Write-Host '  1. Launch now (works WITHOUT any API key):' -ForegroundColor Yellow
 Write-Host "       `"$root\desktop.bat`"   tray mode + Ctrl+Alt+J (recommended)"
-Write-Host "       `"$root\start.bat`"     console server on http://127.0.0.1:5000"
+Write-Host "       `"$root\start.bat`"     console server"
+Write-Host '       -> starts in skills-only mode: local skills, memory,'
+Write-Host '          reminders and the HUD all work out of the box.'
+Write-Host '  2. Add an API key (unlocks AI chat):' -ForegroundColor Yellow
+Write-Host '       Settings -> GENERAL -> paste DEEPSEEK_API_KEY -> SAVE+TEST'
+Write-Host "       ...or: notepad `"$envFile`""
+Write-Host '  3. Optional extras (all degrade gracefully when absent):' -ForegroundColor Yellow
+Write-Host '       GROQ_API_KEY (mic)  TAVILY/BRAVE_API_KEY (search)'
+Write-Host '       OBSIDIAN_VAULT (notes)  TODOIST_API_TOKEN (tasks)'
+Write-Host ''
+Write-Host '  Any time: run check.py   (0=ready, 1=fix core, 2=skills-only)' -ForegroundColor DarkGray
 Write-Host ''

@@ -38,11 +38,15 @@ def _clean(**over) -> Settings:
 
 class AuditTests(unittest.TestCase):
     def setUp(self):
-        # Tavily is read from the environment — keep these tests
-        # hermetic regardless of the machine's real .env.
+        # Tavily is read from the environment and MCP servers come
+        # from the (personal, gitignored) mcp_servers.json — keep
+        # these tests hermetic regardless of the machine.
         self._tav = os.environ.pop("TAVILY_API_KEY", None)
+        self._mcp = mock.patch("mcp.manager.all_servers", return_value=[])
+        self._mcp.start()
 
     def tearDown(self):
+        self._mcp.stop()
         if self._tav is not None:
             os.environ["TAVILY_API_KEY"] = self._tav
 
@@ -114,6 +118,52 @@ class AuditTests(unittest.TestCase):
                              {"TAVILY_API_KEY": "tvly-test-12345"}):
             warns = audit_settings(_clean())
         self.assertFalse(any("TAVILY_API_KEY" in w for w in warns))
+
+    def test_groq_template_placeholder_warns(self):
+        # Passes the gsk_ prefix check but can never work.
+        warns = audit_settings(_clean(groq_api_key="gsk_your-key-here"))
+        self.assertTrue(any("GROQ_API_KEY" in w and "placeholder" in w
+                            for w in warns), warns)
+
+    def test_tavily_template_placeholder_warns(self):
+        with mock.patch.dict(os.environ,
+                             {"TAVILY_API_KEY": "tvly-paste-me"}):
+            warns = audit_settings(_clean())
+        self.assertTrue(any("TAVILY_API_KEY" in w and "placeholder" in w
+                            for w in warns), warns)
+
+    def test_mcp_servers_without_npx_warn_with_install_hint(self):
+        servers = [{"enabled": True, "command": "npx", "name": "fs"},
+                   {"enabled": False, "command": "npx", "name": "off"}]
+        with mock.patch("mcp.manager.all_servers", return_value=servers), \
+             mock.patch("shutil.which", return_value=None):
+            warns = audit_settings(_clean())
+        hits = [w for w in warns if "npx" in w]
+        self.assertTrue(hits, warns)
+        self.assertIn("1 MCP server(s)", hits[0])       # disabled ones skip
+        self.assertIn("nodejs.org", hits[0])            # actionable hint
+
+    def test_mcp_npx_present_is_silent(self):
+        servers = [{"enabled": True, "command": "npx", "name": "fs"}]
+        with mock.patch("mcp.manager.all_servers", return_value=servers), \
+             mock.patch("shutil.which",
+                        return_value="C:\\nodejs\\npx.cmd"):
+            warns = audit_settings(_clean())
+        self.assertFalse(any("npx" in w for w in warns), warns)
+
+    def test_non_npx_servers_ignore_missing_npx(self):
+        servers = [{"enabled": True, "command": "python.exe",
+                    "name": "local"}]
+        with mock.patch("mcp.manager.all_servers", return_value=servers), \
+             mock.patch("shutil.which", return_value=None):
+            warns = audit_settings(_clean())
+        self.assertFalse(any("npx" in w for w in warns), warns)
+
+    def test_no_mcp_servers_is_silent_even_without_npx(self):
+        with mock.patch("mcp.manager.all_servers", return_value=[]), \
+             mock.patch("shutil.which", return_value=None):
+            warns = audit_settings(_clean())
+        self.assertFalse(any("npx" in w for w in warns), warns)
 
     def test_unset_optional_keys_stay_silent(self):
         # _clean() leaves groq empty and setUp dropped TAVILY — no noise.

@@ -16,12 +16,15 @@ SLOW_REQUEST_S = 2.0
 HEALTH_LOG_DELAY_S = 20.0
 
 
-def _log_health_summary(delay: float = HEALTH_LOG_DELAY_S) -> None:
+def _log_health_summary(delay: float = HEALTH_LOG_DELAY_S,
+                        on_summary=None) -> None:
     """One line of health truth in the log shortly after boot.
 
     Waits for `delay` seconds so async services (MCP, voice warmup)
     have landed, then logs overall + degraded check names + config
-    warning count. Never raises.
+    warning count. `on_summary` (optional) receives the same snapshot
+    afterwards so console/toast verdicts derive from ONE source —
+    failures there are logged, never raised.
     """
     try:
         if delay:
@@ -52,15 +55,21 @@ def _log_health_summary(delay: float = HEALTH_LOG_DELAY_S) -> None:
             log.info(line)
         else:
             log.warning(line)
+        if on_summary is not None:
+            try:
+                on_summary(snap)
+            except Exception as cb_exc:
+                log.debug("on_summary callback failed: %s", cb_exc)
     except Exception as exc:
         log.debug("Health summary skipped: %s", exc)
 
 
-def schedule_health_log() -> None:
+def schedule_health_log(on_summary=None) -> None:
     """Fire _log_health_summary once on a daemon thread (never blocks)."""
     import threading
-    threading.Thread(target=_log_health_summary, name="health-log",
-                     daemon=True).start()
+    threading.Thread(target=_log_health_summary,
+                     kwargs={"on_summary": on_summary},
+                     name="health-log", daemon=True).start()
 
 
 def create_app() -> Flask:

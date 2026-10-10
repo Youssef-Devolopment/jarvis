@@ -195,6 +195,34 @@ class HealthLogSummaryTests(unittest.TestCase):
                         side_effect=RuntimeError("boom")):
             _log_health_summary(delay=0)   # must swallow
 
+    def test_on_summary_callback_receives_the_same_snapshot(self):
+        # Console/toast verdicts must come from the ONE snapshot the
+        # log line used — never a second, possibly different, probe.
+        from server import _log_health_summary
+        snap = self._fake("ok", {
+            "config": {"status": "ok", "warnings": []},
+            "services": {"status": "ok", "detail": "3 services tracked",
+                         "items": {}}})
+        seen = []
+        with mock.patch("system.health.snapshot", return_value=snap), \
+             self.assertLogs("server", level="INFO"):
+            _log_health_summary(delay=0, on_summary=seen.append)
+        self.assertEqual(seen, [snap])
+
+    def test_on_summary_failure_is_swallowed(self):
+        from server import _log_health_summary
+        snap = self._fake("ok", {
+            "config": {"status": "ok", "warnings": []},
+            "services": {"status": "ok", "detail": "3 services tracked",
+                         "items": {}}})
+
+        def boom(_snap):
+            raise RuntimeError("callback exploded")
+
+        with mock.patch("system.health.snapshot", return_value=snap), \
+             self.assertLogs("server", level="INFO"):
+            _log_health_summary(delay=0, on_summary=boom)   # must not raise
+
 
 class EndpointTests(unittest.TestCase):
     def test_health_route(self):

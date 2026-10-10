@@ -65,16 +65,19 @@ class MemoryFailureTests(unittest.TestCase):
             self.skipTest(f"app import failed: {exc}")
         self.client = app.test_client()
 
-    def test_corrupt_db_yields_json_500_with_detail(self):
+    def test_corrupt_db_degrades_to_actionable_503(self):
         import memory
         with mock.patch.object(memory, "all_facts", side_effect=sqlite3.
                                DatabaseError("database disk image is "
                                              "malformed")):
             r = self.client.get("/api/memory")
-        self.assertEqual(r.status_code, 500)
+        # 503 (service down, not "our bug") + instructions, never HTML.
+        self.assertEqual(r.status_code, 503)
         self.assertIn("json", r.content_type or "")
         data = r.get_json()
+        self.assertIn("Memory store is unavailable", data["error"])
         self.assertIn("malformed", data["detail"])
+        self.assertIn("memory/backups", data["detail"])   # how to recover
         self.assertFalse((r.get_data(as_text=True) or "").lstrip()
                          .startswith("<"))   # never an HTML error page
 

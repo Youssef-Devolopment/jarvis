@@ -45,10 +45,14 @@ def _start_flask():
 
 
 def start_background():
-    """Start Flask in background thread — non-blocking."""
+    """Start Flask in background thread — non-blocking.
+
+    Returns the service-boot summary ({"launched", "failed", ...}) so
+    callers can toast the boot verdict; None when boot itself raised.
+    """
     global _flask_thread
     if _flask_thread and _flask_thread.is_alive():
-        return
+        return None
     _flask_thread = threading.Thread(
         target=_start_flask, name="flask", daemon=True)
     _flask_thread.start()
@@ -57,15 +61,18 @@ def start_background():
     # registry, the same code path run.py uses, so console and
     # desktop mode can never drift apart again.
     from system import services
-    services.boot(mode="desktop")
-    # Health glance in the log once async services settle (~20s).
+    summary = services.boot(mode="desktop")
+    # Health glance in the log once async services settle (~20s); the
+    # deferred toast only fires when something actually failed.
     try:
         from server import schedule_health_log
-        schedule_health_log()
+        from system import startup as _startup
+        schedule_health_log(on_summary=_startup.toast_if_degraded)
     except Exception as exc:
         log.debug("Health log not scheduled: %s", exc)
     # Give it a moment to bind the port
     time.sleep(1.5)
+    return summary
 
 
 def open_jarvis_window(new_window: bool = False):
@@ -149,12 +156,23 @@ def run_desktop_mode(open_browser: bool = False):
     if not singleton.acquire():
         log.warning("Duplicate desktop boot refused — already running.")
         return
-    start_background()
+    summary = start_background() or {}
 
-    # Boot greeting: toast always, spoken welcome best-effort.
+    # Boot greeting: toast always (with the honest boot verdict —
+    # skills-only and safe-mode states are said out loud), spoken
+    # welcome best-effort.
     try:
-        from system import notify
-        notify.toast("JARVIS is running", "Press Ctrl+Alt+J to open")
+        from system import notify, startup as _startup
+        has_key = True
+        try:
+            from config import try_settings
+            s = try_settings()
+            has_key = bool(s and getattr(s, "has_key", False))
+        except Exception:
+            pass
+        notify.toast("JARVIS is running",
+                     _startup.toast_status(summary.get("failed"),
+                                            has_key=has_key))
     except Exception:
         pass
     try:

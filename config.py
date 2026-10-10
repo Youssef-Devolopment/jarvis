@@ -10,7 +10,7 @@ log = get_logger(__name__)
 load_dotenv()
 
 # Single source of truth for the app version. Bump on major releases.
-VERSION = "1.14.1"
+VERSION = "1.15.0"
 
 # Project .env file (gitignored). API keys live here, never in prefs.
 ENV_PATH = Path(__file__).resolve().parent / ".env"
@@ -257,14 +257,43 @@ def audit_settings(s: Settings) -> list[str]:
     if s.log_level not in _LOG_LEVELS:
         warns.append(f"LOG_LEVEL '{s.log_level}' is invalid — using INFO.")
     # Optional key formats — only checked when the key is actually set.
+    # Template leftovers ("paste your … here") are called out explicitly:
+    # they pass prefix checks but can never work.
+    def _looks_like_template(v: str) -> bool:
+        lv = v.lower()
+        return any(t in lv for t in ("paste", "your-", "your_",
+                                     "example", "replace"))
+
     groq = (s.groq_api_key or "").strip()
     if groq and not groq.startswith("gsk_"):
         warns.append("GROQ_API_KEY does not start with 'gsk_' — it looks "
                      "wrong (Groq keys are gsk_…).")
+    elif groq and _looks_like_template(groq):
+        warns.append("GROQ_API_KEY still looks like a template placeholder "
+                     "— replace it or leave it empty.")
     tavily = (os.getenv("TAVILY_API_KEY") or "").strip()
     if tavily and not tavily.startswith("tvly-"):
         warns.append("TAVILY_API_KEY does not start with 'tvly-' — it "
                      "looks wrong (Tavily keys are tvly-…).")
+    elif tavily and _looks_like_template(tavily):
+        warns.append("TAVILY_API_KEY still looks like a template "
+                     "placeholder — replace it or leave it empty.")
+    # External dependency hint: node-based MCP servers need npx on PATH.
+    # Say so at boot instead of leaving servers silently degraded.
+    try:
+        import shutil as _shutil
+        from mcp import manager as _mcp_manager
+        npx_servers = [x for x in _mcp_manager.all_servers()
+                       if x.get("enabled") and
+                       str(x.get("command", "")).strip().lower() == "npx"]
+        if npx_servers and not any(
+                _shutil.which(c) for c in ("npx.cmd", "npx", "npx.exe")):
+            warns.append(
+                f"{len(npx_servers)} MCP server(s) need npx (Node.js) but "
+                "it is not on PATH — install Node.js from nodejs.org or "
+                "disable those servers (Library -> MCP).")
+    except Exception:
+        pass
     if s.debug and s.host not in _LOOPBACK:
         warns.append(
             f"FLASK_DEBUG=1 while listening on {s.host} — debug mode is "
