@@ -1,8 +1,12 @@
+<p align="center">
+  <img src="assets/jarvis-logo.svg" alt="JARVIS" width="420">
+</p>
+
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.16.0-blue)
+![version](https://img.shields.io/badge/version-v1.16.1-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-574%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-578%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 JARVIS is a voice-first assistant that lives on your Windows machine.
@@ -249,9 +253,11 @@ system/      tray, hotkey, overlay, singleton, autostart, launcher,
              app_learner (scan + skills), app_close (kill by name)
 routes/      Flask blueprints (144 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
+assets/      brand assets: logo banner, icon mark, favicon
+             (theme lockups for dark/light in docs/logo-*.svg)
 ```
 
-- `main` builds green: syntax-check every file + **574 unit tests**
+- `main` builds green: syntax-check every file + **578 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -279,5 +285,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 574 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 578 tests
 ```

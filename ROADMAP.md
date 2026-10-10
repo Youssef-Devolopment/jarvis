@@ -25,8 +25,9 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.14.1** | **Documentation set**: this roadmap, `DECISIONS.md` (architecture story), `TESTING.md` (verification manual) |
 | **v1.15.0** | **Productization, phase 1**: `system/startup.py` boot voice — guarded status block, safe-mode verdict + toasts from the one health snapshot, fail-fast port probe (exit 3); capability-aware `check.py` (0/1/2 exit codes, per-check hints); launch-first setup summary; DB errors → actionable 503 |
 | **v1.16.0** | **Productization, phase 2**: health verdict in the topbar pill (READY/ATTENTION/SAFE MODE, click → SYSTEM); one-click starter chips on a fresh console; plain-English SYSTEM tab + errors; product-first README, landing page (`docs/index.html`), verified 90-second `DEMO.md`; static cache buster; stuck-SPEAKING fix |
+| **v1.16.1** | **Brand identity**: SVG logo set — gradient diamond mark with negative-space J (banner, dark/light lockups, favicons), landing-page branding, brand-asset guard tests |
 
-Stable today: 574 tests (in-tree + fresh-copy, no `.env`), 144 API
+Stable today: 578 tests (in-tree + fresh-copy, no `.env`), 144 API
 endpoints, 142 shipped skills, green CI on `windows-latest`, health
 visible in six layers (preflight / API / dashboard / banner / console
 / log), lifecycle controls for 14 services, structured errors on every
@@ -51,6 +52,8 @@ known failure path.
   show the older HUD; recapture on a quiet session. The landing page
   (`docs/index.html`) is designed to be complete without screenshots —
   optional stills would go in `docs/screens/` (see `DEMO.md` §capture).
+  Brand assets shipped in v1.16.1; the GitHub repo avatar is a
+  user-side upload (use `assets/jarvis-logo-mark.svg`).
 - **Lite repo parity** — `jarvis-lite` runs (32 skills, 15 routes)
   but lags the full repo's health/lifecycle work (§30d #1).
 - **Skill verdict queue** — pending verdicts in

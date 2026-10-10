@@ -4,6 +4,29 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.16.1] — 2026-10-10
+
+Brand identity — a real logo set, consistent from a 16px favicon to
+the README header. The mark extends the product's existing language
+(the diamond ◆, the green→cyan accent) into a **gradient diamond gem
+with a negative-space J**: one geometric form that adapts to any
+background and stays legible at favicon size.
+
+### Added
+- **Logo set (SVG, all editable vectors)** —
+  `assets/jarvis-logo.svg` (self-contained dark banner for the
+  README/GitHub, renders correctly in light and dark themes),
+  `assets/jarvis-logo-mark.svg` (transparent icon-only mark),
+  `assets/jarvis-favicon.svg` + `docs/favicon.svg` (bolder J cut
+  for 16px legibility), `docs/logo-dark.svg` and
+  `docs/logo-light.svg` (theme lockups: gradient/white and deep-ink
+  variants with the JARVIS wordmark).
+- **Landing page branding** — SVG favicon + the real mark in the
+  nav (replaces the ◆ text glyph).
+- **Brand-asset guard tests** (`tests/test_branding.py`, 4) —
+  the six files must exist, parse as SVG with a viewBox, contain no
+  external fetches, and lockups must carry wordmark + mark geometry.
+
 ## [1.16.0] — 2026-10-10
 
 Phase 2 of productization — JARVIS now *reads* like a product. The
