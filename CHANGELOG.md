@@ -4,6 +4,26 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.16.2] — 2026-10-10
+
+The public site, rebuilt for prime time — and now verified live at
+**https://youssef-devolopment.github.io/jarvis/** (GitHub Pages,
+project site served from `/docs` on `main`).
+
+### Changed
+- **Landing page rebuilt** (`docs/index.html` + new `docs/styles.css`)
+  — nine sections: hero (two-column with a live-session terminal and
+  a SYSTEM status card), value proposition, six core features, the
+  skills-first pipeline ("why JARVIS"), 3-step install with copy
+  button, the verified demo flow with use cases, an eight-point
+  trust/reliability grid, CTA band and footer. Styles split into a
+  proper design-token stylesheet (responsive: 920px/640px
+  breakpoints, sticky glass nav, mobile stat wrapping).
+- **Project-pages safe** — every asset path is relative, so the site
+  works under the `/jarvis/` base path; verified by simulating
+  GitHub Pages serving locally (junction `/jarvis` → `docs`, all
+  assets 200, 104 CSS rules applied, zero console errors).
+
 ## [1.16.1] — 2026-10-10
 
 Brand identity — a real logo set, consistent from a 16px favicon to

@@ -4,10 +4,12 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.16.1-blue)
+![version](https://img.shields.io/badge/version-v1.16.2-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![tests](https://img.shields.io/badge/tests-578%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
+
+🌐 **Live site:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
 
 JARVIS is a voice-first assistant that lives on your Windows machine.
 Say or type what you want in plain English — it opens and closes
