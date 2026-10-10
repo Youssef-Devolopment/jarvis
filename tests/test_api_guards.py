@@ -72,5 +72,24 @@ class GuardedEndpointsTests(unittest.TestCase):
         self.assertIsInstance(d["dev"], bool)
 
 
+class IndexPageTests(unittest.TestCase):
+    """The front page serves with a versioned cache buster so an upgrade
+    always loads fresh CSS/JS — no manual hard-refresh needed."""
+
+    @classmethod
+    def setUpClass(cls):
+        from server import create_app
+        cls.client = create_app().test_client()
+
+    def test_index_renders(self):
+        self.assertEqual(self.client.get("/").status_code, 200)
+
+    def test_static_assets_carry_version_buster(self):
+        from config import VERSION
+        html = self.client.get("/").get_data(as_text=True)
+        self.assertIn("js/app.js?v=%s" % VERSION, html)
+        self.assertIn("css/style.css?v=%s" % VERSION, html)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -177,6 +177,14 @@ body[data-state="tool_call"] .dot{background:var(--cyan);box-shadow:0 0 9px var(
 body[data-state="error"] .status-pill{color:var(--red);border-color:rgba(255,92,122,.5);box-shadow:0 0 26px rgba(255,92,122,.25),inset 0 1px 0 rgba(255,255,255,.05)}
 body[data-state="error"] .dot{background:var(--red);box-shadow:0 0 9px var(--red),0 0 20px var(--red);animation:blink .4s ease-in-out infinite}
 
+/* idle pill = health verdict (READY green / ATTENTION amber / SAFE MODE red) */
+body[data-state="idle"][data-health="warn"] .status-pill{color:var(--amber);border-color:rgba(255,184,77,.45)}
+body[data-state="idle"][data-health="warn"] .dot{background:var(--amber);box-shadow:0 0 9px var(--amber),0 0 18px rgba(255,184,77,.5)}
+body[data-state="idle"][data-health="degraded"] .status-pill{color:var(--red);border-color:rgba(255,92,122,.5)}
+body[data-state="idle"][data-health="degraded"] .dot{background:var(--red);box-shadow:0 0 9px var(--red),0 0 18px rgba(255,92,122,.5)}
+.status-pill{cursor:pointer;transition:color .3s var(--ease),border-color .3s var(--ease)}
+.status-pill:hover{border-color:currentColor}
+
 /* ── Code Mode toggle + interface mode switch (topbar) ──────── */
 .code-toggle{
   display:inline-flex;align-items:center;gap:6px;
@@ -457,6 +465,25 @@ body[data-uimode="dev"] .dev-only.side-block{display:block!important}
 @keyframes wordIn{from{opacity:0;transform:translateY(14px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes gentleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes wordShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+
+/* starter chips — one click per capability on a fresh console */
+.starter-chips{
+  display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+  margin-top:22px;pointer-events:auto;
+}
+.starter-chips[hidden]{display:none}
+.starter-chip{
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  padding:8px 16px;border-radius:999px;cursor:pointer;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  color:var(--dim);transition:all .2s var(--ease);
+}
+.starter-chip:hover{
+  color:var(--accent);border-color:var(--accent);
+  box-shadow:0 0 16px var(--accent-glow);transform:translateY(-1px);
+}
+.starter-chip:active{transform:translateY(0)}
+}
 .tagline{
   font-family:var(--mono);font-size:10px;letter-spacing:6px;
   color:var(--dim);margin-top:16px;transition:color .4s ease,text-shadow .4s ease;

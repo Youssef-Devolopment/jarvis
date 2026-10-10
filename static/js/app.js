@@ -60,13 +60,30 @@ function addStreamingLog(cls){
   }catch(e){return null;}
 }
 
+/* Health-aware status pill: whenever idle, the pill shows the product
+   verdict from /api/health (READY / ATTENTION / SAFE MODE) instead of
+   a static "ONLINE" — one glance tells the user if things are fine.
+   Transient states (LISTENING, PROCESSING...) keep their own colors. */
+var healthOverall='ok';
+function updateStatusPill(){
+  if(state!==STATE.IDLE)return;
+  var labels={ok:'READY',warn:'ATTENTION',degraded:'SAFE MODE'};
+  var tips={ok:'All systems healthy',
+    warn:'Minor issues \u2014 click for details',
+    degraded:'Some features are off \u2014 click for details'};
+  setText('status-text',labels[healthOverall]||'ONLINE');
+  var p=$('status-pill');
+  if(p)p.setAttribute('title',tips[healthOverall]||'System status');
+}
+
 function setState(next){
   if(state===next)return;
   state=next;
   try{document.body.dataset.state=next;}catch(e){}
-  var labels={boot:'BOOTING',idle:'ONLINE',listening:'LISTENING',
+  var labels={boot:'BOOTING',idle:'',listening:'LISTENING',
     thinking:'PROCESSING',speaking:'SPEAKING',tool_call:'TOOL CALL',error:'ERROR'};
-  setText('status-text',labels[next]||labels.idle);
+  if(next===STATE.IDLE)updateStatusPill();
+  else setText('status-text',labels[next]||'ONLINE');
   var tags={boot:'INITIALIZING',idle:'SYSTEM ONLINE',listening:'LISTENING',
     thinking:'PROCESSING',speaking:'SPEAKING',tool_call:'TOOL CALL',error:'ERROR'};
   setText('tagline',tags[next]||tags.idle);
@@ -230,6 +247,9 @@ function refreshHealthBanner(){
   fetch('/api/health').then(function(r){return r.json();}).then(function(d){
     var bb=$('health-banner');if(!bb)return;
     var ov=(d&&d.overall)||'ok';
+    healthOverall=ov;
+    try{document.body.dataset.health=ov;}catch(e){}
+    updateStatusPill();
     var checks=(d&&d.checks)||{};
     var svc=checks.services||{};
     var cw=(checks.config&&checks.config.warnings)||[];
@@ -258,12 +278,53 @@ function refreshHealthBanner(){
   document.addEventListener('DOMContentLoaded',function(){
     var o=$('health-banner-open');
     if(o)o.addEventListener('click',function(){openSettings();loadTab('system');});
+    var sp=$('status-pill');
+    if(sp){
+      var go=function(){openSettings();loadTab('system');};
+      sp.addEventListener('click',go);
+      sp.addEventListener('keydown',function(e){
+        if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}
+      });
+    }
     refreshHealthBanner();
     if(healthPollTimer)clearInterval(healthPollTimer);
     healthPollTimer=setInterval(refreshHealthBanner,60000);
     document.addEventListener('visibilitychange',function(){
       if(!document.hidden)refreshHealthBanner();
     });
+  });
+})();
+
+/* Starter chips: an empty console doubles as a 10-second product tour —
+   one click per capability (local / system / web / scheduling). Shown
+   when the session starts fresh; hidden once a command has run or the
+   first-run card takes over. */
+var STARTER_CHIPS=[
+  {label:'What time is it?',cmd:'tell me the time'},
+  {label:'Open Notepad',cmd:'open notepad'},
+  {label:'Search the web',cmd:'search the web for the james webb telescope'},
+  {label:'Remind me in 1 min',cmd:'remind me to drink water in 1 minute'}
+];
+var chipsSessionUsed=false;
+function refreshStarters(){
+  var el=$('starter-chips');if(!el)return;
+  var show=!chipsSessionUsed&&!document.getElementById('onboard-card');
+  if(show)el.removeAttribute('hidden');else el.setAttribute('hidden','');
+}
+(function wireStarters(){
+  document.addEventListener('DOMContentLoaded',function(){
+    var el=$('starter-chips');if(!el)return;
+    el.innerHTML=STARTER_CHIPS.map(function(c,i){
+      return '<button class="starter-chip" data-chip="'+i+'">'+esc(c.label)+'</button>';
+    }).join('');
+    el.addEventListener('click',function(e){
+      var t=e.target;
+      while(t&&t!==el&&!t.getAttribute('data-chip'))t=t.parentNode;
+      if(!t||t===el)return;
+      var c=STARTER_CHIPS[+t.getAttribute('data-chip')];
+      if(c)sendCommand(c.cmd);
+    });
+    refreshStarters();
   });
 })();
 
@@ -646,7 +707,7 @@ function pickSlash(){
   }
 }
 function handleSlash(cmd){
-  if(cmd==='/clear'){var log=$('log');if(log)log.innerHTML='';addLog('Log cleared.','system');}
+  if(cmd==='/clear'){var log=$('log');if(log)log.innerHTML='';addLog('Log cleared.','system');chipsSessionUsed=false;refreshStarters();}
   else if(cmd==='/voice')toggleMute();
   else if(cmd==='/settings')openSettings();
   else if(cmd==='/levels'||cmd.indexOf('/levels ')===0){showLevels();}
@@ -921,6 +982,7 @@ async function showDreamLast(){
 async function sendCommand(text){
   if(busy||!text||!text.trim())return;
   busy=true;resetThinking();
+  chipsSessionUsed=true;refreshStarters();
   var cmdEl=$('cmd');if(cmdEl)cmdEl.value='';
   addLog(text,'user');setState(STATE.THINKING);
   var streamEl=null;var full='';
@@ -928,7 +990,16 @@ async function sendCommand(text){
     var res=await fetch('/api/command',{method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({text:text})});
-    if(!res.ok)throw new Error('HTTP '+res.status);
+    if(!res.ok){
+      /* Show the server's plain-language reason (e.g. "The local
+         database could not be opened") instead of a bare HTTP code. */
+      var emsg='HTTP '+res.status;
+      try{
+        var jd=JSON.parse(await res.clone().text());
+        if(jd&&(jd.detail||jd.error))emsg=jd.detail||jd.error;
+      }catch(e0){}
+      throw new Error(emsg);
+    }
     var reader=res.body.getReader();var dec=new TextDecoder();var buf='';
     while(true){
       var result=await reader.read();if(result.done)break;
@@ -946,7 +1017,8 @@ async function sendCommand(text){
             if(!streamEl)streamEl=addStreamingLog(obj.source==='skill'?'skill':'bot');
             full+=obj.delta;if(streamEl)streamEl.textContent=full;
             var logEl=$('log');if(logEl)logEl.scrollTop=logEl.scrollHeight;
-            if(state===STATE.THINKING)setState(STATE.SPEAKING);
+            /* stay in PROCESSING while text streams; SPEAKING is set
+               only when audio actually starts (obj.speak + unmuted) */
           }
           if(obj.tool_call){
             setState(STATE.TOOL);
@@ -957,7 +1029,7 @@ async function sendCommand(text){
             addLog('\u2714 '+(obj.tool_result.summary||JSON.stringify(obj.tool_result).slice(0,120)),'tool');
           }
           if(obj.error)addLog('\u2718 '+obj.error,'error');
-          if(obj.speak){setState(STATE.SPEAKING);speakText(obj.speak);}
+          if(obj.speak){if(!muted)setState(STATE.SPEAKING);speakText(obj.speak);}
         }catch(e){}
       }
     }
@@ -1287,17 +1359,23 @@ function prefToggle(key,on,label,sub){
     };
     var u=data.uptime_s||0;
     var upt=u<60?(u+'s'):(Math.floor(u/60)+'m '+(u%60)+'s');
+    var hname={config:'Configuration',model:'Model',api_key:'API key',
+      deps:'Dependencies',memory:'Memory',voice:'Voice',guard:'RAM guard',
+      updater:'Self-update',mcp:'MCP servers',pending_skills:'Skill drafts'};
+    var hmean={ok:'All good',info:'For information',warn:'Minor issues',
+      degraded:'Some features off',unknown:'Not checked yet'};
     var h='<div class="set-list">';
     h+='<div class="set-row"><div class="label">Overall'+
        '<small>v'+esc(data.version||'?')+' · up '+esc(upt)+
-       (data.ok?' · healthy':'')+'</small></div>'+
+       ' · '+esc(hmean[data.overall]||'Not checked yet')+'</small></div>'+
        '<div class="actions">'+hchip(data.overall)+
        '<button class="dbtn" data-action="health-refresh">REFRESH</button>'+
        '</div></div>';
     ['config','model','api_key','deps','memory','voice','guard',
      'updater','mcp','pending_skills'].forEach(function(k){
       var c=chk[k];if(!c)return;
-      h+='<div class="set-row"><div class="label">'+esc(k.replace(/_/g,' '))+
+      h+='<div class="set-row"><div class="label">'+
+         esc(hname[k]||k.replace(/_/g,' '))+
          '<small>'+esc(c.detail||'')+'</small></div>'+
          '<div class="actions">'+hchip(c.status)+'</div></div>';
     });
@@ -1957,6 +2035,7 @@ async function boot(){
       setTimeout(function(){startTour();},1600);
   }catch(e){}
   setTimeout(function(){setState(STATE.IDLE);},1200);
+  setTimeout(refreshStarters,1600);   /* re-check after onboarding card */
   fetch('/api/greeting').then(function(r){return r.json();}).then(function(d){
     if(d.greeting)addLog(d.greeting,'bot');
   }).catch(function(){});
@@ -1992,7 +2071,7 @@ document.addEventListener('DOMContentLoaded',function(){
   });
   on('btn-voice','click',toggleMute);
   on('btn-stop','click',stopSpeak);
-  on('btn-clear','click',function(){var l=$('log');if(l)l.innerHTML='';addLog('Log cleared.','system');});
+  on('btn-clear','click',function(){var l=$('log');if(l)l.innerHTML='';addLog('Log cleared.','system');chipsSessionUsed=false;refreshStarters();});
   on('btn-settings','click',openSettings);
   on('btn-modal-close','click',closeSettings);
   on('modal-settings','click',function(e){if(e.target&&e.target.id==='modal-settings')closeSettings();});

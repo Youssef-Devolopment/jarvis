@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JARVIS</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ version }}">
 </head>
 <body data-state="boot">
 
@@ -20,7 +20,7 @@
   <div class="brand">
     <span class="brand-mark">&#9670;</span>
     <span class="brand-name">JARVIS</span>
-    <span class="brand-ver" id="brand-ver">v1.6.0</span>
+    <span class="brand-ver" id="brand-ver">v1.16.0</span>
     <button class="code-toggle" id="code-toggle" title="Code Mode (file + terminal control)">
       <span class="code-toggle-dot"></span>
       <span class="code-toggle-label">CODE</span>
@@ -31,7 +31,8 @@
     </span>
   </div>
   <div class="topbar-center">
-    <span class="status-pill">
+    <span class="status-pill" id="status-pill" role="button" tabindex="0"
+          title="System status — click for details">
       <span class="dot" id="status-dot"></span>
       <span id="status-text">BOOTING</span>
     </span>
@@ -50,10 +51,9 @@
 <!-- No-API-key banner (hidden unless /api/info reports key:false) -->
 <div class="key-banner" id="key-banner" hidden>
   <span class="key-banner-dot"></span>
-  <span>Skills-only mode &mdash; no API key.
-    Local skills work; add <code>DEEPSEEK_API_KEY</code> in
-    <code>.env</code> (or Settings) and restart for full AI chat.</span>
-  <button class="key-banner-btn" id="key-banner-settings">Open Settings</button>
+  <span>JARVIS is running in skills-only mode &mdash; local skills work
+    without any key. Add your API key to unlock AI chat.</span>
+  <button class="key-banner-btn" id="key-banner-settings">ADD KEY</button>
   <button class="key-banner-btn key-banner-x" id="key-banner-hide" title="Dismiss">&times;</button>
 </div>
 
@@ -131,6 +131,7 @@
     <span>J</span><span>A</span><span>R</span><span>V</span><span>I</span><span>S</span>
   </div>
   <div class="tagline" id="tagline">SYSTEM ONLINE</div>
+  <div class="starter-chips" id="starter-chips" hidden></div>
 </div>
 
 <!-- Bottom dock -->
@@ -140,7 +141,7 @@
     <div class="slash-menu" id="slash-menu"></div>
     <div class="input-wrap">
       <span class="arrow">&rsaquo;</span>
-      <input id="cmd" type="text" placeholder="TYPE / FOR COMMANDS..." autocomplete="off" spellcheck="false">
+      <input id="cmd" type="text" placeholder="ASK JARVIS&#8230; (TYPE / FOR COMMANDS)" autocomplete="off" spellcheck="false">
     </div>
   </div>
   <div class="dock-buttons">
@@ -263,6 +264,6 @@
   <div class="drawer-body" id="drawer-body"></div>
 </div>
 
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ version }}"></script>
 </body>
 </html>
