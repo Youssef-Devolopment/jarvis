@@ -483,7 +483,6 @@ body[data-uimode="dev"] .dev-only.side-block{display:block!important}
   box-shadow:0 0 16px var(--accent-glow);transform:translateY(-1px);
 }
 .starter-chip:active{transform:translateY(0)}
-}
 .tagline{
   font-family:var(--mono);font-size:10px;letter-spacing:6px;
   color:var(--dim);margin-top:16px;transition:color .4s ease,text-shadow .4s ease;
@@ -854,7 +853,12 @@ input[type="range"].range::-moz-range-thumb{
   background:rgba(255,184,77,.1);border-color:rgba(255,184,77,.45);
   color:var(--amber);text-shadow:0 0 6px rgba(255,184,77,.5);
 }
-/* no-API-key banner: slim strip under the topbar, amber warning tone */
+/* no-API-key + health banners: a fixed strip pinned just below the
+   FIXED topbar (they used to render buried behind it). The wrapper
+   keeps both strips stacked and readable whether one or both show. */
+.banners{
+  position:fixed;top:60px;left:0;right:0;z-index:11;
+}
 .key-banner{
   display:flex;align-items:center;justify-content:center;gap:10px;
   padding:7px 14px;margin:0;
@@ -888,6 +892,75 @@ input[type="range"].range::-moz-range-thumb{
   color:var(--red);border-color:rgba(255,80,80,.45)}
 .health-banner.health-banner--bad .key-banner-btn:hover{
   background:rgba(255,80,80,.15);box-shadow:0 0 10px rgba(255,80,80,.35)}
+
+/* ── First-run onboarding card ────────────────────────────────── */
+.onboard-card{
+  margin:8px 0;border:1px solid var(--accent-line);border-radius:12px;
+  background:linear-gradient(180deg,hsl(var(--theme-hue) 100% 60% / .07),
+             rgba(255,255,255,.015));
+  overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.35);
+}
+.onboard-head{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:13px 15px;border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,hsl(var(--theme-hue) 100% 60% / .06),transparent);
+}
+.onboard-title{
+  font-family:var(--mono);font-size:10px;letter-spacing:2.5px;
+  color:var(--accent-hi);font-weight:600;
+}
+.onboard-sub{
+  display:block;color:var(--dim);font-size:10px;margin-top:4px;
+  letter-spacing:.4px;font-weight:400;line-height:1.5;
+}
+.onboard-head .actions{display:flex;gap:6px;flex:none}
+.onboard-card .set-row{
+  border:none;border-radius:0;background:transparent;padding:11px 15px;
+}
+.onboard-card .set-row + .set-row{border-top:1px solid rgba(255,255,255,.05)}
+.onboard-card .set-row:hover{
+  background:linear-gradient(90deg,hsl(var(--theme-hue) 100% 60% / .06),transparent);
+  transform:none;box-shadow:none;
+}
+
+/* ── SYSTEM tab: verdict card + status-colored rows ───────────── */
+.sys-verdict{
+  display:flex;justify-content:space-between;align-items:center;gap:14px;
+  padding:14px 16px;border-radius:12px;border:1px solid var(--border);
+  background:linear-gradient(120deg,hsl(var(--theme-hue) 100% 60% / .08),
+             rgba(255,255,255,.01));
+  margin-bottom:12px;
+}
+.sys-verdict.ok{border-color:rgba(102,255,163,.4)}
+.sys-verdict.warn{border-color:rgba(255,184,77,.45)}
+.sys-verdict.degraded{border-color:rgba(255,92,122,.45)}
+.sys-verdict .v-name{
+  font-family:var(--display);font-size:13px;letter-spacing:3px;color:#fff;
+  text-shadow:0 0 10px var(--accent-glow);
+}
+.sys-verdict.ok .v-name{color:var(--green);text-shadow:0 0 12px rgba(102,255,163,.5)}
+.sys-verdict.warn .v-name{color:var(--amber);text-shadow:0 0 12px rgba(255,184,77,.5)}
+.sys-verdict.degraded .v-name{color:var(--red);text-shadow:0 0 12px rgba(255,92,122,.5)}
+.sys-verdict .v-mean{
+  display:block;color:var(--dim);font-size:10px;margin-top:5px;
+  letter-spacing:.4px;line-height:1.5;
+}
+.sys-row{border-left:2px solid var(--dim)}
+.sys-row.sys-ok{border-left-color:var(--green)}
+.sys-row.sys-info{border-left-color:var(--cyan)}
+.sys-row.sys-warn{border-left-color:var(--amber)}
+.sys-row.sys-degraded{border-left-color:var(--red)}
+.sys-row.sys-unknown{border-left-color:var(--dim);opacity:.75}
+.sys-warnbox{
+  margin-top:12px;padding:12px 14px;
+  border:1px solid rgba(255,184,77,.35);border-radius:10px;
+  background:rgba(255,184,77,.05);
+  font-size:10px;line-height:1.8;color:var(--amber);
+}
+.sys-warnbox .wtitle{
+  display:block;font-size:9px;letter-spacing:2px;margin-bottom:6px;
+  opacity:.9;
+}
 /* guided tour: dim veil + highlight ring + tooltip card, all removable */
 #tour-veil{position:fixed;inset:0;background:rgba(4,6,12,.72);z-index:9990}
 #tour-ring{position:absolute;z-index:9991;border:2px solid var(--accent-hi);

@@ -20,7 +20,7 @@
   <div class="brand">
     <span class="brand-mark">&#9670;</span>
     <span class="brand-name">JARVIS</span>
-    <span class="brand-ver" id="brand-ver">v1.16.0</span>
+    <span class="brand-ver" id="brand-ver">v{{ version }}</span>
     <button class="code-toggle" id="code-toggle" title="Code Mode (file + terminal control)">
       <span class="code-toggle-dot"></span>
       <span class="code-toggle-label">CODE</span>
@@ -48,20 +48,23 @@
   </div>
 </header>
 
-<!-- No-API-key banner (hidden unless /api/info reports key:false) -->
-<div class="key-banner" id="key-banner" hidden>
-  <span class="key-banner-dot"></span>
-  <span>JARVIS is running in skills-only mode &mdash; local skills work
-    without any key. Add your API key to unlock AI chat.</span>
-  <button class="key-banner-btn" id="key-banner-settings">ADD KEY</button>
-  <button class="key-banner-btn key-banner-x" id="key-banner-hide" title="Dismiss">&times;</button>
-</div>
+<!-- Status banners (fixed strip just below the topbar) -->
+<div class="banners">
+  <!-- No-API-key banner (hidden unless /api/info reports key:false) -->
+  <div class="key-banner" id="key-banner" hidden>
+    <span class="key-banner-dot"></span>
+    <span>JARVIS is running in skills-only mode &mdash; local skills work
+      without any key. Add your API key to unlock AI chat.</span>
+    <button class="key-banner-btn" id="key-banner-settings">ADD KEY</button>
+    <button class="key-banner-btn key-banner-x" id="key-banner-hide" title="Dismiss">&times;</button>
+  </div>
 
-<!-- Health banner (hidden unless /api/health reports warn/degraded) -->
-<div class="key-banner health-banner" id="health-banner" hidden>
-  <span class="key-banner-dot" id="health-banner-dot"></span>
-  <span id="health-banner-text">Checking system health&hellip;</span>
-  <button class="key-banner-btn" id="health-banner-open">Open SYSTEM</button>
+  <!-- Health banner (hidden unless /api/health reports warn/degraded) -->
+  <div class="key-banner health-banner" id="health-banner" hidden>
+    <span class="key-banner-dot" id="health-banner-dot"></span>
+    <span id="health-banner-text">Checking system health&hellip;</span>
+    <button class="key-banner-btn" id="health-banner-open">Open SYSTEM</button>
+  </div>
 </div>
 
 <!-- Left sidebar -->

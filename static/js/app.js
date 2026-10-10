@@ -336,15 +336,19 @@ function maybeOnboard(info,prefs){
     if(!noKey&&!noFacts)return;
     if(document.getElementById('onboard-card'))return;
     var logEl=$('log');if(!logEl)return;
-    var steps='';
-    if(noKey)steps+='<div class="set-row"><div class="label">1 · Add your API key<small>Unlocks full AI chat</small></div><div class="actions"><button class="dbtn" id="onboard-key">SET KEY</button></div></div>';
-    steps+='<div class="set-row"><div class="label">'+(noKey?'2':'1')+' · Try a local skill<small>Works even without a key</small></div><div class="actions"><button class="dbtn" id="onboard-try-time">TRY TIME</button></div></div>';
-    steps+='<div class="set-row"><div class="label">'+(noKey?'3':'2')+' · Open an app<small>Opens Notepad on this PC</small></div><div class="actions"><button class="dbtn" id="onboard-try-open">TRY OPEN</button></div></div>';
+    var sub=noKey
+      ?'Local skills already work — no key needed. Add one any time to unlock AI chat.'
+      :'Two quick things to try, then you’re set.';
+    var n=0,steps='';
+    if(noKey){n++;steps+='<div class="set-row"><div class="label">'+n+' · Add your API key<small>Optional — unlocks AI chat and reasoning</small></div><div class="actions"><button class="dbtn" id="onboard-key">SET KEY</button></div></div>';}
+    n++;steps+='<div class="set-row"><div class="label">'+n+' · Ask for the time<small>Answered instantly by a local skill</small></div><div class="actions"><button class="dbtn" id="onboard-try-time">TRY IT</button></div></div>';
+    n++;steps+='<div class="set-row"><div class="label">'+n+' · Open an app<small>Opens Notepad right on this PC</small></div><div class="actions"><button class="dbtn" id="onboard-try-open">TRY IT</button></div></div>';
     var div=document.createElement('div');
     div.id='onboard-card';
-    div.innerHTML='<div class="set-list" style="margin:8px 0;border-color:hsl(var(--theme-hue) 100% 64% / .4)">'+
-      '<div class="set-row"><div class="label">GETTING STARTED<small>Dismiss any time</small></div>'+
-      '<div class="actions"><button class="dbtn" id="onboard-tour">TAKE TOUR</button><button class="dbtn" id="onboard-hide">DISMISS</button></div></div>'+steps+'</div>';
+    div.className='onboard-card';
+    div.innerHTML='<div class="onboard-head"><div class="onboard-title">GETTING STARTED'+
+      '<small class="onboard-sub">'+sub+'</small></div>'+
+      '<div class="actions"><button class="dbtn" id="onboard-tour">TAKE TOUR</button><button class="dbtn" id="onboard-hide">DISMISS</button></div></div>'+steps;
     logEl.insertBefore(div,logEl.firstChild);
     var kb=$('onboard-key');if(kb)kb.addEventListener('click',function(){openSettings();loadTab('general');});
     var tt=$('onboard-try-time');if(tt)tt.addEventListener('click',function(){sendCommand('tell me the time');});
@@ -1362,26 +1366,33 @@ function prefToggle(key,on,label,sub){
     var hname={config:'Configuration',model:'Model',api_key:'API key',
       deps:'Dependencies',memory:'Memory',voice:'Voice',guard:'RAM guard',
       updater:'Self-update',mcp:'MCP servers',pending_skills:'Skill drafts'};
-    var hmean={ok:'All good',info:'For information',warn:'Minor issues',
-      degraded:'Some features off',unknown:'Not checked yet'};
-    var h='<div class="set-list">';
-    h+='<div class="set-row"><div class="label">Overall'+
-       '<small>v'+esc(data.version||'?')+' · up '+esc(upt)+
-       ' · '+esc(hmean[data.overall]||'Not checked yet')+'</small></div>'+
-       '<div class="actions">'+hchip(data.overall)+
-       '<button class="dbtn" data-action="health-refresh">REFRESH</button>'+
-       '</div></div>';
+    var vname={ok:'READY',warn:'ATTENTION',degraded:'SAFE MODE'};
+    var vmean={ok:'All systems healthy — nothing to do here.',
+      warn:'Minor issues — everything still works.',
+      degraded:'Some features are off — the rows below say what and why.'};
+    var ov=data.overall||'unknown';
+    var h='<div class="sys-verdict '+
+      (ov==='ok'?'ok':ov==='warn'?'warn':ov==='degraded'?'degraded':'')+'">'+
+      '<div><span class="v-name">'+esc(vname[ov]||'CHECKING…')+'</span>'+
+      '<small class="v-mean">'+esc(vmean[ov]||'Waiting for the first health snapshot.')+
+      ' · v'+esc(data.version||'?')+' · up '+esc(upt)+'</small></div>'+
+      '<div class="actions">'+
+      '<button class="dbtn" data-action="health-refresh">REFRESH</button>'+
+      '</div></div>';
+    h+='<div class="set-list">';
     ['config','model','api_key','deps','memory','voice','guard',
      'updater','mcp','pending_skills'].forEach(function(k){
       var c=chk[k];if(!c)return;
-      h+='<div class="set-row"><div class="label">'+
+      h+='<div class="set-row sys-row sys-'+esc(c.status||'unknown')+'">'+
+         '<div class="label">'+
          esc(hname[k]||k.replace(/_/g,' '))+
          '<small>'+esc(c.detail||'')+'</small></div>'+
          '<div class="actions">'+hchip(c.status)+'</div></div>';
     });
     var svc=chk.services;
     if(svc){
-      h+='<div class="set-row"><div class="label">Boot services'+
+      h+='<div class="set-row sys-row sys-'+esc(svc.status||'unknown')+'">'+
+         '<div class="label">Boot services'+
          '<small>'+esc(svc.detail||'')+'</small></div>'+
          '<div class="actions">'+hchip(svc.status)+'</div></div>';
       var items=svc.items||{};
@@ -1400,7 +1411,8 @@ function prefToggle(key,on,label,sub){
                 'data-svc="'+esc(k)+'" '+
                 'style="padding:2px 7px;font-size:9px">STOP</button>';
         }
-        h+='<div class="set-row"><div class="label" style="padding-left:16px">'+
+        h+='<div class="set-row sys-row sys-'+(it.ok?'ok':'degraded')+'">'+
+           '<div class="label" style="padding-left:16px">'+
            esc(k.replace(/_/g,' '))+'<small>'+esc(meta)+'</small>'+
            '</div><div class="actions">'+hchip(it.ok?'ok':'degraded')+
            btns+'</div></div>';
@@ -1409,9 +1421,7 @@ function prefToggle(key,on,label,sub){
     h+='</div>';
     var cw=(chk.config||{}).warnings||[];
     if(cw.length){
-      h+='<div style="margin-top:10px;padding:10px;'+
-         'border:1px solid var(--border);border-radius:4px;'+
-         'font-size:10px;line-height:1.7;color:var(--amber)">'+
+      h+='<div class="sys-warnbox"><span class="wtitle">CONFIGURATION — WORTH FIXING</span>'+
          cw.map(function(w){return '&#8226; '+esc(w);}).join('<br>')+'</div>';
     }
     return h;

@@ -1,13 +1,20 @@
-"""JARVIS floating HUD 4.0 — Glass Command Deck (Alt+Space overlay).
+"""JARVIS floating HUD 5.0 — Glass Command Deck (Alt+Space overlay).
 
-Rebuilt from zero: a rounded, transparent-cornered command deck that
-floats over any window (games, IDEs, browsers):
+A rounded, transparent-cornered command deck that floats over any
+window (games, IDEs, browsers) — brand-aligned with the app and the
+landing page (diamond mark, green accent, cyan highlights):
 
   * true transparent corners (Windows transparentcolor key) around a
-    20px-radius double bezel with a top accent line — no OS blur,
+    20px-radius double bezel with a brand accent line — no OS blur,
     DPI-aware native rendering;
   * two modes: a compact input deck (header + prompt + chips + footer)
     that expands into a full deck with a scrollable reply well;
+  * the empty input shows a friendly hint ("Ask JARVIS anything —
+    Enter to send") instead of a bare box, cleared while typing;
+  * while an answer is pending the reply well shows a pulsing
+    "JARVIS is thinking…" line — it is never a dead empty panel;
+  * errors render as a red ⚠ line in plain English, never raw
+    "[error] ..." plumbing;
   * live header: JARVIS title, version · mood · model, status dot
     (green idle / amber pulse while thinking / red on error),
     refreshed on every show, after every answer and ~10s while visible;
@@ -45,17 +52,19 @@ REFRESH_TICKS = 125            # pump runs ~80ms: refresh header ~10s
 TRANSPARENT = "#ff00ff"        # transparent color key
 PANEL = "#0A101C"              # base surface (deep navy)
 PANEL2 = "#0D1526"             # raised surface (reply well / bezel)
-EDGE = "#00E5FF"               # primary accent (cyan)
-EDGE_DIM = "#0E4A5E"           # dim accent ring
-GLOW = "#123246"               # hairline / busy blink
+EDGE = "#66FFA3"               # primary accent — brand green
+EDGE_DIM = "#17513A"           # dim accent ring
+CYAN_DIM = "#155063"           # dim secondary (brand cyan tail)
+GLOW = "#122E24"               # hairline / busy blink
 TRACK = "#101B2E"              # chips + secondary buttons
 SURF = "#0A0F1C"               # input well
 TEXT = "#DCE7FA"
 DIM = "#64748C"
 HINT = "#475569"
-GOOD = "#3DFFA2"
+GOOD = "#66FFA3"
 BUSY = "#FFB020"
 DANGER = "#FF5C7A"
+HINT_TEXT = "Ask JARVIS anything \u2014 Enter to send"
 
 _actions: queue.Queue = queue.Queue()
 _ready = threading.Event()
@@ -273,12 +282,12 @@ def _run() -> None:
                        outline=GLOW, width=1, tags="chrome")
             round_rect(2, 2, W - 2, h - 2, RADIUS - 2, fill=PANEL,
                        outline=EDGE_DIM, width=2, tags="chrome")
-            # top accent line: bright segment fading into the hairline
+            # top accent line: brand green fading into cyan-dim tails
             cv.create_line(40, 3, W - 40, 3, fill=EDGE, width=2,
                            tags="chrome")
             cv.create_line(16, 3, 40, 3, fill=EDGE_DIM, width=2,
                            tags="chrome")
-            cv.create_line(W - 40, 3, W - 16, 3, fill=EDGE_DIM, width=2,
+            cv.create_line(W - 40, 3, W - 16, 3, fill=CYAN_DIM, width=2,
                            tags="chrome")
             # separator under the header
             cv.create_line(14, 52, W - 14, 52, fill=GLOW, width=1,
@@ -287,16 +296,11 @@ def _run() -> None:
                 cv.create_line(14, 52, 174, 52, fill=EDGE, width=1,
                                tags="chrome")
 
-        # ---------- header: hexagon mark + title + live header text
-        import math
-        cx, cy, rr = 30, 29, 10
-        for ring, rad, fill, out in ((rr + 3, rr + 3, "", EDGE_DIM),
-                                     (rr, rr, EDGE, TEXT),
-                                     (5, 5, PANEL, "")):
-            pts = []
-            for i in range(6):
-                a = math.radians(60 * i - 30)
-                pts += [cx + rad * math.cos(a), cy + rad * math.sin(a)]
+        # ---------- header: brand diamond mark + title + live header text
+        cx, cy = 30, 29
+        for hw, fill, out in ((13.5, "", EDGE_DIM), (9, EDGE, EDGE),
+                              (3.5, PANEL, "")):
+            pts = [cx, cy - hw, cx + hw, cy, cx, cy + hw, cx - hw, cy]
             cv.create_polygon(pts, fill=fill, outline=out, width=1)
 
         cv.create_text(52, 29, text="JARVIS", anchor="w", fill=TEXT,
@@ -361,6 +365,26 @@ def _run() -> None:
         entry_win = cv.create_window(44, in_y, window=entry_wrap,
                                      anchor="nw", width=W - 184, height=40)
 
+        def _entry_text():
+            """Entry contents, treating the hint line as empty."""
+            try:
+                t = entry.get()
+            except Exception:
+                return ""
+            return "" if t == HINT_TEXT else t
+
+        def _hint_on():
+            """Empty deck: show the friendly hint instead of a bare box."""
+            try:
+                if not _entry_text():
+                    entry.delete(0, "end")
+                    entry.insert(0, HINT_TEXT)
+                    entry.configure(fg=HINT)
+            except Exception:
+                pass
+
+        _hint_on()
+
         def _btn(text, bg, fg, cmd):
             b = tk.Button(cv, text=text, bg=bg, fg=fg, command=cmd,
                           relief="flat", bd=0, highlightthickness=0,
@@ -369,7 +393,7 @@ def _run() -> None:
                           cursor="hand2")
             return b
 
-        mic_btn = _btn("\U0001F3A4", TRACK, TEXT, lambda: _mic())
+        mic_btn = _btn("MIC", TRACK, TEXT, lambda: _mic())
         send_btn = _btn("SEND \u25b8", EDGE, "#04121A", lambda: _submit())
         mic_win = cv.create_window(W - 104, in_y + 20, window=mic_btn,
                                    anchor="center")
@@ -410,7 +434,7 @@ def _run() -> None:
         groups["chips"] = chip_ids
 
         # ---------- footer: status · key hints · copy
-        status_lbl = tk.Label(cv, text="ready \u00b7 Alt+Space",
+        status_lbl = tk.Label(cv, text="Ready \u00b7 Alt+Space",
                               bg=PANEL, fg=DIM, font=("Bahnschrift", 8))
         status_win = cv.create_window(16, 0, window=status_lbl, anchor="w")
         hints = cv.create_text(
@@ -479,9 +503,10 @@ def _run() -> None:
             try:
                 if b:
                     _state["dot"] = "busy"
-                    status_lbl.configure(text="thinking\u2026", fg=BUSY)
+                    status_lbl.configure(text="Thinking\u2026", fg=BUSY)
                     send_btn.configure(state="disabled", text="\u2026")
                     cv.itemconfig(copy_id, state="hidden")
+                    _think_show()
                 else:
                     _state["dot"] = "good"
                     send_btn.configure(state="normal", text="SEND \u25b8")
@@ -493,6 +518,35 @@ def _run() -> None:
                 status_lbl.configure(text=text, fg=color)
             except Exception:
                 pass
+
+        think_gen = {"n": 0}
+
+        def _think_show():
+            """Pulsing 'JARVIS is thinking…' line in the reply well.
+
+            Keeps the deck alive while the first token is in flight —
+            the well is never a dead empty panel. Cancelled by any
+            delta, a finished reply or a newer request.
+            """
+            think_gen["n"] += 1
+            gen = think_gen["n"]
+
+            def step(i=0):
+                if (think_gen["n"] != gen or not _state.get("busy")
+                        or _state.get("streaming")):
+                    return
+                try:
+                    reply.configure(state="normal")
+                    reply.delete("1.0", "end")
+                    reply.tag_configure("think", foreground=HINT)
+                    reply.insert("end",
+                                 "JARVIS is thinking" + "." * (i % 3 + 1),
+                                 "think")
+                    reply.configure(state="disabled")
+                except Exception:
+                    return
+                root.after(400, lambda: step(i + 1))
+            step(0)
 
         notice_ticks = {"n": 0}
 
@@ -508,6 +562,7 @@ def _run() -> None:
 
         def set_reply(text, color=TEXT):
             type_gen["n"] += 1            # cancel any in-flight typing
+            think_gen["n"] += 1           # and any thinking pulse
             try:
                 reply.configure(state="normal")
                 reply.delete("1.0", "end")
@@ -523,6 +578,7 @@ def _run() -> None:
         def type_out(text, color=TEXT):
             """Typewriter reveal; a new call cancels the previous one."""
             type_gen["n"] += 1
+            think_gen["n"] += 1
             gen = type_gen["n"]
             try:
                 reply.configure(state="normal")
@@ -561,9 +617,9 @@ def _run() -> None:
                     return
                 root.clipboard_clear()
                 root.clipboard_append(body)
-                set_status("copied to clipboard", GOOD)
+                set_status("Copied to clipboard", GOOD)
             except Exception:
-                set_status("copy failed", DANGER)
+                set_status("Couldn't copy", DANGER)
 
         # ---------- input actions ----------
         def _remember(text):
@@ -575,22 +631,23 @@ def _run() -> None:
 
         def _submit(prefill=None):
             text = (prefill if prefill is not None
-                    else entry.get()).strip()
+                    else _entry_text()).strip()
             if not text:
                 return
             if _state.get("busy"):
                 return                     # one answer at a time
             try:
                 entry.delete(0, "end")
+                entry.configure(fg=TEXT)
             except Exception:
                 pass
             _remember(text)
             if not mode["expanded"]:
                 _apply_mode(True)
-            set_busy(True)
-            set_reply("")
             _state["streaming"] = False    # new round — first delta re-clears
-            set_status("thinking\u2026", BUSY)
+            set_reply("")
+            set_busy(True)                 # starts the thinking pulse
+            set_status("Thinking\u2026", BUSY)
 
             def work():
                 pieces = []
@@ -608,7 +665,7 @@ def _run() -> None:
         def _mic():
             if _state.get("busy"):
                 return
-            set_status("\U0001F399 listening\u2026", BUSY)
+            set_status("Listening\u2026", BUSY)
 
             def work():
                 try:
@@ -627,6 +684,7 @@ def _run() -> None:
                 try:
                     entry.delete(0, "end")
                     entry.insert(0, payload)
+                    entry.configure(fg=TEXT)
                     entry.focus_set()
                     entry.icursor("end")
                 except Exception:
@@ -634,6 +692,19 @@ def _run() -> None:
 
         # ---------- keys ----------
         def on_key(event):
+            # First printable key replaces the hint line (placeholder
+            # behaviour: hint shows while empty, typing starts fresh).
+            if (entry.get() == HINT_TEXT
+                    and event.keysym not in ("Up", "Down", "Escape",
+                                             "Return", "KP_Enter",
+                                             "Shift_L", "Shift_R",
+                                             "Control_L", "Control_R",
+                                             "Alt_L", "Alt_R", "Caps_Lock")):
+                try:
+                    entry.delete(0, "end")
+                    entry.configure(fg=TEXT)
+                except Exception:
+                    pass
             if event.keysym in ("Return", "KP_Enter"):
                 _submit()
                 return "break"
@@ -654,6 +725,7 @@ def _run() -> None:
                     entry.delete(0, "end")
                     if idx < len(hist):
                         entry.insert(0, hist[idx])
+                        entry.configure(fg=TEXT)
                         entry.icursor("end")
                 except Exception:
                     pass
@@ -669,12 +741,13 @@ def _run() -> None:
             # Click-away dismisses ONLY an idle, empty deck — never
             # mid-answer. Focus staying inside this process cancels.
             root.after(160, _maybe_focus_hide)
+            root.after(220, _hint_on)
 
         def _maybe_focus_hide():
             try:
                 if not _state["visible"] or _state.get("busy"):
                     return
-                if entry.get().strip():
+                if _entry_text().strip():   # hint line counts as empty
                     return
                 if root.focus_displayof() is not None:
                     return          # focus still inside our window
@@ -723,7 +796,7 @@ def _run() -> None:
                 root.lift()
                 root.attributes("-topmost", True)
                 _state["visible"] = True
-                set_status("ready \u00b7 Alt+Space", DIM)
+                set_status("Ready \u00b7 Alt+Space", DIM)
                 cv.itemconfig(dot_core, fill=GOOD)
                 _state["dot"] = "good"
                 x, y = root.winfo_x(), root.winfo_y()
@@ -748,6 +821,7 @@ def _run() -> None:
                             root.focus_force()
                             entry.focus_set()
                             entry.icursor("end")
+                            _hint_on()
                         except Exception:
                             pass
                 step()
@@ -782,12 +856,20 @@ def _run() -> None:
         def on_delta(piece):
             """Append a live reply piece (first delta clears the well)."""
             try:
+                tag = None
+                if isinstance(piece, str) and piece.startswith("[error] "):
+                    # Plumbing marker never reaches the user — render a
+                    # plain-English red line instead.
+                    piece = "\u26a0 " + piece[len("[error] "):]
+                    tag = "err"
                 reply.configure(state="normal")
                 if not _state.get("streaming"):
                     reply.delete("1.0", "end")
+                    think_gen["n"] += 1    # stop the thinking pulse
                     reply.tag_configure("body", foreground=TEXT)
+                    reply.tag_configure("err", foreground=DANGER)
                     _state["streaming"] = True
-                reply.insert("end", piece, "body")
+                reply.insert("end", piece, tag or "body")
                 reply.see("end")
                 reply.configure(state="disabled")
             except Exception:
@@ -796,6 +878,10 @@ def _run() -> None:
         def on_result(text, color=TEXT):
             set_busy(False)
             is_err = text.startswith("[error]")
+            if is_err:
+                text = "\u26a0 " + text[len("[error] "):]
+            elif text == "(no reply)":
+                text = "No reply came back \u2014 try again."
             if _state.get("streaming"):
                 # Live deltas already drew the reply — finalize only.
                 _state["streaming"] = False
@@ -808,9 +894,9 @@ def _run() -> None:
                 except Exception:
                     pass
             else:
-                type_out(text, color)     # nothing streamed (fast path)
-            set_status(("error \u00b7 " if is_err else "done \u00b7 ")
-                       + "Alt+Space to recall",
+                type_out(text, DANGER if is_err else color) # fast path
+            set_status(("Something went wrong \u00b7 see the reply"
+                        if is_err else "Done \u00b7 Alt+Space to recall"),
                        DANGER if is_err else DIM)
             _state["dot"] = "danger" if is_err else "good"
             cv.itemconfig(dot_core,
@@ -837,12 +923,14 @@ def _run() -> None:
                                       else TEXT)
                         elif kind == "heard":
                             if payload.startswith("[error]"):
-                                set_status(payload, DANGER)
+                                set_status(payload.replace("[error]", "Mic:").strip(),
+                                           DANGER)
                             elif payload:
                                 _chip("fill", payload)
                                 _submit()
                             else:
-                                set_status("didn't catch that", DIM)
+                                set_status("Didn't catch that \u2014 try again",
+                                           DIM)
                         elif kind == "info":
                             try:
                                 ver.configure(
