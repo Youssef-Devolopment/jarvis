@@ -287,7 +287,8 @@ def validate_module_dir(path, check_name: bool = True) -> dict:
 
 
 # ------------------------------------------------------------- inventory
-def _entry_view(m: dict, rec: dict, path: Path, latest_map: dict) -> dict:
+def _entry_view(m: dict, rec: dict, path: Path, latest_map: dict,
+                running: set) -> dict:
     state = ("failed" if rec.get("error")
              else "active" if rec.get("enabled") else "inactive")
     v = {"id": m["id"], "name": m["name"], "version": m["version"],
@@ -306,16 +307,25 @@ def _entry_view(m: dict, rec: dict, path: Path, latest_map: dict) -> dict:
         env = spec.get("env") or {}
         v["needs_key"] = bool(env) and any(
             not str(x).strip() for x in env.values())
-        v["running"] = _mcp_running(spec["name"])
+        v["running"] = spec["name"] in running
     return v
 
 
-def _mcp_running(name: str) -> bool:
+def _running_snapshot() -> set:
+    """Names of running MCP servers — bounded so an API request can
+    never hang behind a slow server spawn (runtime.start_server holds
+    its lock for the whole spawn, up to 45s per server). Gives up
+    after ~1s and reports "not running" — transient and honest."""
     try:
         from mcp import runtime
-        return bool(runtime.is_running(name))
+        if not runtime._lock.acquire(timeout=1.0):
+            return set()
+        try:
+            return {n for n, h in runtime._servers.items() if h}
+        finally:
+            runtime._lock.release()
     except Exception:
-        return False
+        return set()
 
 
 def scan() -> list:
@@ -326,6 +336,7 @@ def scan() -> list:
     out = []
     if not _ROOT.is_dir():
         return out
+    running = _running_snapshot()
     changed = False
     for child in sorted(_ROOT.iterdir()):
         if not child.is_dir() or child.name.startswith(("_", ".")):
@@ -345,7 +356,7 @@ def scan() -> list:
             st[child.name] = {"enabled": True, "error": None,
                               "source": "shipped"}
             changed = True
-        v = _entry_view(m, st[child.name], child, latest_map)
+        v = _entry_view(m, st[child.name], child, latest_map, running)
         v["warnings"] = res["warnings"]
         out.append(v)
     if changed:
@@ -361,7 +372,7 @@ def detail(module_id: str) -> dict:
     res = validate_module_dir(path)
     m = res["manifest"]
     rec = _load_state().get(module_id) or {}
-    v = _entry_view(m, rec, path, _catalog_versions())
+    v = _entry_view(m, rec, path, _catalog_versions(), _running_snapshot())
     v["warnings"] = res["warnings"]
     v["entry"] = m.get("entry")
     docs = m.get("docs") or "README.md"
@@ -433,7 +444,8 @@ def _activate_skill(module_id: str, path: Path, m: dict) -> dict:
     return {"skills": names}
 
 
-def _activate_mcp(module_id: str, path: Path, m: dict) -> dict:
+def _activate_mcp(module_id: str, path: Path, m: dict,
+                  start: bool = True) -> dict:
     """Wire the declared MCP server into mcp.manager (+ best-effort
     start). An existing entry with the same name is reused as-is."""
     from mcp import manager
@@ -455,7 +467,7 @@ def _activate_mcp(module_id: str, path: Path, m: dict) -> dict:
         if env:
             _set_env(server.get("id"), env)
     started, note = None, ""
-    if not needs_key and bool(spec.get("auto_start", True)):
+    if start and not needs_key and bool(spec.get("auto_start", True)):
         try:
             from mcp import runtime
             started = bool(runtime.start_server(name))
@@ -481,8 +493,11 @@ def _set_env(sid: str, env: dict) -> None:
         manager._save(items)
 
 
-def activate(module_id: str) -> dict:
-    """Validate + load a module now. Idempotent. Raises ModuleError."""
+def activate(module_id: str, start_mcp: bool = True) -> dict:
+    """Validate + load a module now. Idempotent. Raises ModuleError.
+    start_mcp=False configures MCP servers WITHOUT spawning them —
+    boot uses that so the mcp service starts them right after (a
+    spawn under the runtime lock would stall the whole boot)."""
     path = _ROOT / module_id
     st = _load_state()
     rec = st.get(module_id) or {"enabled": True, "error": None,
@@ -497,7 +512,7 @@ def activate(module_id: str) -> dict:
         if m["kind"] == "skill":
             extra = _activate_skill(module_id, path, m)
         else:
-            extra = _activate_mcp(module_id, path, m)
+            extra = _activate_mcp(module_id, path, m, start=start_mcp)
     except ModuleError as exc:
         rec.update({"enabled": False, "error": str(exc)[:200]})
         st[module_id] = rec
@@ -728,7 +743,7 @@ def boot_load() -> str:
         if not m.get("enabled"):
             continue
         try:
-            activate(m["id"])
+            activate(m["id"], start_mcp=False)
             active += 1
         except Exception as exc:             # recorded, surfaced, skipped
             _mark_failed(m["id"], str(exc))

@@ -439,6 +439,39 @@ class McpActivationTests(_TempRoot):
         rm.assert_called_once_with("s1")
 
 
+class RunningSnapshotTests(_TempRoot):
+    def test_scan_does_not_hang_behind_a_slow_spawn(self):
+        """runtime.start_server holds its lock for the whole spawn
+        (up to 45s/server) — scan must give up after ~1s and report
+        'not running' instead of hanging the API request."""
+        import threading
+        import time as _t
+        _write_module(self.tmp, _manifest(
+            id="demo_mcp", name="Demo MCP", kind="mcp", entry=None,
+            skills=None,
+            mcp={"name": "demo-srv", "command": "uvx",
+                 "args": ["demo-server"], "auto_start": True},
+            permissions=["network"]), src=None)
+        from mcp import runtime
+        held = threading.Event()
+
+        def hold():
+            with runtime._lock:
+                held.set()
+                _t.sleep(1.5)
+
+        t = threading.Thread(target=hold)
+        t.start()
+        self.assertTrue(held.wait(2.0))
+        t0 = _t.time()
+        mods = modsys.scan()
+        elapsed = _t.time() - t0
+        t.join()
+        self.assertLess(elapsed, 2.5)
+        mcp_mod = next(m for m in mods if m["id"] == "demo_mcp")
+        self.assertFalse(mcp_mod["running"])
+
+
 class UninstallTests(_TempRoot):
     def test_uninstall_removes_folder_and_state(self):
         _write_module(self.tmp, _manifest())
