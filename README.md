@@ -6,7 +6,7 @@
 
 ![version](https://img.shields.io/badge/version-v1.18.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-598%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-652%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 🌐 **Live site:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
@@ -183,6 +183,16 @@ Details, diagrams and data flow: [ARCHITECTURE.md](ARCHITECTURE.md).
   with a single click; packs hot-load validated, MCP entries
   auto-start or tell you which API key to set — and **import your
   own packs as JSON**, with REMOVE / START / STOP per entry
+- **Module ecosystem** — Settings → MODULES: a real extensibility
+  framework with a `module.json` manifest schema — every module
+  declares capabilities, a fixed permission vocabulary, docs and
+  examples **before** it may run. Install from a folder or `.zip`
+  (validated first, zip-slip and shell-metachar rejection), activate
+  / deactivate / uninstall with one click, see installed / active /
+  failed states with errors, and dry-run **CHECK** any package before
+  installing. Ships 9 real modules (5 computation skills, 4 governed
+  MCP integrations) plus skill/MCP author templates — community
+  contributors never touch core code ([MODULES.md](MODULES.md))
 - **Alerts that reach you** — desktop toast plus a green HUD pulse
   when timers, reminders, research jobs or computer tasks finish
 - **Always up to date** — JARVIS checks GitHub at boot and fast-
@@ -246,6 +256,9 @@ ai/          LLM client, tools, agents, council backends, integrations
 skills/      142 @register skills (+ skills/auto_generated/)
 library/     one-click catalog: 18 skill packs + 12 MCP entries
              (library/user_catalog.json = your imports, gitignored)
+modules/     the module ecosystem: 9 shipped modules (5 skills,
+             4 MCP integrations) + _template_skill / _template_mcp
+             author templates (modules/state.json = runtime, gitignored)
 voice/       Groq mic input, Piper/edge-tts output (Ryan)
 memory/      SQLite facts, messages, prefs, outcomes, contacts, …
 moods/       personalities, router, escalation levels, classifier
@@ -256,13 +269,13 @@ system/      tray, hotkey, overlay, singleton, autostart, launcher,
              snapshot), services (one boot registry shared by both
              entry points), startup (first-run boot messaging),
              app_learner (scan + skills), app_close (kill by name)
-routes/      Flask blueprints (144 endpoints)
+routes/      Flask blueprints (150 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 assets/      brand assets: logo banner, icon mark, favicon
              (theme lockups for dark/light in docs/logo-*.svg)
 ```
 
-- `main` builds green: syntax-check every file + **598 unit tests**
+- `main` builds green: syntax-check every file + **652 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -290,5 +303,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 598 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 652 tests
 ```

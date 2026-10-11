@@ -4,6 +4,66 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.19.0] — 2026-10-11
+
+The extensibility batch: a real module ecosystem so JARVIS can grow
+like a product platform, not a fixed app. Skills, MCP integrations and
+community drop-ins all flow through one governed framework — declared
+permissions, validated installs, honest failure states — with a
+shipped starter library and author templates to match.
+
+### Added
+- **Module framework** (`system/modules.py`) — modules are folders
+  with a `module.json` manifest (schema v1): id, version, author,
+  description, capabilities, a fixed permission vocabulary, docs and
+  examples. Two kinds ship: `skill` (a `skill.py` entry registering
+  @register skills, validated with the same AST rules + hijack guards
+  as community plugins) and `mcp` (a server spec wired into
+  `mcp.manager`/`mcp.runtime` on activation).
+- **Install / lifecycle** — install from a local folder or `.zip`
+  (validated BEFORE anything copies; zip-slip, absolute-path, size
+  and file-type guards), activate ⇄ deactivate, uninstall.
+  Active / inactive / failed states persist in `modules/state.json`;
+  boot re-activates exactly what you enabled via a new `modules`
+  boot service that runs before MCP, so module servers are already
+  configured when `start_all()` fires.
+- **Starter library — 9 real modules, no placeholders**: five
+  computation skills (`unit_convert`, `color_convert`, `number_base`,
+  `secure_token`, `url_codec`) and four governed MCP integrations
+  wrapping official servers (`mcp_fetch`, `mcp_filesystem`,
+  `mcp_git`, `mcp_memory`) with declared permissions and docs.
+- **MODULES tab** — installed / active / inactive / failed counts;
+  per-module cards with state, kind, author and update chips, colored
+  permission chips (hover shows what each means), capabilities,
+  examples, an inline DOCS panel with the full README, and
+  ACTIVATE / DISABLE / UNINSTALL. An install box offers CHECK
+  (dry-run validation report) and INSTALL for local folders or zips.
+- **Author path** — `modules/_template_skill` and
+  `modules/_template_mcp` templates plus `MODULES.md`: schema table,
+  permission vocabulary, safety rules, lifecycle and API reference.
+  `POST /api/modules/validate` checks a package without installing.
+- **Update status** — `modules/catalog.json` is a bundled
+  `{id: version}` snapshot (the same shape a future remote registry
+  will publish); modules newer than the catalog show an UPDATE chip,
+  and missing sources read as unknown — never a fake "current".
+- **API** — six new endpoints: `GET /api/modules`,
+  `GET /api/modules/<id>`, and `POST /api/modules/toggle|install|
+  uninstall|validate`.
+
+### Safety
+- Unknown permissions, shell metacharacters in MCP commands, entry
+  paths escaping the module folder, oversized zips, disallowed file
+  types and blocked code (`eval`/`exec`/`open`, import whitelist) are
+  rejected with plain-English reasons before anything loads.
+- A module that crashes at import rolls back every skill it
+  registered and shows FAILED with the error — visible, retryable,
+  never silently ignored, never fatal to boot.
+- +54 tests (652 total): manifest schema, starter-library integrity
+  (every shipped module validated exactly like a community one),
+  install/zip/zip-slip guards, activation rollback, MCP wiring with
+  needs-key detection, failed states, update flags, boot wiring, and
+  the new API routes.
+
 ## [1.18.0] — 2026-10-11
 
 The final polish pass before launch — UI, clarity and trust only. No
