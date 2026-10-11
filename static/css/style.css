@@ -1,4 +1,4 @@
-﻿/* ════════════════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════════════════════
    JARVIS v1.0.0 — premium UI
    dark glass · mood-reactive accent · entrance choreography
    ════════════════════════════════════════════════════════════════ */
@@ -305,7 +305,6 @@ body[data-uimode="dev"] .dev-only.side-block{display:block!important}
   font-variant-numeric:tabular-nums;
 }
 .stat-row span:last-child.warn{color:var(--amber);text-shadow:0 0 8px rgba(255,184,77,.5)}
-.stat-row span:last-child.crit{color:var(--red);text-shadow:0 0 8px rgba(255,92,122,.5)}
 
 .mini-btn{background:transparent;border:0;color:var(--dim);cursor:pointer;font-size:11px;padding:0 2px;transition:color .2s,transform .3s}
 .mini-btn:hover{color:var(--accent);transform:rotate(90deg)}
@@ -1149,7 +1148,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 /* Tablet — 1200px and below */
 @media (max-width:1200px){
   .sidebar,.logpanel,.thinkpanel{display:none}
-  .ui-container{grid-template-columns:1fr}
   .wordmark{font-size:42px;letter-spacing:18px}
   .dock{left:20px;right:20px;bottom:16px;padding:12px 14px}
   .topbar{padding:16px 20px}
@@ -1159,7 +1157,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media (max-width:800px){
   .wordmark{font-size:32px;letter-spacing:12px}
   .waveform{width:80px}
-  .dbtn .btn-label{display:none}
   .dbtn{padding:10px;font-size:14px}
   .clock{display:none}
   .brand-ver{display:none}

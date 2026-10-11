@@ -59,7 +59,7 @@ def _to_int(value, default: int, lo: int | None = None,
 from moods.models import (get_active, set_active, set_cache, get_cache,
                            theme_for, label_for, build_fallback_list)
 from moods.router import needs_reasoning
-from moods import classifier, council, moderator
+from moods import council, moderator
 from moods.levels import Level, LEVEL_SPECS
 from memory import outcomes
 from ai import reality_check
@@ -151,43 +151,6 @@ def models_list():
         items = build_fallback_list()
     set_cache(items)
     return jsonify({"models": items, "active": get_active()})
-
-
-@bp.get("/models/featured")
-def models_featured():
-    from moods.models import featured_models, get_active
-    return jsonify({"models": featured_models(), "active": get_active()})
-
-
-@bp.post("/models/test")
-def models_test():
-    from moods.models import set_working
-    import time
-    d = request.get_json(silent=True) or {}
-    ids = d.get("ids") or []
-    if not ids:
-        from moods.models import FEATURED
-        ids = [m["id"] for m in FEATURED if m["id"] != "auto"]
-    client = get_client()
-    results = []
-    for mid in ids:
-        t0 = time.time()
-        try:
-            r = client._client.chat.completions.create(
-                model=mid,
-                messages=[{"role": "user", "content": "Reply with the single word: ok"}],
-                max_tokens=10,
-                temperature=0,
-            )
-            reply = (r.choices[0].message.content or "").strip().lower()
-            ok = "ok" in reply
-            ms = int((time.time() - t0) * 1000)
-            set_working(mid, ok, f"{ms}ms")
-            results.append({"id": mid, "ok": ok, "ms": ms, "reply": reply[:40]})
-        except Exception as exc:
-            set_working(mid, False, str(exc)[:120])
-            results.append({"id": mid, "ok": False, "error": str(exc)[:120]})
-    return jsonify({"results": results})
 
 
 @bp.get("/diagnostics")
@@ -292,14 +255,6 @@ def skill_toggle():
 
 
 # ---------- AUTO SKILLS ----------
-@bp.get("/auto_skills/pending")
-def auto_skills_pending():
-    from skills import auto_generator as _ag
-    return jsonify({"pending": _ag.list_pending(),
-                    "enabled": _ag.auto_gen_enabled(),
-                    "auto_approve": _ag.auto_approve_enabled()})
-
-
 @bp.post("/auto_skills/approve")
 def auto_skills_approve():
     from skills import auto_generator as _ag
@@ -336,16 +291,6 @@ def auto_skills_auto_approve():
     if not _ag.set_auto_approve_enabled(bool(d.get("enabled"))):
         raise ValidationError("Could not save auto-approve preference.")
     return jsonify({"ok": True, "auto_approve": _ag.auto_approve_enabled()})
-
-
-@bp.post("/auto_skills/enabled")
-def auto_skills_enabled():
-    from skills import auto_generator as _ag
-    d = request.get_json(silent=True) or {}
-    ok = _ag.set_auto_gen_enabled(bool(d.get("enabled", True)))
-    if not ok:
-        raise ValidationError("Could not save preference.")
-    return jsonify({"ok": True, "enabled": _ag.auto_gen_enabled()})
 
 
 # ---------- COMMUNITY PLUGINS ----------
@@ -584,12 +529,6 @@ def clip_recent():
     return jsonify({"items": clipboard_watcher.recent(limit=15)})
 
 
-@bp.get("/clipboard/suggestions")
-def clip_sugg():
-    consume = request.args.get("consume", "0") == "1"
-    return jsonify({"suggestions": clipboard_watcher.pending_suggestions(consume)})
-
-
 @bp.post("/capture")
 def capture_ep():
     d = request.get_json(silent=True) or {}
@@ -605,34 +544,6 @@ def ocr_ep():
 
 
 # ---------- SCREEN CONTEXT (omniscience loop) ----------
-@bp.get("/screen/context")
-def screen_context_status():
-    from ai import screen_context
-    return jsonify(screen_context.status())
-
-
-@bp.post("/screen/context/start")
-def screen_context_start():
-    from ai import screen_context
-    return jsonify({"started": screen_context.start()})
-
-
-@bp.post("/screen/context/stop")
-def screen_context_stop():
-    from ai import screen_context
-    screen_context.stop()
-    return jsonify({"stopped": True})
-
-
-@bp.post("/screen/ask")
-def screen_ask():
-    from ai import screen_context
-    d = request.get_json(silent=True) or {}
-    q = (d.get("question") or "").strip()
-    text = screen_context.ask(q)
-    return jsonify({"ok": not text.startswith("[error]"), "text": text})
-
-
 @bp.get("/contacts")
 def contacts_ep():
     from memory import list_contacts
@@ -690,18 +601,6 @@ def snippets_save_ep():
     return jsonify(snippets.save(title, code,
                                  language=(d.get("language") or ""),
                                  tags=(d.get("tags") or "")))
-
-
-@bp.get("/snippets/<int:sid>")
-def snippet_get_ep(sid):
-    s = snippets.get(sid)
-    if not s: raise ValidationError("Snippet not found.")
-    return jsonify(s)
-
-
-@bp.delete("/snippets/<int:sid>")
-def snippet_delete_ep(sid):
-    return jsonify({"ok": snippets.delete(sid)})
 
 
 @bp.get("/layouts")
@@ -780,24 +679,6 @@ def ports_kill():
 
 
 # ---------- OVERLAY (Alt+Space HUD) ----------
-@bp.get("/overlay/state")
-def overlay_state():
-    from system import overlay
-    st = overlay._state
-    th = st.get("thread")
-    return jsonify({"ready": bool(overlay._ready.is_set()),
-                    "visible": bool(st.get("visible")),
-                    "thread_alive": bool(th and th.is_alive()),
-                    "root": bool(st.get("root"))})
-
-
-@bp.post("/overlay/toggle")
-def overlay_toggle():
-    from system import overlay
-    threading.Thread(target=overlay.toggle, daemon=True).start()
-    return jsonify({"ok": True})
-
-
 # ---------- APP INDEX ----------
 @bp.get("/apps")
 def apps_list():
@@ -810,69 +691,7 @@ def apps_list():
     return jsonify({"count": len(apps), "apps": apps[:100]})
 
 
-@bp.post("/apps/refresh")
-def apps_refresh():
-    from ai import app_index
-    apps = app_index.refresh()
-    return jsonify({"ok": True, "count": len(apps)})
-
-
 # ---------- APP LEARNER (autonomous skill generation) ----------
-@bp.get("/apps/learned")
-def apps_learned():
-    from system import app_learner
-    return jsonify({"count": len(app_learner.learned_list()),
-                    "apps": app_learner.learned_list()})
-
-
-@bp.post("/apps/learn")
-def apps_learn():
-    """Learn an app NOW (scan + write skill) without launching it."""
-    from system import app_learner
-    d = request.get_json(silent=True) or {}
-    name = (d.get("name") or "").strip()
-    path = (d.get("path") or "").strip()
-    query = (d.get("query") or "").strip()
-    try:
-        if name and path:
-            skill, created = app_learner.ensure_skill(name, path)
-        elif query:
-            hit = app_learner.find(query)
-            if not hit:
-                apps = app_learner.scan(force=True)
-                from system.app_learner import _norm
-                hit = apps.get(_norm(query))
-            if not hit:
-                return jsonify({"ok": False,
-                                "error": f"no executable found for '{query}'"}), 404
-            skill, created = app_learner.ensure_skill(hit["name"], hit["path"])
-            name, path = hit["name"], hit["path"]
-        else:
-            raise ValidationError("Provide 'query' or 'name' + 'path'.")
-        from skills.registry import get_skill
-        live = bool(get_skill(skill))
-        return jsonify({"ok": True, "skill": skill, "created": created,
-                        "status": "live" if live else "pending",
-                        "name": name, "path": path})
-    except ValueError as exc:
-        raise ValidationError(str(exc))
-    except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)[:160]}), 500
-
-
-@bp.post("/apps/forget")
-def apps_forget():
-    from system import app_learner
-    d = request.get_json(silent=True) or {}
-    q = (d.get("query") or "").strip()
-    if not q:
-        raise ValidationError("Missing 'query'.")
-    ok = app_learner.forget(q)
-    if not ok:
-        raise ValidationError(f"Nothing learned called '{q}'.")
-    return jsonify({"ok": True, "forgotten": q})
-
-
 @bp.post("/apps/close")
 def apps_close():
     """Close a running app by name. Graceful first, verified after.
@@ -921,15 +740,6 @@ def research_start():
     if len(topic) > 300:
         raise ValidationError("Topic too long.")
     return jsonify({"ok": True, **ra.start_research(topic)})
-
-
-@bp.get("/research/<job_id>")
-def research_poll(job_id):
-    from system import research_agent as ra
-    st = ra.job_status((job_id or "").strip())
-    if st is None:
-        return jsonify({"ok": False, "error": "Unknown job."}), 404
-    return jsonify({"ok": True, **st})
 
 
 # ---------- BACKUP ----------
@@ -1111,15 +921,6 @@ def sites_list():
                                   reverse=True)[:20]})
 
 
-@bp.post("/sites/refresh")
-def sites_refresh():
-    from ai import site_index
-    data = site_index.refresh()
-    return jsonify({"ok": True,
-                    "bookmarks": len(data.get("bookmarks", [])),
-                    "history": len(data.get("history", []))})
-
-
 # ---------- TOOLS ----------
 @bp.get("/tools")
 def tools_list():
@@ -1144,14 +945,6 @@ def mcp_all():
     return jsonify({"servers": mcp_list()})
 
 
-@bp.get("/mcp/setup")
-def mcp_setup():
-    from mcp import presets
-    return jsonify({"toolchain": presets.toolchain(),
-                    "presets": presets.list_presets(),
-                    "servers": mcp_list()})
-
-
 @bp.post("/mcp/preset")
 def mcp_preset_install():
     from mcp import presets
@@ -1161,23 +954,6 @@ def mcp_preset_install():
         raise ValidationError("Missing 'preset'.")
     r = presets.install_preset(pid, args=d.get("args", "") or "",
                                env=d.get("env") or None)
-    if r.get("error"):
-        raise ValidationError(r["error"])
-    return jsonify(r)
-
-
-@bp.post("/mcp/import")
-def mcp_import():
-    from mcp import presets
-    d = request.get_json(silent=True) or {}
-    cfg = d.get("config", d)
-    if isinstance(cfg, str):
-        import json as _json
-        try:
-            cfg = _json.loads(cfg)
-        except Exception:
-            raise ValidationError("config is not valid JSON.")
-    r = presets.import_claude_config(cfg)
     if r.get("error"):
         raise ValidationError(r["error"])
     return jsonify(r)
@@ -1195,29 +971,6 @@ def mcp_add_route():
     if "error" in r:
         raise ValidationError(r["error"])
     return jsonify({"ok": True, "server": r})
-
-
-@bp.post("/mcp/remove")
-def mcp_remove_route():
-    d = request.get_json(silent=True) or {}
-    sid = (d.get("id") or "").strip()
-    if not sid:
-        raise ValidationError("Missing 'id'.")
-    if not mcp_remove(sid):
-        raise ValidationError("Server not found.")
-    return jsonify({"ok": True})
-
-
-@bp.post("/mcp/toggle")
-def mcp_toggle_route():
-    d = request.get_json(silent=True) or {}
-    sid = (d.get("id") or "").strip()
-    enabled = bool(d.get("enabled", True))
-    if not sid:
-        raise ValidationError("Missing 'id'.")
-    if not mcp_toggle(sid, enabled):
-        raise ValidationError("Server not found.")
-    return jsonify({"ok": True, "id": sid, "enabled": enabled})
 
 
 @bp.post("/mcp/start")
@@ -1243,19 +996,6 @@ def mcp_stop_route():
         return jsonify({"ok": runtime.stop_server(name), "server": name})
     runtime.shutdown_all()
     return jsonify({"ok": True})
-
-
-@bp.get("/mcp/tools")
-def mcp_tools_route():
-    from mcp import runtime
-    return jsonify({"tools": runtime.all_tools()})
-
-
-@bp.get("/mcp/serve")
-def mcp_serve_route():
-    """Host config for JARVIS's own native MCP stdio server."""
-    from mcp.presets import serve_config
-    return jsonify(serve_config())
 
 
 # ---------- OBSIDIAN BRIDGE (productivity) ----------
@@ -1284,18 +1024,6 @@ def obsidian_save():
     return jsonify({"ok": True, "path": path})
 
 
-@bp.post("/obsidian/search")
-def obsidian_search():
-    from ai import obsidian
-    d = request.get_json(silent=True) or {}
-    q = (d.get("query") or "").strip()
-    if not q:
-        raise ValidationError("Missing 'query'.")
-    if not obsidian.is_available():
-        raise ValidationError("Obsidian vault not configured.")
-    return jsonify({"notes": obsidian.search_notes(q, limit=15)})
-
-
 # ---------- MEMORY ----------
 @bp.get("/memory")
 def memory_list():
@@ -1311,16 +1039,6 @@ def memory_add():
         raise ValidationError("Empty fact.")
     mid = memory.remember(fact, category=cat, source="manual")
     return jsonify({"ok": True, "id": mid})
-
-
-@bp.post("/memory/forget")
-def memory_forget():
-    d = request.get_json(silent=True) or {}
-    pat = (d.get("pattern") or "").strip()
-    if not pat:
-        raise ValidationError("Empty pattern.")
-    n = memory.forget(pat)
-    return jsonify({"ok": True, "deleted": n})
 
 
 # ---------- PREFS ----------
@@ -1339,12 +1057,6 @@ def prefs_set():
         raise ValidationError("Missing 'value'.")
     if not memory.set_pref(key, d["value"]):
         raise ValidationError(f"Unknown preference: {key}")
-    return jsonify({"ok": True, "prefs": memory.all_prefs()})
-
-
-@bp.post("/prefs/reset")
-def prefs_reset():
-    memory.reset_prefs()
     return jsonify({"ok": True, "prefs": memory.all_prefs()})
 
 
@@ -1401,35 +1113,6 @@ def code_mode_audit():
         return jsonify({"entries": []})
     lines = p.read_text(encoding="utf-8").splitlines()
     return jsonify({"entries": lines[-100:]})
-
-
-@bp.get("/autostart/status")
-def autostart_status():
-    try:
-        from system.autostart import status
-        return jsonify(status())
-    except Exception as exc:
-        return jsonify({"enabled": False, "error": str(exc)[:120]})
-
-
-@bp.post("/autostart/enable")
-def autostart_enable():
-    try:
-        from system.autostart import enable, status
-        ok = enable()
-        return jsonify({"ok": ok, **status()})
-    except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)[:120]}), 500
-
-
-@bp.post("/autostart/disable")
-def autostart_disable():
-    try:
-        from system.autostart import disable
-        ok = disable()
-        return jsonify({"ok": ok, "enabled": not ok})
-    except Exception as exc:
-        return jsonify({"ok": False, "error": str(exc)[:120]}), 500
 
 
 @bp.get("/personality")
@@ -1498,17 +1181,6 @@ def harness_apply():
     if "error" in r:
         raise ValidationError(r["error"])
     return jsonify(r)
-
-
-@bp.post("/harness/reject")
-def harness_reject():
-    d = request.get_json(silent=True) or {}
-    return jsonify(harness.self_edit.reject(d.get("id", "")))
-
-
-@bp.get("/harness/pending")
-def harness_pending():
-    return jsonify({"pending": harness.self_edit.pending()})
 
 
 # ---------- LOGS ----------
@@ -1606,16 +1278,9 @@ def history_list():
 def history_get(sid):
     if not sid:
         raise ValidationError("Missing session id.")
-    return jsonify({"session": sid, "messages": memory.load_full_session(sid)})
-
-
-@bp.post("/history/delete")
-def history_delete():
-    d = request.get_json(silent=True) or {}
-    sid = (d.get("session") or "").strip()
-    if not sid:
-        raise ValidationError("Missing 'session'.")
-    return jsonify(memory.delete_session(sid))
+    from ai.conversation import clean_messages
+    return jsonify({"session": sid,
+                    "messages": clean_messages(memory.load_full_session(sid))})
 
 
 # ---------- COMMAND ----------
@@ -1728,6 +1393,10 @@ def command():
                     yield f"data: {json.dumps({'tool_call': payload})}\n\n"
                 elif kind == "tool_result":
                     yield f"data: {json.dumps({'tool_result': payload})}\n\n"
+                elif kind == "status":
+                    # informational only — never collected, stored,
+                    # spoken or rendered into the reply body
+                    yield f"data: {json.dumps({'status': payload})}\n\n"
         except AIError as exc:
             yield f"data: {json.dumps({'error': exc.public_message, 'detail': exc.detail})}\n\n"
         finally:

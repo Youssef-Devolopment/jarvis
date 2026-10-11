@@ -4,6 +4,38 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.20.0] — 2026-10-11
+
+UI and error-noise cleanup batch, driven by a live HUD screenshot:
+the reply was prefixed with nine `[fallback to Mimo ●]` banners.
+
+### Fixed
+- **Fallback notices are status events now, never reply text.** The
+  `[fallback to X]` banner used to stream as content: it polluted the
+  reply body, got stored in conversation history, and the model then
+  echoed it back verbatim — one old marker bred whole rows of copies.
+  `client.stream()` yields `("status", …)` instead, the SSE layer
+  forwards it as its own `status` key (never collected, stored or
+  spoken), the HUD ignores it, and the web dashboard shows a single
+  ⇄ line in the activity log. Guarded by ten new tests.
+- **Existing polluted history is cleaned automatically** — the
+  conversation store strips legacy bracket markers on read and on
+  record, and drops replies that were nothing but markers, so old
+  sessions stop teaching the model to repeat them.
+
+### Removed
+- **34 dead API routes** — zero callers anywhere (UI, skills, system,
+  tests): `/models/featured`, `/models/test`, `/auto_skills/*`,
+  `/clipboard/suggestions`, `/screen/*`, `/snippets/<id>` (get/delete),
+  `/overlay/state|toggle`, `/apps/*`, `/research/<id>`,
+  `/sites/refresh`, `/mcp/setup|import|remove|toggle|tools|serve`,
+  `/obsidian/search`, `/memory/forget`, `/prefs/reset`,
+  `/autostart/*`, `/harness/pending|reject`, `/history/delete`. The
+  `/apps/*` family was doubly dead — it targeted a `system/apps.py`
+  that no longer exists. Endpoint count: 150 → 117.
+- **3 dead CSS rules** (`.btn-label`, `.crit`, `.ui-container`) and one
+  orphaned import (`classifier`) left behind by those routes.
+
 ## [1.19.3] — 2026-10-11
 
 HUD rendering fix batch, found by regenerating the docs screenshot

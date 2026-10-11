@@ -222,7 +222,12 @@ class AIClient:
                 used_client = client_obj
                 if candidate != primary:
                     log.info("Fallback: %s -> %s", primary, candidate)
-                    yield ("content", f"[fallback to {label_for(candidate)}] ")
+                    # Status event, never content: a bracket banner in
+                    # the reply body gets stored in conversation
+                    # history, and the model then learns to echo it
+                    # back verbatim (seen live: 9 copies in one reply).
+                    yield ("status",
+                           f"Switched to backup model · {label_for(candidate)}")
                 break
             except Exception as exc:
                 if _is_model_error(exc):
