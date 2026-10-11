@@ -5,7 +5,7 @@ reproduction, health checks, CI, and the manual smoke tests that only
 a human on Windows can do. Follow this and "works on my machine"
 stays a scare story instead of a bug report.
 
-**Ground truth:** 49 test files · **653 tests** · 150 API endpoints ·
+**Ground truth:** 50 test files · **665 tests** · 117 API endpoints ·
 142 shipped skills · `check.py` 11 preflight checks (exit 0 ready /
 1 fix core / 2 skills-only).
 
