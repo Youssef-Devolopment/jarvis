@@ -857,7 +857,7 @@ input[type="range"].range::-moz-range-thumb{
    FIXED topbar (they used to render buried behind it). The wrapper
    keeps both strips stacked and readable whether one or both show. */
 .banners{
-  position:fixed;top:60px;left:0;right:0;z-index:11;
+  position:fixed;top:64px;left:0;right:0;z-index:11;
 }
 .key-banner{
   display:flex;align-items:center;justify-content:center;gap:10px;

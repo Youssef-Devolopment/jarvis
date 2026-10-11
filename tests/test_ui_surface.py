@@ -60,6 +60,20 @@ class CssSurfaceTests(unittest.TestCase):
             self.assertIn(marker, self.css)
 
 
+class AppJsSurfaceTests(unittest.TestCase):
+    """JS behaviours the first-run flow depends on."""
+
+    def setUp(self):
+        self.js = (ROOT / "static" / "js" / "app.js").read_text(
+            encoding="utf-8")
+
+    def test_starters_respect_hidden_onboarding(self):
+        # on narrow windows the onboarding card sits inside the hidden
+        # .logpanel — the chips must NOT be suppressed by a card the
+        # user cannot see (1.17.1)
+        self.assertIn("offsetParent", self.js)
+
+
 class OverlayPaletteTests(unittest.TestCase):
     """The HUD wears the same brand colors as the app and the site."""
 

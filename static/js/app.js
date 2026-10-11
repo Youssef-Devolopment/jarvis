@@ -308,7 +308,12 @@ var STARTER_CHIPS=[
 var chipsSessionUsed=false;
 function refreshStarters(){
   var el=$('starter-chips');if(!el)return;
-  var show=!chipsSessionUsed&&!document.getElementById('onboard-card');
+  /* the onboarding card only suppresses the chips when it can
+     actually be seen — on narrow windows (.logpanel hidden) the
+     card lives in a hidden parent, so the chips must stay */
+  var card=document.getElementById('onboard-card');
+  var cardVisible=!!(card&&card.offsetParent!==null);
+  var show=!chipsSessionUsed&&!cardVisible;
   if(show)el.removeAttribute('hidden');else el.setAttribute('hidden','');
 }
 (function wireStarters(){
