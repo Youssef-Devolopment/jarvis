@@ -4,6 +4,24 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.19.2] — 2026-10-11
+
+Docs micro-fix batch — website presence in the README plus one stale
+badge caught while generating the GitHub social-preview/avatar PNGs.
+
+### Changed
+- **README now points at the website in three places** — an enriched
+  site line under the badges (what the site actually contains), a
+  "Just browsing?" callout after the install steps, and a new
+  **Links** section at the end (website, repo, module guide, demo
+  script, changelog).
+- **Version badge fixed** — it still read v1.18.0; it now tracks
+  `config.VERSION` (v1.19.2).
+- (Companion assets, not committed: `assets/jarvis-avatar.png`
+  1024×1024 and `assets/jarvis-social-preview.png` 1280×640 were
+  rendered from the shipped SVGs for the GitHub repo avatar and
+  social preview — GitHub rejects SVG uploads.)
+
 ## [1.19.1] — 2026-10-11
 
 Live-verification micro-fix for the module ecosystem, found by hitting

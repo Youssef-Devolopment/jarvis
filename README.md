@@ -4,12 +4,14 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.18.0-blue)
+![version](https://img.shields.io/badge/version-v1.19.2-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![tests](https://img.shields.io/badge/tests-653%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
-🌐 **Live site:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
+🌐 **Website:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
+— the live site: features, module ecosystem and full documentation,
+always tracking the latest release.
 
 JARVIS is a voice-first assistant that lives on your Windows machine.
 Say or type what you want in plain English — it opens and closes
@@ -88,6 +90,10 @@ Prefer it manual? `install.bat`, `copy .env.example .env`,
 
 **See it end to end:** [DEMO.md](DEMO.md) is a scripted 90-second
 tour — every command in it is verified to work on a clean install.
+
+**Just browsing?** The **[live website](https://youssef-devolopment.github.io/jarvis/)**
+tours every feature with the full documentation — nothing to set up,
+no install required.
 
 ## Core vs optional
 
@@ -305,3 +311,11 @@ Full list with defaults: `.env.example`.
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
 .venv\Scripts\python.exe -m unittest discover -s tests   :: 653 tests
 ```
+
+## Links
+
+- **Website & docs:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
+- **Source & issues:** [github.com/Youssef-Devolopment/jarvis](https://github.com/Youssef-Devolopment/jarvis)
+- **Module author guide:** [MODULES.md](MODULES.md)
+- **90-second demo script:** [DEMO.md](DEMO.md)
+- **Changelog:** [CHANGELOG.md](CHANGELOG.md)
