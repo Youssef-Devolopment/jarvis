@@ -4,9 +4,9 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.17.1-blue)
+![version](https://img.shields.io/badge/version-v1.18.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-588%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-598%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 🌐 **Live site:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
@@ -171,10 +171,12 @@ Details, diagrams and data flow: [ARCHITECTURE.md](ARCHITECTURE.md).
   outcome memory, Dream Mode summaries, morning briefing
 - **HUD + dashboard** — glassmorphism UI with mood-reactive accent;
   `Alt+Space` opens the **HUD glass command deck** — brand-aligned,
-  with a friendly input hint, a pulsing "JARVIS is thinking…" reply
-  well while the first token is in flight, plain-English errors, and
-  the status pill reading READY / ATTENTION / SAFE MODE from live
-  health; a first boot gives a self-removing guided tour
+  with a friendly input hint, a cyan listening state, a pulsing
+  "JARVIS is thinking…" reply well while the first token is in
+  flight, a COPY pill that appears only when there is a reply,
+  plain-English errors, and the status pill reading READY /
+  ATTENTION / SAFE MODE from live health; a first boot gives a
+  self-removing guided tour
 - **Library (one click)** — Settings → LIBRARY: install any of 18
   bundled skill packs (passwords, calculators, ciphers…) or add any
   of 12 MCP servers (memory, filesystem, fetch, git, playwright…)
@@ -260,7 +262,7 @@ assets/      brand assets: logo banner, icon mark, favicon
              (theme lockups for dark/light in docs/logo-*.svg)
 ```
 
-- `main` builds green: syntax-check every file + **588 unit tests**
+- `main` builds green: syntax-check every file + **598 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -288,5 +290,5 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 588 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 598 tests
 ```

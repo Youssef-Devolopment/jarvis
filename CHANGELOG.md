@@ -4,6 +4,56 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.18.0] — 2026-10-11
+
+The final polish pass before launch — UI, clarity and trust only. No
+features, no rewrites: the same product, tightened until every visible
+surface agrees with every other one.
+
+### Changed
+- **SYSTEM tab reads like a dashboard** — status values render as
+  tinted pill chips (`.schip`, one variant per status: ok / info /
+  warn / degraded / unknown) instead of loose colored text, so the
+  verdict of each row is scannable at a glance.
+- **Warnings are no longer buried** — `warn` and `error` log entries
+  get a colored rail and a tinted background, not just a text color;
+  a failed step is findable in a wall of output.
+- **The screen tells one story** — the center tagline now follows the
+  health verdict (`SYSTEM ONLINE` / `NEEDS ATTENTION` / `SAFE MODE ·
+  SOME FEATURES OFF`) and is owned entirely by the state machine, so
+  it can no longer claim SYSTEM ONLINE while the status pill says SAFE
+  MODE. The idle tagline also takes the verdict's color.
+- **Health banner in plain English** — degraded mode now says "Some
+  features are off — mcp (…) — details in SYSTEM" instead of the
+  terse "System degraded"; config warnings read "Needs attention —
+  N config warnings".
+- **First-run card wears a SKILLS ACTIVE badge** — keyless mode is
+  presented as a feature, not a gap: the green chip states outright
+  that local skills are working right now, no key required.
+- **Log timestamps slightly larger** for readability.
+
+### Alt+Space HUD
+- **A real listening state** — pressing MIC turns the status line and
+  the pulsing status dot brand cyan (the app's listening color), the
+  mic button disables until the answer arrives, and a second press can
+  no longer open a second mic. Amber now means "thinking" only.
+- **COPY is a pill, not bare text** — an outlined button that appears
+  only when there is actually a reply worth copying, with a hover
+  state that lights the border.
+- **Readable key hints** — the footer separator is a middle dot
+  (`↵ SEND · ESC CLOSE · ↑ HISTORY · ALT+SPACE`).
+- **Input well lights on focus** — the caret position is obvious even
+  over a busy window behind the deck.
+- **Done is green** — a finished answer reports "Done · Alt+Space to
+  recall" in brand green, errors stay red, nothing stays neutral.
+
+### Tests
+- **598 passing (+10)** — `test_ui_surface.py` guards the chip
+  component and every variant, the log warning rails, the health-
+  aware tagline (including "setState is the only tagline writer"),
+  the plain-English banner copy, the SKILLS ACTIVE badge, the HUD
+  cyan listening color, middle-dot hints and the COPY pill.
+
 ## [1.17.1] — 2026-10-11
 
 Two live-verification findings from the 1.17.0 rollout, both about

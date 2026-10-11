@@ -1,6 +1,6 @@
 # JARVIS Roadmap
 
-Where the project stands and where it's going. Written at v1.17.1 —
+Where the project stands and where it's going. Written at v1.18.0 —
 a documented, observably healthy, architecture-driven system that
 also reads like a product. Priorities in order: **trust →
 operability → capability**. A feature that makes the system harder
@@ -29,8 +29,9 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.16.2** | **Public site**: landing page rebuilt (nine sections, design-token stylesheet, two-column hero with terminal + status card, responsive) and verified live at youssef-devolopment.github.io/jarvis via GitHub Pages from `/docs` |
 | **v1.17.0** | **Genuinely-ready pass**: status banners pinned below the topbar (were buried behind it), Alt+Space HUD 5.0 (brand mark + green accent, input hint, pulsing "thinking" reply well, plain-English errors), first-run card reframed around skills-only mode, SYSTEM tab verdict card with status-colored rows, UI-surface guard tests |
 | **v1.17.1** | Live-verification micro-fixes: banner strip at 64px (cleared the topbar hairline), starter chips no longer suppressed by an invisible onboarding card on narrow windows |
+| **v1.18.0** | **Final polish pass**: SYSTEM tab status chips (tinted pills per status), warning/error log rail, health-aware center tagline owned by the state machine, plain-English health banner, SKILLS ACTIVE badge on the first-run card, HUD cyan listening state + COPY pill + middle-dot hints + lit input well |
 
-Stable today: 588 tests (in-tree + fresh-copy, no `.env`), 144 API
+Stable today: 598 tests (in-tree + fresh-copy, no `.env`), 144 API
 endpoints, 142 shipped skills, green CI on `windows-latest`, health
 visible in six layers (preflight / API / dashboard / banner / console
 / log), lifecycle controls for 14 services, structured errors on every
