@@ -4,14 +4,18 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.19.3-blue)
+![version](https://img.shields.io/badge/version-v1.20.1-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-653%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-665%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 🌐 **Website:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
 — the live site: features, module ecosystem and full documentation,
 always tracking the latest release.
+
+**Promo video (16:9):**
+[watch the 30-second feature tour](https://youssef-devolopment.github.io/jarvis/media/jarvis-promo-16x9.mp4)
+— real product footage, served straight from this repo.
 
 JARVIS is a voice-first assistant that lives on your Windows machine.
 Say or type what you want in plain English — it opens and closes
