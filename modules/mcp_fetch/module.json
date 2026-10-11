@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "id": "mcp_fetch",
+  "name": "Web Fetch (MCP)",
+  "version": "1.0.0",
+  "author": "JARVIS Core",
+  "license": "MIT",
+  "description": "Official MCP fetch server (Python/uvx): turns web pages into clean text so the assistant can research and summarize. Declares its network permission up front.",
+  "mcp": {
+    "name": "fetch",
+    "command": "uvx",
+    "args": ["mcp-server-fetch"],
+    "auto_start": true
+  },
+  "capabilities": [
+    "fetch a URL as clean, readable text",
+    "follow links during research",
+    "markdown output the LLM can summarize"
+  ],
+  "permissions": ["network"],
+  "docs": "README.md",
+  "examples": [
+    {"phrase": "summarize https://example.com/docs", "reply": "The fetch tool retrieves the page as text, then the assistant summarizes it."}
+  ]
+}

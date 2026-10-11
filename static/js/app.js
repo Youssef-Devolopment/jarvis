@@ -1084,6 +1084,7 @@ function loadTab(name){
     mcp:'/api/mcp',appearance:'/api/prefs',audio:'/api/prefs',
     market:'/api/market',
     library:'/api/library',
+    modules:'/api/modules',
     general:'/api/prefs',system:'/api/health',about:'/api/info',council:'/api/council/levels',
     capture:'/api/contacts',workspace:'/api/layouts',
     clipboard:'/api/clipboard/recent',dream:'/api/dream/status'};
@@ -1276,6 +1277,62 @@ function renderTab(name,data){
         '<small>'+esc((m.description||'').slice(0,90))+status+(official?' \u00b7 official':'')+'</small></div>'+
         '<div class="actions">'+btn+'</div></div>';
     }).join('')+'</div>';
+    return html;
+  }
+  if(name==='modules'){
+    var mods=data.modules||[];
+    var counts=data.counts||{};
+    var perms=data.permissions||{};
+    var html='<div style="margin:0 0 10px;color:var(--dim);font-size:9px;letter-spacing:2px">'+
+      'INSTALLED '+(counts.total||0)+' \u00b7 ACTIVE '+(counts.active||0)+
+      ' \u00b7 INACTIVE '+(counts.inactive||0)+' \u00b7 FAILED '+(counts.failed||0)+'</div>';
+    html+='<div class="set-list" style="margin-bottom:12px"><div class="set-row"><div class="label">Install from folder or .zip'+
+      '<small>validated before anything loads \u2014 CHECK reports permissions and problems without installing</small></div>'+
+      '<div class="actions"><input id="mod-install-path" placeholder="C:\\path\\to\\module" style="max-width:210px;background:#000;color:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-family:var(--mono);font-size:10px">'+
+      '<button class="dbtn" data-action="mod-validate">CHECK</button>'+
+      '<button class="dbtn" data-action="mod-install">INSTALL</button></div></div></div>';
+    if(!mods.length)html+='<div class="empty-state">No modules installed \u2014 the shipped ones live in modules/</div>';
+    html+=mods.map(function(m){
+      var st=m.state||'inactive';
+      var chip=st==='active'?'<span class="schip schip--ok">ACTIVE</span>'
+        :(st==='failed'?'<span class="schip schip--degraded">FAILED</span>'
+        :'<span class="schip schip--unknown">INACTIVE</span>');
+      var kind=m.kind==='mcp'?'<span class="schip schip--info">MCP</span>'
+        :(m.kind==='skill'?'<span class="schip schip--unknown">SKILL</span>':'');
+      var up=(m.update&&m.update.available)?'<span class="schip schip--warn">UPDATE '+esc(m.update.latest)+'</span>':'';
+      var extra='';
+      if(m.kind==='mcp'&&m.needs_key)extra+=' \u00b7 needs API key';
+      if(m.kind==='mcp'&&m.running)extra+=' \u00b7 running';
+      if(m.source==='local')extra+=' \u00b7 installed by you';
+      var card='<div class="set-row mod-row" style="display:block;padding:10px">'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
+        '<div class="label">'+esc(m.name||m.id)+' <span style="color:var(--dim)">v'+esc(m.version||'?')+'</span>'+
+        '<small>'+esc(m.author||'')+esc(extra)+'</small></div>'+
+        '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+kind+chip+up+'</div></div>';
+      card+='<div style="color:var(--dim);font-size:10px;margin:6px 0">'+esc(m.description||'')+'</div>';
+      if(st==='failed'&&m.error)card+='<div style="color:var(--red);font-size:10px;margin:4px 0">'+esc(m.error)+'</div>';
+      var caps=(m.capabilities||[]).map(function(c){return '<span class="schip schip--unknown">'+esc(c)+'</span>';}).join('');
+      var perr=(m.permissions||[]).map(function(p){
+        var cls=(p==='none'||p==='read:text'||p==='memory'||p==='clipboard')?'schip--ok':'schip--warn';
+        return '<span class="schip '+cls+'" title="'+esc(perms[p]||p)+'">'+esc(p)+'</span>';}).join('');
+      card+='<div style="margin:6px 0;display:flex;flex-wrap:wrap;gap:4px">'+caps+perr+'</div>';
+      var ex=(m.examples||[]).slice(0,2).map(function(e){
+        return '<div style="font-size:10px;color:var(--dim)"><span style="color:var(--cyan)">&ldquo;'+esc(e.phrase)+'&rdquo;</span>'+
+          (e.reply?' \u2192 '+esc(String(e.reply).slice(0,70)):'')+'</div>';}).join('');
+      if(ex)card+='<div style="margin:4px 0">'+ex+'</div>';
+      var btns='<button class="dbtn" data-action="mod-docs" data-id="'+esc(m.id||'')+'">DOCS</button>';
+      if(st==='active'){
+        btns+='<button class="dbtn on" data-action="mod-toggle" data-id="'+esc(m.id||'')+'" data-enabled="false">DISABLE</button>';
+      }else{
+        btns+='<button class="dbtn" data-action="mod-toggle" data-id="'+esc(m.id||'')+'" data-enabled="true">ACTIVATE</button>';
+      }
+      btns+='<button class="dbtn on" data-action="mod-uninstall" data-id="'+esc(m.id||'')+'">UNINSTALL</button>';
+      card+='<div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">'+btns+'</div>';
+      card+='<div id="mod-docs-'+esc(m.id||'')+'" style="display:none;margin-top:8px;white-space:pre-wrap;'+
+        'background:#000;border:1px solid var(--border);border-radius:6px;padding:8px;'+
+        'font-size:10px;color:var(--dim);max-height:220px;overflow:auto"></div>';
+      return card+'</div>';
+    }).join('');
     return html;
   }
   if(name==='mcp'){
@@ -2349,6 +2406,73 @@ document.addEventListener('DOMContentLoaded',function(){
         }).catch(function(){addLog('Import request failed.','error');loadTab('library');});
       };
       lr.readAsText(lfile.files[0]);
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mod-toggle'){
+      var mtid=target.getAttribute('data-id');
+      var mten=target.getAttribute('data-enabled')==='true';
+      target.textContent='\u2026';
+      fetch('/api/modules/toggle',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:mtid,enabled:mten})}).then(function(r){return r.json();}).then(function(d){
+        var msg=(mten?'Activated: ':'Deactivated: ')+mtid;
+        if(d.ok&&d.note)msg+=' \u2014 '+d.note;
+        if(!d.ok)msg='Module '+(mten?'activation':'deactivation')+' failed: '+(d.detail||d.error||'unknown');
+        addLog(msg,d.ok?'system':'error');
+        loadTab('modules');
+      }).catch(function(){addLog('Module toggle request failed.','error');loadTab('modules');});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mod-install'){
+      var mpath=((document.getElementById('mod-install-path')||{}).value||'').trim();
+      if(!mpath){addLog('Type the path to a module folder or .zip first.','error');return;}
+      target.textContent='\u2026';
+      fetch('/api/modules/install',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({path:mpath})}).then(function(r){return r.json();}).then(function(d){
+        var msg;
+        if(d.ok&&d.state==='failed'){
+          msg='Installed, but activation failed: '+(d.error||'unknown');
+        }else if(d.ok){
+          msg='Installed module: '+(d.name||d.id)+(d.state==='active'?' (active)':' (inactive \u2014 hit ACTIVATE)');
+          if(d.warnings&&d.warnings.length)msg+=' \u2014 '+d.warnings.join('; ');
+        }else{
+          msg='Install rejected: '+(d.detail||d.error||'unknown');
+        }
+        addLog(msg,(d.ok&&d.state!=='failed')?'system':'error');
+        loadTab('modules');
+      }).catch(function(){addLog('Install request failed.','error');loadTab('modules');});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mod-validate'){
+      var vpath=((document.getElementById('mod-install-path')||{}).value||'').trim();
+      if(!vpath){addLog('Type the path to a module folder or .zip first.','error');return;}
+      target.textContent='\u2026';
+      fetch('/api/modules/validate',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({path:vpath})}).then(function(r){return r.json();}).then(function(d){
+        if(d.ok){
+          var vmsg='Valid: '+d.name+' v'+d.version+' ('+d.kind+') \u2014 permissions: '+(d.permissions||[]).join(', ');
+          if(d.warnings&&d.warnings.length)vmsg+=' \u2014 warnings: '+d.warnings.join('; ');
+          addLog(vmsg,'system');
+        }else{
+          addLog('Rejected: '+(d.error||'invalid'),'error');
+        }
+        loadTab('modules');
+      }).catch(function(){addLog('Validate request failed.','error');loadTab('modules');});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mod-uninstall'){
+      var muid=target.getAttribute('data-id');
+      target.textContent='\u2026';
+      fetch('/api/modules/uninstall',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:muid})}).then(function(r){return r.json();}).then(function(d){
+        addLog(d.ok?('Uninstalled module: '+muid):('Uninstall failed: '+(d.detail||d.error||'unknown')),d.ok?'system':'error');
+        loadTab('modules');
+      }).catch(function(){addLog('Uninstall request failed.','error');loadTab('modules');});
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='mod-docs'){
+      var mdid=target.getAttribute('data-id');
+      var dbox=document.getElementById('mod-docs-'+mdid);
+      if(!dbox)return;
+      if(dbox.style.display!=='none'){dbox.style.display='none';return;}
+      dbox.textContent='Loading\u2026';dbox.style.display='block';
+      fetch('/api/modules/'+encodeURIComponent(mdid)).then(function(r){return r.json();}).then(function(d){
+        dbox.textContent=d.docs_text||('No docs shipped with this module.');
+      }).catch(function(){dbox.textContent='Docs failed to load.';});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='set-hour'){      var inp=document.getElementById('input-briefing-hour');
       var h=inp?parseInt(inp.value,10):8;

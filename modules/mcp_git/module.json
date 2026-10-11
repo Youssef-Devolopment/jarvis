@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "id": "mcp_git",
+  "name": "Git Repositories (MCP)",
+  "version": "1.0.0",
+  "author": "JARVIS Core",
+  "license": "MIT",
+  "description": "Official MCP git server (Python/uvx): read, search and inspect git repositories from chat. Scanned read-mostly; every tool call is explicit.",
+  "mcp": {
+    "name": "git",
+    "command": "uvx",
+    "args": ["mcp-server-git", "--repository", "{HOME}"],
+    "auto_start": true
+  },
+  "capabilities": [
+    "show status, log and diffs of a repository",
+    "search commit history and file blame",
+    "read files at any revision"
+  ],
+  "permissions": ["read:file", "process"],
+  "docs": "README.md",
+  "examples": [
+    {"phrase": "what changed in my last commit", "reply": "The git tool shows the HEAD commit's diff from your repository root."}
+  ]
+}

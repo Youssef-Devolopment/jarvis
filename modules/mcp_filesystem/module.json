@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "id": "mcp_filesystem",
+  "name": "Filesystem Access (MCP)",
+  "version": "1.0.0",
+  "author": "JARVIS Core",
+  "license": "MIT",
+  "description": "Official MCP filesystem server (npx): scoped, explicit file access to your Documents folder so the assistant can read and write the files you point it at.",
+  "mcp": {
+    "name": "filesystem",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "{DOCUMENTS}"],
+    "auto_start": true
+  },
+  "capabilities": [
+    "list and read files inside Documents",
+    "write and edit files you explicitly reference",
+    "directory-scoped: cannot wander outside its root"
+  ],
+  "permissions": ["read:file", "write:file"],
+  "docs": "README.md",
+  "examples": [
+    {"phrase": "read the meeting notes in my Documents folder", "reply": "The filesystem server lists Documents and returns the file's text."}
+  ]
+}

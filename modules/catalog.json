@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "updated": "2026-10-11",
+  "note": "Bundled module version snapshot used for update status. A future remote registry publishes this same {id: latest} shape.",
+  "modules": {
+    "unit_convert": "1.0.0",
+    "color_convert": "1.0.0",
+    "number_base": "1.0.0",
+    "secure_token": "1.0.0",
+    "url_codec": "1.0.0",
+    "mcp_fetch": "1.0.0",
+    "mcp_filesystem": "1.0.0",
+    "mcp_git": "1.0.0",
+    "mcp_memory": "1.0.0"
+  }
+}

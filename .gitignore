@@ -34,6 +34,7 @@ jarvis 1.py
 jarvis_config.json
 MicaForEveryone.appinstaller
 https.txt
+modules/state.json
 
 # --- editors / OS junk ---
 .vscode/*

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "my_module",
+  "name": "My Skill Module",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "license": "MIT",
+  "description": "One sentence: what this module does and when to use it. (Edit me.)",
+  "entry": "skill.py",
+  "skills": ["my_module_skill"],
+  "capabilities": [
+    "one short line per thing the module does"
+  ],
+  "permissions": ["none"],
+  "docs": "README.md",
+  "examples": [
+    {"phrase": "the exact words that trigger this skill", "reply": "what the user hears back"}
+  ]
+}

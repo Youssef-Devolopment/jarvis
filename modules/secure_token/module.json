@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "secure_token",
+  "name": "Secure Token Generator",
+  "version": "1.0.0",
+  "author": "JARVIS Core",
+  "license": "MIT",
+  "description": "Cryptographically strong random tokens and API keys on demand: \"generate a secure token\", \"make a secure api key\".",
+  "entry": "skill.py",
+  "skills": ["secure_token"],
+  "capabilities": [
+    "generate URL-safe tokens (OS cryptographic RNG)",
+    "tokens are 43 characters of entropy-backed randomness",
+    "no seeding, no patterns — secrets module only"
+  ],
+  "permissions": ["none"],
+  "docs": "README.md",
+  "examples": [
+    {"phrase": "generate a secure token", "reply": "Here's a fresh 43-char token: ..."},
+    {"phrase": "make a secure api key", "reply": "Here's a fresh 43-char token: ..."}
+  ]
+}

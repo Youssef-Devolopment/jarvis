@@ -1014,6 +1014,91 @@ def library_import():
     return jsonify(r)
 
 
+# ---------- MODULES (skill/MCP extensibility ecosystem) ----------
+@bp.get("/modules")
+def modules_list():
+    """Every installed module with state, permissions and capabilities."""
+    from system import modules as modsys
+    mods = modsys.scan()
+    counts = {"total": len(mods), "active": 0, "inactive": 0, "failed": 0}
+    for m in mods:
+        key = m.get("state", "inactive")
+        counts[key] = counts.get(key, 0) + 1
+    return jsonify({"modules": mods, "counts": counts,
+                    "permissions": modsys.PERMISSIONS,
+                    "framework": modsys.SCHEMA})
+
+
+@bp.get("/modules/<mid>")
+def modules_detail(mid):
+    """One module in full: state, docs text, expanded mcp spec."""
+    from system import modules as modsys
+    try:
+        return jsonify(modsys.detail(mid))
+    except modsys.ModuleError as exc:
+        raise ValidationError("Module unavailable.", detail=str(exc))
+
+
+@bp.post("/modules/toggle")
+def modules_toggle():
+    """Activate or deactivate a module. Body: {"id", "enabled"}"""
+    from system import modules as modsys
+    d = request.get_json(silent=True) or {}
+    mid = (d.get("id") or "").strip()
+    if not mid:
+        raise ValidationError("Missing 'id'.", detail="Missing 'id'.")
+    try:
+        r = (modsys.activate(mid) if d.get("enabled", True)
+             else modsys.deactivate(mid))
+    except modsys.ModuleError as exc:
+        raise ValidationError("Module rejected.", detail=str(exc))
+    return jsonify(r)
+
+
+@bp.post("/modules/install")
+def modules_install():
+    """Install from a local folder or .zip (validated first).
+    Body: {"path", "activate": bool=true}"""
+    from system import modules as modsys
+    d = request.get_json(silent=True) or {}
+    path = (d.get("path") or "").strip()
+    if not path:
+        raise ValidationError("Missing 'path'.",
+                              detail="Missing 'path' — folder or .zip.")
+    try:
+        r = modsys.install(path, activate_now=bool(d.get("activate", True)))
+    except modsys.ModuleError as exc:
+        raise ValidationError("Install rejected.", detail=str(exc))
+    return jsonify(r)
+
+
+@bp.post("/modules/uninstall")
+def modules_uninstall():
+    """Deactivate + delete a module. Body: {"id"}"""
+    from system import modules as modsys
+    d = request.get_json(silent=True) or {}
+    mid = (d.get("id") or "").strip()
+    if not mid:
+        raise ValidationError("Missing 'id'.", detail="Missing 'id'.")
+    try:
+        r = modsys.uninstall(mid)
+    except modsys.ModuleError as exc:
+        raise ValidationError("Uninstall failed.", detail=str(exc))
+    return jsonify(r)
+
+
+@bp.post("/modules/validate")
+def modules_validate():
+    """Dry-run validation for module authors. Body: {"path"}"""
+    from system import modules as modsys
+    d = request.get_json(silent=True) or {}
+    path = (d.get("path") or "").strip()
+    if not path:
+        raise ValidationError("Missing 'path'.",
+                              detail="Missing 'path' — folder or .zip.")
+    return jsonify(modsys.validate_path(path))
+
+
 # ---------- SITE INDEX ----------
 @bp.get("/sites")
 def sites_list():

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "number_base",
+  "name": "Number Base Converter",
+  "version": "1.0.0",
+  "author": "JARVIS Core",
+  "license": "MIT",
+  "description": "Decimal, binary, octal and hex conversions: \"convert 255 to binary\", \"what is 0xff in decimal\".",
+  "entry": "skill.py",
+  "skills": ["number_base"],
+  "capabilities": [
+    "decimal to binary / octal / hex",
+    "0x, 0b and 0o literals to any base",
+    "reads prefixed literals back to decimal"
+  ],
+  "permissions": ["none"],
+  "docs": "README.md",
+  "examples": [
+    {"phrase": "convert 255 to binary", "reply": "255 is 0b11111111."},
+    {"phrase": "what is 0xff in decimal", "reply": "0xff is 255."}
+  ]
+}

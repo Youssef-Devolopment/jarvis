@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "color_convert",
+  "name": "Color Converter",
+  "version": "1.0.0",
+  "author": "JARVIS Core",
+  "license": "MIT",
+  "description": "Hex, RGB and HSL color conversions for design and dev work: \"what color is #ff8800 in rgb\", \"convert #f80 to hsl\".",
+  "entry": "skill.py",
+  "skills": ["color_convert"],
+  "capabilities": [
+    "hex to RGB conversion (3- and 6-digit hex)",
+    "hex to HSL conversion",
+    "shows the named RGB triplet and hex form"
+  ],
+  "permissions": ["none"],
+  "docs": "README.md",
+  "examples": [
+    {"phrase": "what color is #ff8800 in rgb", "reply": "#ff8800 is rgb(255, 136, 0)."},
+    {"phrase": "convert #f80 to hsl", "reply": "#f80 is hsl(31, 100%, 50%)."}
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "my_mcp_module",
+  "name": "My MCP Module",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "license": "MIT",
+  "description": "One sentence: which MCP server this wraps and what it lets the assistant do. (Edit me.)",
+  "mcp": {
+    "name": "my-server",
+    "command": "npx",
+    "args": ["-y", "@scope/some-mcp-server"],
+    "env": {},
+    "auto_start": true
+  },
+  "capabilities": [
+    "one short line per capability the server exposes"
+  ],
+  "permissions": ["none"],
+  "docs": "README.md",
+  "examples": [
+    {"phrase": "what a user would say to use this server", "reply": "what happens next"}
+  ]
+}

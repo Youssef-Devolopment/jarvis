@@ -115,6 +115,10 @@ def _mk_starters(mode: str) -> Dict[str, Callable[[], Any]]:
         st = guard.status()
         return "enabled" if st.get("enabled") else "disabled by pref"
 
+    def modules():
+        from system import modules as modsys
+        return modsys.boot_load()
+
     def dream():
         from system import dream_scheduler
         dream_scheduler.start()
@@ -204,7 +208,7 @@ def _mk_starters(mode: str) -> Dict[str, Callable[[], Any]]:
 
     return {
         "updater": updater, "guard": guard, "dream": dream,
-        "clipboard": clipboard, "reminders": reminders,
+        "clipboard": clipboard, "reminders": reminders, "modules": modules,
         "time_tracker": time_tracker, "scheduler": scheduler,
         "sentinel": sentinel, "screen_context": screen_context,
         "voice": voice, "browser": browser, "mcp": mcp,
@@ -280,6 +284,10 @@ def _specs(mode: str) -> List[ServiceSpec]:
     specs = [
         ServiceSpec("updater", "core", s["updater"]),
         ServiceSpec("guard", "core", s["guard"], stop=p["guard"]),
+        # Modules activate BEFORE the mcp service so module-declared
+        # servers are already configured when start_all() runs.
+        ServiceSpec("modules", "core", s["modules"],
+                    detail="no modules installed"),
         ServiceSpec("scheduler", "background", s["scheduler"],
                     threaded=True, stop=p["scheduler"]),
         ServiceSpec("reminders", "background", s["reminders"],

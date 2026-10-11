@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "url_codec",
+  "name": "URL Codec",
+  "version": "1.0.0",
+  "author": "JARVIS Core",
+  "license": "MIT",
+  "description": "Percent-encode and decode text for URLs: \"url encode hello world\", \"url decode hello%20world\".",
+  "entry": "skill.py",
+  "skills": ["url_codec"],
+  "capabilities": [
+    "percent-encode text for query strings",
+    "percent-decode encoded URLs and parameters",
+    "safe encoding: nothing is left unescaped by default"
+  ],
+  "permissions": ["none"],
+  "docs": "README.md",
+  "examples": [
+    {"phrase": "url encode hello world", "reply": "Encoded: hello%20world"},
+    {"phrase": "url decode hello%20world", "reply": "Decoded: hello world"}
+  ]
+}

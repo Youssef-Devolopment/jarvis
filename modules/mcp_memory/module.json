@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "id": "mcp_memory",
+  "name": "Knowledge Graph Memory (MCP)",
+  "version": "1.0.0",
+  "author": "JARVIS Core",
+  "license": "MIT",
+  "description": "Official MCP memory server (npx): persistent knowledge-graph memory across sessions — entities, relations and observations the assistant can grow over time.",
+  "mcp": {
+    "name": "memory",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-memory"],
+    "auto_start": true
+  },
+  "capabilities": [
+    "store entities and facts as a knowledge graph",
+    "link entities with typed relations",
+    "recall across sessions — the graph persists on disk"
+  ],
+  "permissions": ["memory"],
+  "docs": "README.md",
+  "examples": [
+    {"phrase": "remember that my editor is VS Code", "reply": "The memory server stores an 'editor' entity linked to you with a uses relation."}
+  ]
+}

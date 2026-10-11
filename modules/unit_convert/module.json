@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "unit_convert",
+  "name": "Unit Converter",
+  "version": "1.0.0",
+  "author": "JARVIS Core",
+  "license": "MIT",
+  "description": "Length, weight and temperature conversions spoken aloud: \"convert 10 km to miles\", \"what is 72 f in c\".",
+  "entry": "skill.py",
+  "skills": ["unit_convert"],
+  "capabilities": [
+    "convert length units (km, m, mi, ft, yd, in)",
+    "convert weight units (kg, g, lb, oz, ton)",
+    "convert temperatures (C, F, K)",
+    "handles negatives and decimals"
+  ],
+  "permissions": ["none"],
+  "docs": "README.md",
+  "examples": [
+    {"phrase": "convert 10 km to miles", "reply": "10 km is 6.21 miles."},
+    {"phrase": "what is 72 f in c", "reply": "72 F is 22.22 C."},
+    {"phrase": "convert 2.5 kg to lb", "reply": "2.5 kg is 5.51 lb."}
+  ]
+}
