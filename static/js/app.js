@@ -1052,7 +1052,7 @@ async function sendCommand(text){
           if(obj.tool_result){
             addLog('\u2714 '+(obj.tool_result.summary||JSON.stringify(obj.tool_result).slice(0,120)),'tool');
           }
-          if(obj.status)addLog([char]0x21C4+' '+obj.status,'system');
+          if(obj.status)addLog('\u21c4 '+obj.status,'system');
           if(obj.error)addLog('\u2718 '+obj.error,'error');
           if(obj.speak){if(!muted)setState(STATE.SPEAKING);speakText(obj.speak);}
         }catch(e){}
