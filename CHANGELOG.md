@@ -4,6 +4,27 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.17.1] — 2026-10-11
+
+Two live-verification findings from the 1.17.0 rollout, both about
+"what the user actually sees":
+
+### Fixed
+- **Banner strip cleared the topbar hairline** — the pinned strip sat
+  at 60px while the topbar's final animated height is 62px, so a
+  warning banner covered the topbar's glowing hairline exactly when
+  it showed. Pinned at 64px now (2px gap).
+- **First-run guidance on narrow windows** — below 1200px the log
+  panel is hidden, so the onboarding card rendered inside an
+  invisible parent while simultaneously suppressing the starter
+  chips, leaving a fresh user with no guidance at all. The chips now
+  only yield to an onboarding card that is actually visible
+  (`offsetParent` check).
+
+### Tests
+- **588 passing (+1)** — `test_ui_surface.py` gained the narrow-
+  window guard for the starter-chip fallback.
+
 ## [1.17.0] — 2026-10-11
 
 The "genuinely ready" pass — product-trust and surface polish across
