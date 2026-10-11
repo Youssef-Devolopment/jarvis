@@ -4,6 +4,28 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.19.1] — 2026-10-11
+
+Live-verification micro-fix for the module ecosystem, found by hitting
+the running v1.19.0 app: `GET /api/modules` could hang for tens of
+seconds right after boot.
+
+### Fixed
+- **The MODULES API can no longer hang behind a slow MCP spawn** —
+  `runtime.start_server` holds its runtime lock for the entire
+  server spawn (up to 45s per server), and `scan()` was asking for
+  per-module running status through that lock. It now takes ONE
+  bounded snapshot (gives up after ~1s and honestly reports "not
+  running" while a spawn is in flight), so the request always
+  returns.
+- **Boot no longer spawns module MCP servers itself** — at boot the
+  `modules` service only writes the server configs; the `mcp`
+  service starts them immediately after, as it always has. Same end
+  state, without a multi-server spawn stall in a synchronous boot
+  step.
+- +1 regression test (653 total): holds the runtime lock in another
+  thread and asserts `scan()` returns within bounds.
+
 ## [1.19.0] — 2026-10-11
 
 The extensibility batch: a real module ecosystem so JARVIS can grow

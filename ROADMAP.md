@@ -1,6 +1,6 @@
 # JARVIS Roadmap
 
-Where the project stands and where it's going. Written at v1.19.0 —
+Where the project stands and where it's going. Written at v1.19.1 —
 a documented, observably healthy, architecture-driven system that
 also reads like a product. Priorities in order: **trust →
 operability → capability**. A feature that makes the system harder
@@ -31,8 +31,9 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.17.1** | Live-verification micro-fixes: banner strip at 64px (cleared the topbar hairline), starter chips no longer suppressed by an invisible onboarding card on narrow windows |
 | **v1.18.0** | **Final polish pass**: SYSTEM tab status chips (tinted pills per status), warning/error log rail, health-aware center tagline owned by the state machine, plain-English health banner, SKILLS ACTIVE badge on the first-run card, HUD cyan listening state + COPY pill + middle-dot hints + lit input well |
 | **v1.19.0** | **Module ecosystem**: `module.json` framework (skill + MCP kinds, declared capabilities/permissions, docs, examples), install from folder/zip with validation and zip-slip guards, active/inactive/failed states with rollback on crash, MODULES tab (state chips, permission chips, DOCS panel, CHECK dry-run), 9 real starter modules, author templates + `MODULES.md`, update-status catalog, 6 new API endpoints |
+| **v1.19.1** | Live-verification micro-fix: `GET /api/modules` no longer hangs behind slow MCP server spawns (one bounded running-status snapshot), boot configures module MCP servers without spawning them (the mcp service starts them right after) |
 
-Stable today: 652 tests (in-tree + fresh-copy, no `.env`), 150 API
+Stable today: 653 tests (in-tree + fresh-copy, no `.env`), 150 API
 endpoints, 142 shipped skills + 9 shipped modules, green CI on
 `windows-latest`, health visible in six layers (preflight / API /
 dashboard / banner / console / log), lifecycle controls for 15
