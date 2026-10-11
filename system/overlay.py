@@ -302,6 +302,10 @@ def _run() -> None:
             if expanded:
                 cv.create_line(14, 52, 174, 52, fill=EDGE, width=1,
                                tags="chrome")
+            # the deck surface is a backdrop: recreation puts it on top
+            # of the stacking order, so push it back under all content
+            # (title, diamond, dot, close, chips, hints, COPY pill)
+            cv.tag_lower("chrome")
 
         # ---------- header: brand diamond mark + title + live header text
         cx, cy = 30, 29

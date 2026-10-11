@@ -155,6 +155,16 @@ class OverlayPaletteTests(unittest.TestCase):
         self.assertIn("Enter", overlay.HINT_TEXT)
         self.assertTrue(len(overlay.HINT_TEXT) > 10)
 
+    def test_chrome_surface_stays_behind_content(self):
+        # 1.19.3: draw_chrome recreates the deck surface on every mode
+        # switch, and a recreated item lands on top of the stacking order
+        # - which buried the brand title, status dot, close button, quick
+        # chips, key hints and COPY pill (canvas windows float on Windows
+        # because they are real child HWNDs, so only pure canvas items
+        # were affected). The surface must be pushed back under content.
+        src = (ROOT / "system" / "overlay.py").read_text(encoding="utf-8")
+        self.assertIn('cv.tag_lower("chrome")', src)
+
 
 if __name__ == "__main__":
     unittest.main()

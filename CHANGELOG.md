@@ -4,6 +4,29 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.19.3] — 2026-10-11
+
+HUD rendering fix batch, found by regenerating the docs screenshot
+straight from the real overlay with PrintWindow (the window's own
+pixels only — never the screen behind it).
+
+### Fixed
+- **The Alt+Space HUD no longer buries its own furniture.** Every mode
+  switch recreates the deck surface (background plates + accent lines)
+  via `cv.delete`/recreate, and a recreated canvas item lands on top of
+  the stacking order — hiding the brand diamond, the JARVIS title, the
+  status dot, the close button, all six quick chips, the key hints and
+  the COPY pill. Canvas windows (header chip, version, reply well,
+  input, MIC/SEND, status) kept rendering because on Windows they are
+  real child HWNDs, so the deck simply looked oddly empty. The surface
+  is now lowered back under the content (`cv.tag_lower("chrome")`),
+  guarded by a UI-surface regression test.
+
+### Changed
+- **`docs/overlay.png` recaptured** from the real v1.19.3 deck
+  (expanded state, live version chip, honest sample reply) — replacing
+  the stale pre-HUD-5.0 screenshot.
+
 ## [1.19.2] — 2026-10-11
 
 Docs micro-fix batch — website presence in the README plus one stale
