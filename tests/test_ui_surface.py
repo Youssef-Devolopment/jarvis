@@ -59,6 +59,30 @@ class CssSurfaceTests(unittest.TestCase):
                        ".sys-row.sys-degraded"):
             self.assertIn(marker, self.css)
 
+    def test_status_chip_component_has_all_variants(self):
+        # 1.18.0 — SYSTEM rows render tinted pills, not loose colored
+        # text; every status the API can return needs a style
+        self.assertIn(".schip{", self.css)
+        for variant in ("schip--ok", "schip--info", "schip--warn",
+                        "schip--degraded", "schip--unknown"):
+            self.assertIn("." + variant, self.css)
+
+    def test_log_warnings_get_a_rail_not_just_color(self):
+        # a failed step must be findable at a glance
+        self.assertIn(".log-entry.warn{", self.css)
+        self.assertIn(".log-entry.error{", self.css)
+        self.assertIn("border-left:2px solid rgba(255,184,77,.55)",
+                      self.css)
+
+    def test_idle_tagline_follows_health(self):
+        # the center of the screen must not say SYSTEM ONLINE while
+        # the pill says SAFE MODE
+        self.assertIn('body[data-state="idle"][data-health="warn"] .tagline',
+                      self.css)
+        self.assertIn(
+            'body[data-state="idle"][data-health="degraded"] .tagline',
+            self.css)
+
 
 class AppJsSurfaceTests(unittest.TestCase):
     """JS behaviours the first-run flow depends on."""
@@ -73,6 +97,30 @@ class AppJsSurfaceTests(unittest.TestCase):
         # user cannot see (1.17.1)
         self.assertIn("offsetParent", self.js)
 
+    def test_status_rows_emit_chip_markup(self):
+        # SYSTEM rows use the .schip pill component for every status
+        self.assertIn("schip schip--", self.js)
+
+    def test_first_run_card_advertises_skills_without_a_key(self):
+        self.assertIn("SKILLS ACTIVE", self.js)
+
+    def test_tagline_owned_by_the_state_machine(self):
+        # setState() must be the ONLY writer of the tagline, or the
+        # health verdict gets clobbered back to SYSTEM ONLINE by
+        # call sites that reset the UI after speaking/mic/etc.
+        import re
+        writers = re.findall(r"setText\('tagline'", self.js)
+        owners = re.findall(r"function setState\(", self.js)
+        self.assertEqual(len(owners), 1)
+        # all remaining writes live inside setState + updateStatusPill
+        self.assertLessEqual(len(writers), 3)
+        self.assertNotIn(
+            "setState(STATE.IDLE);setText('tagline'", self.js)
+
+    def test_health_banner_messages_are_plain_english(self):
+        self.assertIn("Some features are off", self.js)
+        self.assertIn("details in SYSTEM", self.js)
+
 
 class OverlayPaletteTests(unittest.TestCase):
     """The HUD wears the same brand colors as the app and the site."""
@@ -86,6 +134,21 @@ class OverlayPaletteTests(unittest.TestCase):
         from system import overlay
         self.assertEqual(overlay.BUSY, "#FFB020")
         self.assertEqual(overlay.DANGER, "#FF5C7A")
+
+    def test_listening_state_uses_brand_cyan(self):
+        # 1.18.0: listening is cyan everywhere — app pill, tagline
+        # and the HUD status dot must agree
+        from system import overlay
+        self.assertEqual(overlay.CYAN, "#66E0FF")
+
+    def test_key_hints_use_readable_separators(self):
+        src = (ROOT / "system" / "overlay.py").read_text(encoding="utf-8")
+        self.assertIn("SEND \\u00b7 ESC CLOSE", src)
+
+    def test_copy_control_is_pill_shown_only_with_a_reply(self):
+        src = (ROOT / "system" / "overlay.py").read_text(encoding="utf-8")
+        self.assertIn("def _copy_show", src)
+        self.assertIn("copy_bg", src)
 
     def test_input_hint_is_friendly(self):
         from system import overlay

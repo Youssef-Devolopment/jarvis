@@ -16,9 +16,11 @@ landing page (diamond mark, green accent, cyan highlights):
   * errors render as a red ⚠ line in plain English, never raw
     "[error] ..." plumbing;
   * live header: JARVIS title, version · mood · model, status dot
-    (green idle / amber pulse while thinking / red on error),
-    refreshed on every show, after every answer and ~10s while visible;
-  * typewriter reply area with a COPY button for the last answer;
+    (green idle / cyan pulse while listening / amber pulse while
+    thinking / red on error), refreshed on every show, after every
+    answer and ~10s while visible;
+  * typewriter reply area with a COPY pill for the last answer —
+    shown only when there is actually something to copy;
   * quick chips: SCREEN / TIMER / TIME / OPEN / CLOSE / NOTE — the
     app chips prefill "open "/"close " so one tap + name runs it;
   * command history (Up/Down), mic dictation → auto-send;
@@ -54,6 +56,7 @@ PANEL = "#0A101C"              # base surface (deep navy)
 PANEL2 = "#0D1526"             # raised surface (reply well / bezel)
 EDGE = "#66FFA3"               # primary accent — brand green
 EDGE_DIM = "#17513A"           # dim accent ring
+CYAN = "#66E0FF"               # brand cyan — the listening state
 CYAN_DIM = "#155063"           # dim secondary (brand cyan tail)
 GLOW = "#122E24"               # hairline / busy blink
 TRACK = "#101B2E"              # chips + secondary buttons
@@ -69,7 +72,7 @@ HINT_TEXT = "Ask JARVIS anything \u2014 Enter to send"
 _actions: queue.Queue = queue.Queue()
 _ready = threading.Event()
 _state = {"root": None, "visible": False, "thread": None,
-          "busy": 0, "history": [], "hidx": -1}
+          "busy": 0, "listening": 0, "history": [], "hidx": -1}
 _lock = threading.Lock()
 
 
@@ -264,11 +267,15 @@ def _run() -> None:
                        width=W, height=EXP_H, bd=0)
         cv.pack()
 
+        def _rr_pts(x1, y1, x2, y2, r):
+            """Polygon points for a rounded rect (coords() safe)."""
+            return [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r,
+                    x2, y2 - r, x2, y2, x2 - r, y2, x1 + r, y2,
+                    x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
+
         def round_rect(x1, y1, x2, y2, r, **kw):
-            pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r,
-                   x2, y2 - r, x2, y2, x2 - r, y2, x1 + r, y2,
-                   x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
-            return cv.create_polygon(pts, smooth=True, **kw)
+            return cv.create_polygon(_rr_pts(x1, y1, x2, y2, r),
+                                     smooth=True, **kw)
 
         mode = {"expanded": False}
         groups: dict = {}          # group name -> [canvas item ids]
@@ -439,18 +446,39 @@ def _run() -> None:
         status_win = cv.create_window(16, 0, window=status_lbl, anchor="w")
         hints = cv.create_text(
             W // 2, 0,
-            text="\u21b5 SEND   ESC CLOSE   \u2191 HISTORY   ALT+SPACE",
+            text="\u21b5 SEND \u00b7 ESC CLOSE \u00b7 \u2191 HISTORY \u00b7 ALT+SPACE",
             fill=HINT, font=("Bahnschrift", 8))
-        copy_id = cv.create_text(W - 20, 0, text="COPY", fill=DIM,
+        # COPY as a small outlined pill (not bare text) — it only
+        # appears when there is actually a reply worth copying
+        copy_bg = round_rect(W - 74, 0, W - 12, 0, 9,
+                             fill=TRACK, outline=EDGE_DIM, width=1,
+                             state="hidden")
+        copy_id = cv.create_text(W - 43, 0, text="COPY", fill=DIM,
                                  font=("Bahnschrift", 8, "bold"),
-                                 anchor="e", state="hidden")
-        cv.tag_bind(copy_id, "<Button-1>", lambda e: _copy_last())
-        cv.tag_bind(copy_id, "<Enter>",
-                    lambda e: cv.itemconfig(copy_id, fill=EDGE))
-        cv.tag_bind(copy_id, "<Leave>",
-                    lambda e: cv.itemconfig(copy_id, fill=DIM))
-        interactive.append(copy_id)
-        groups["footer"] = [status_win, hints, copy_id]
+                                 anchor="w", state="hidden")
+
+        def _copy_show(on: bool):
+            st = "normal" if on else "hidden"
+            try:
+                cv.itemconfig(copy_id, state=st)
+                cv.itemconfig(copy_bg, state=st)
+            except Exception:
+                pass
+
+        def _copy_hot(on: bool):
+            try:
+                cv.itemconfig(copy_id, fill=EDGE if on else DIM)
+                cv.itemconfig(copy_bg,
+                              outline=EDGE if on else EDGE_DIM)
+            except Exception:
+                pass
+
+        for it in (copy_bg, copy_id):
+            cv.tag_bind(it, "<Button-1>", lambda e: _copy_last())
+            cv.tag_bind(it, "<Enter>", lambda e: _copy_hot(True))
+            cv.tag_bind(it, "<Leave>", lambda e: _copy_hot(False))
+            interactive.append(it)
+        groups["footer"] = [status_win, hints, copy_bg, copy_id]
 
         # ---------- mode switch: chrome + widget positions ----------
         def _apply_mode(expanded: bool):
@@ -482,7 +510,8 @@ def _run() -> None:
             fy = lay["footer"] + 10
             cv.coords(status_win, 16, fy)
             cv.coords(hints, W // 2, fy)
-            cv.coords(copy_id, W - 20, fy)
+            cv.coords(copy_id, W - 43, fy)
+            cv.coords(copy_bg, *_rr_pts(W - 74, fy - 10, W - 12, fy + 10, 9))
             try:
                 x, y = root.winfo_x(), root.winfo_y()
                 root.geometry(f"{W}x{lay['h']}+{x}+{y}")
@@ -505,7 +534,7 @@ def _run() -> None:
                     _state["dot"] = "busy"
                     status_lbl.configure(text="Thinking\u2026", fg=BUSY)
                     send_btn.configure(state="disabled", text="\u2026")
-                    cv.itemconfig(copy_id, state="hidden")
+                    _copy_show(False)
                     _think_show()
                 else:
                     _state["dot"] = "good"
@@ -595,8 +624,7 @@ def _run() -> None:
                 if not chunk:
                     try:
                         reply.configure(state="disabled")
-                        cv.itemconfig(copy_id,
-                                      state="normal" if text else "hidden")
+                        _copy_show(bool(text))
                     except Exception:
                         pass
                     return
@@ -663,9 +691,16 @@ def _run() -> None:
                              name="overlay-cmd").start()
 
         def _mic():
-            if _state.get("busy"):
-                return
-            set_status("Listening\u2026", BUSY)
+            if _state.get("busy") or _state.get("listening"):
+                return                     # one ear at a time
+            _state["listening"] = 1
+            set_status("Listening\u2026", CYAN)
+            try:
+                mic_btn.configure(state="disabled")
+                cv.itemconfig(dot_core, fill=CYAN)
+                cv.itemconfig(dot_halo, outline=CYAN)
+            except Exception:
+                pass
 
             def work():
                 try:
@@ -757,6 +792,12 @@ def _run() -> None:
 
         root.bind("<FocusOut>", on_focus_out)
         entry.bind("<FocusOut>", on_focus_out)
+        # focus lights the input well — the deck always shows where
+        # the caret is, even against a busy window behind it
+        entry.bind("<FocusIn>", lambda e: entry_wrap.configure(
+            highlightbackground=EDGE))
+        entry.bind("<FocusOut>", lambda e: entry_wrap.configure(
+            highlightbackground=EDGE_DIM))
 
         # ---------- drag by header ----------
         drag = {"x": 0, "y": 0}
@@ -889,15 +930,14 @@ def _run() -> None:
                     if is_err and text:
                         reply.tag_configure("err", foreground=DANGER)
                         reply.tag_add("err", "1.0", "end")
-                    cv.itemconfig(copy_id,
-                                  state="normal" if text else "hidden")
+                    _copy_show(bool(text))
                 except Exception:
                     pass
             else:
                 type_out(text, DANGER if is_err else color) # fast path
             set_status(("Something went wrong \u00b7 see the reply"
                         if is_err else "Done \u00b7 Alt+Space to recall"),
-                       DANGER if is_err else DIM)
+                       DANGER if is_err else GOOD)
             _state["dot"] = "danger" if is_err else "good"
             cv.itemconfig(dot_core,
                           fill=DANGER if is_err else GOOD)
@@ -922,15 +962,28 @@ def _run() -> None:
                                       DANGER if payload.startswith("[error]")
                                       else TEXT)
                         elif kind == "heard":
+                            _state["listening"] = 0
+                            try:
+                                mic_btn.configure(state="normal")
+                            except Exception:
+                                pass
                             if payload.startswith("[error]"):
-                                set_status(payload.replace("[error]", "Mic:").strip(),
-                                           DANGER)
+                                set_status(
+                                    payload.replace("[error]",
+                                                    "Mic:").strip(),
+                                    DANGER)
+                                cv.itemconfig(dot_core, fill=DANGER)
+                                cv.itemconfig(dot_halo, outline=GLOW)
                             elif payload:
+                                cv.itemconfig(dot_core, fill=GOOD)
+                                cv.itemconfig(dot_halo, outline=GLOW)
                                 _chip("fill", payload)
                                 _submit()
                             else:
                                 set_status("Didn't catch that \u2014 try again",
                                            DIM)
+                                cv.itemconfig(dot_core, fill=GOOD)
+                                cv.itemconfig(dot_halo, outline=GLOW)
                         elif kind == "info":
                             try:
                                 ver.configure(
@@ -977,7 +1030,17 @@ def _run() -> None:
                         cv.itemconfig(dot_core,
                                       fill=(BUSY if halo == GLOW
                                             else "#FFD36B"))
+                    # cyan pulse while the mic is open
+                    elif _state.get("listening") and tick["n"] % 4 == 0:
+                        halo = (CYAN if cv.itemcget(dot_halo,
+                                                    "outline") == GLOW
+                                else GLOW)
+                        cv.itemconfig(dot_halo, outline=halo)
+                        cv.itemconfig(dot_core,
+                                      fill=(CYAN if halo == GLOW
+                                            else "#BDEFFF"))
                     elif not _state.get("busy") and \
+                            not _state.get("listening") and \
                             cv.itemcget(dot_halo, "outline") != GLOW:
                         cv.itemconfig(dot_halo, outline=GLOW)
                     if tick["n"] % REFRESH_TICKS == 0:

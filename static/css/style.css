@@ -355,7 +355,7 @@ body[data-uimode="dev"] .dev-only.side-block{display:block!important}
   transition:background .2s ease;
 }
 @keyframes logIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
-.log-entry .t{color:var(--accent);margin-right:6px;opacity:.65;font-size:8.5px}
+.log-entry .t{color:var(--accent);margin-right:6px;opacity:.75;font-size:9px}
 .log-entry:hover{background:rgba(255,255,255,.03)}
 .log-entry.system{color:var(--accent-hi)}
 .log-entry.user{
@@ -367,8 +367,18 @@ body[data-uimode="dev"] .dev-only.side-block{display:block!important}
 .log-entry.bot{color:var(--text)}
 .log-entry.skill{color:var(--green)}
 .log-entry.tool{color:var(--cyan)}
-.log-entry.warn{color:var(--amber)}
-.log-entry.error{color:var(--red)}
+/* warnings/errors get a tinted rail, not just color — a failed step
+   must be findable at a glance, not hidden in a wall of text */
+.log-entry.warn{
+  color:var(--amber);background:rgba(255,184,77,.06);
+  border-left:2px solid rgba(255,184,77,.55);padding-left:8px;
+  border-radius:0 4px 4px 0;
+}
+.log-entry.error{
+  color:var(--red);background:rgba(255,92,122,.07);
+  border-left:2px solid rgba(255,92,122,.6);padding-left:8px;
+  border-radius:0 4px 4px 0;
+}
 
 /* ── Think panel ─────────────────────────────────────────────── */
 .thinkpanel{
@@ -493,6 +503,10 @@ body[data-state="thinking"] .tagline{color:var(--amber);text-shadow:0 0 10px rgb
 body[data-state="speaking"] .tagline{color:#fff;text-shadow:0 0 12px var(--accent-glow)}
 body[data-state="tool_call"] .tagline{color:var(--cyan);text-shadow:0 0 10px rgba(102,224,255,.7)}
 body[data-state="error"] .tagline{color:var(--red);text-shadow:0 0 10px rgba(255,92,122,.7)}
+/* idle tagline follows the health verdict too — the center of the
+   screen must not say "SYSTEM ONLINE" while the pill says SAFE MODE */
+body[data-state="idle"][data-health="warn"] .tagline{color:var(--amber);text-shadow:0 0 10px rgba(255,184,77,.6)}
+body[data-state="idle"][data-health="degraded"] .tagline{color:var(--red);text-shadow:0 0 10px rgba(255,92,122,.6)}
 
 /* ── Dock ────────────────────────────────────────────────────── */
 .dock{
@@ -951,6 +965,38 @@ input[type="range"].range::-moz-range-thumb{
 .sys-row.sys-warn{border-left-color:var(--amber)}
 .sys-row.sys-degraded{border-left-color:var(--red)}
 .sys-row.sys-unknown{border-left-color:var(--dim);opacity:.75}
+/* status chip: one glance, one meaning — tinted pill + dot instead of
+   loose colored text, so SYSTEM rows read like a product dashboard */
+.schip{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:9px;letter-spacing:1.5px;
+  text-transform:uppercase;white-space:nowrap;
+  padding:3px 10px;border-radius:999px;border:1px solid;
+}
+.schip::before{
+  content:'';width:5px;height:5px;border-radius:50%;
+  background:currentColor;box-shadow:0 0 6px currentColor;
+}
+.schip--ok{
+  color:var(--green);border-color:rgba(102,255,163,.35);
+  background:rgba(102,255,163,.07);
+}
+.schip--info{
+  color:var(--cyan);border-color:rgba(102,224,255,.35);
+  background:rgba(102,224,255,.07);
+}
+.schip--warn{
+  color:var(--amber);border-color:rgba(255,184,77,.4);
+  background:rgba(255,184,77,.08);
+}
+.schip--degraded{
+  color:var(--red);border-color:rgba(255,92,122,.4);
+  background:rgba(255,92,122,.08);
+}
+.schip--unknown{
+  color:var(--dim);border-color:rgba(255,255,255,.14);
+  background:rgba(255,255,255,.04);
+}
 .sys-warnbox{
   margin-top:12px;padding:12px 14px;
   border:1px solid rgba(255,184,77,.35);border-radius:10px;

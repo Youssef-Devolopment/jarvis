@@ -72,6 +72,12 @@ function updateStatusPill(){
     warn:'Minor issues \u2014 click for details',
     degraded:'Some features are off \u2014 click for details'};
   setText('status-text',labels[healthOverall]||'ONLINE');
+  /* the center tagline must agree with the pill — "SYSTEM ONLINE"
+     over a SAFE MODE verdict is exactly the kind of mixed signal
+     the trust pass exists to remove */
+  var ttags={ok:'SYSTEM ONLINE',warn:'NEEDS ATTENTION',
+    degraded:'SAFE MODE \u00b7 SOME FEATURES OFF'};
+  setText('tagline',ttags[healthOverall]||ttags.ok);
   var p=$('status-pill');
   if(p)p.setAttribute('title',tips[healthOverall]||'System status');
 }
@@ -82,11 +88,17 @@ function setState(next){
   try{document.body.dataset.state=next;}catch(e){}
   var labels={boot:'BOOTING',idle:'',listening:'LISTENING',
     thinking:'PROCESSING',speaking:'SPEAKING',tool_call:'TOOL CALL',error:'ERROR'};
-  if(next===STATE.IDLE)updateStatusPill();
-  else setText('status-text',labels[next]||'ONLINE');
   var tags={boot:'INITIALIZING',idle:'SYSTEM ONLINE',listening:'LISTENING',
     thinking:'PROCESSING',speaking:'SPEAKING',tool_call:'TOOL CALL',error:'ERROR'};
-  setText('tagline',tags[next]||tags.idle);
+  if(next===STATE.IDLE){
+    /* health verdict owns both pill and tagline while idle — so it
+       runs LAST and cannot be clobbered by the generic state text */
+    setText('tagline',tags.idle);
+    updateStatusPill();
+  }else{
+    setText('status-text',labels[next]||'ONLINE');
+    setText('tagline',tags[next]||tags.idle);
+  }
 }
 
 function initCanvas(){
@@ -263,10 +275,12 @@ function refreshHealthBanner(){
     var msg;
     if(ov==='degraded'){
       if(svc.status==='degraded')names.push('services');
-      msg='System degraded'+(names.length?' \u2014 '+names.join(', '):'');
+      msg='Some features are off'+(names.length?' \u2014 '+names.join(', '):'');
       if(svc.status==='degraded'&&svc.detail)msg+=' ('+svc.detail+')';
+      msg+=' \u2014 details in SYSTEM';
     }else{
-      msg='Config warnings: '+cw.length+(cw[0]?' \u2014 '+cw[0]:'');
+      msg='Needs attention \u2014 '+cw.length+' config warning'+(cw.length===1?'':'s')+
+          (cw[0]?' \u00b7 '+cw[0]:'');
     }
     var t=$('health-banner-text');
     if(t)t.textContent=msg;
@@ -342,16 +356,17 @@ function maybeOnboard(info,prefs){
     if(document.getElementById('onboard-card'))return;
     var logEl=$('log');if(!logEl)return;
     var sub=noKey
-      ?'Local skills already work — no key needed. Add one any time to unlock AI chat.'
-      :'Two quick things to try, then you’re set.';
+      ?'Local skills already work \u2014 no key needed. Add one any time to unlock AI chat.'
+      :'Two quick things to try, then you\u2019re set.';
     var n=0,steps='';
-    if(noKey){n++;steps+='<div class="set-row"><div class="label">'+n+' · Add your API key<small>Optional — unlocks AI chat and reasoning</small></div><div class="actions"><button class="dbtn" id="onboard-key">SET KEY</button></div></div>';}
-    n++;steps+='<div class="set-row"><div class="label">'+n+' · Ask for the time<small>Answered instantly by a local skill</small></div><div class="actions"><button class="dbtn" id="onboard-try-time">TRY IT</button></div></div>';
-    n++;steps+='<div class="set-row"><div class="label">'+n+' · Open an app<small>Opens Notepad right on this PC</small></div><div class="actions"><button class="dbtn" id="onboard-try-open">TRY IT</button></div></div>';
+    if(noKey){n++;steps+='<div class="set-row"><div class="label">'+n+' \u00b7 Add your API key<small>Optional \u2014 unlocks AI chat and reasoning</small></div><div class="actions"><button class="dbtn" id="onboard-key">SET KEY</button></div></div>';}
+    n++;steps+='<div class="set-row"><div class="label">'+n+' \u00b7 Ask for the time<small>Answered instantly by a local skill</small></div><div class="actions"><button class="dbtn" id="onboard-try-time">TRY IT</button></div></div>';
+    n++;steps+='<div class="set-row"><div class="label">'+n+' \u00b7 Open an app<small>Opens Notepad right on this PC</small></div><div class="actions"><button class="dbtn" id="onboard-try-open">TRY IT</button></div></div>';
+    var badge=noKey?'<span class="schip schip--ok" style="margin-left:10px">SKILLS ACTIVE</span>':'';
     var div=document.createElement('div');
     div.id='onboard-card';
     div.className='onboard-card';
-    div.innerHTML='<div class="onboard-head"><div class="onboard-title">GETTING STARTED'+
+    div.innerHTML='<div class="onboard-head"><div class="onboard-title">GETTING STARTED'+badge+
       '<small class="onboard-sub">'+sub+'</small></div>'+
       '<div class="actions"><button class="dbtn" id="onboard-tour">TAKE TOUR</button><button class="dbtn" id="onboard-hide">DISMISS</button></div></div>'+steps;
     logEl.insertBefore(div,logEl.firstChild);
@@ -602,7 +617,7 @@ async function startRecording(){
 function stopRecording(){
   if(mediaRecorder&&mediaRecorder.state!=='inactive'){try{mediaRecorder.stop();}catch(e){}}
   micActive=false;rmCls('btn-mic','recording');setText('btn-mic','\u25C9 MIC');
-  setState(STATE.IDLE);setText('tagline','SYSTEM ONLINE');
+  setState(STATE.IDLE);
 }
 
 function speakText(text){
@@ -610,8 +625,8 @@ function speakText(text){
   try{
     window.speechSynthesis.cancel();
     var u=new SpeechSynthesisUtterance(text);u.rate=1.0;
-    u.onend=function(){setState(STATE.IDLE);setText('tagline','SYSTEM ONLINE');};
-    u.onerror=function(){setState(STATE.IDLE);setText('tagline','SYSTEM ONLINE');};
+    u.onend=function(){setState(STATE.IDLE);};
+    u.onerror=function(){setState(STATE.IDLE);};
     window.speechSynthesis.speak(u);
   }catch(e){}
 }
@@ -631,7 +646,7 @@ function toggleMute(){
 function stopSpeak(){
   try{window.speechSynthesis.cancel();}catch(e){}
   fetch('/api/stop-speak',{method:'POST'}).catch(function(){});
-  setState(STATE.IDLE);setText('tagline','SYSTEM ONLINE');
+  setState(STATE.IDLE);
 }
 
 var thinkingBuffer='';
@@ -1048,7 +1063,7 @@ async function sendCommand(text){
     finishThinking();
     // Only reset to IDLE if we're not currently speaking
     if(state!==STATE.SPEAKING&&state!==STATE.IDLE){
-      setState(STATE.IDLE);setText('tagline','SYSTEM ONLINE');
+      setState(STATE.IDLE);
     }
   }
 }
@@ -1357,14 +1372,10 @@ function prefToggle(key,on,label,sub){
   }
   if(name==='system'){
     var chk=data.checks||{};
-    var hcol=function(st){
-      return (st==='ok'||st==='info')?'var(--green)':
-             (st==='degraded')?'var(--red)':
-             (st==='warn')?'var(--amber)':'var(--dim)';
-    };
     var hchip=function(st){
-      return '<span style="color:'+hcol(st)+';font-size:10px;letter-spacing:.08em">'+
-             esc(String(st||'unknown').toUpperCase())+'</span>';
+      var s=String(st||'unknown');
+      var k=(s==='ok'||s==='info'||s==='warn'||s==='degraded')?s:'unknown';
+      return '<span class="schip schip--'+k+'">'+esc(s.toUpperCase())+'</span>';
     };
     var u=data.uptime_s||0;
     var upt=u<60?(u+'s'):(Math.floor(u/60)+'m '+(u%60)+'s');
