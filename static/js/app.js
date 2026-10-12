@@ -4,7 +4,7 @@
 
 var STATE={BOOT:'boot',IDLE:'idle',LISTENING:'listening',
            THINKING:'thinking',SPEAKING:'speaking',
-           TOOL:'tool_call',ERROR:'error'};
+           TOOL:'tool_call',ERROR:'error',DONE:'done'};
 var state=STATE.BOOT;
 var busy=false;
 var muted=false;
@@ -63,14 +63,14 @@ function addStreamingLog(cls){
 /* Health-aware status pill: whenever idle, the pill shows the product
    verdict from /api/health (READY / ATTENTION / SAFE MODE) instead of
    a static "ONLINE" — one glance tells the user if things are fine.
-   Transient states (LISTENING, PROCESSING...) keep their own colors. */
+   Transient states (LISTENING, THINKING...) keep their own colors. */
 var healthOverall='ok';
 function updateStatusPill(){
   if(state!==STATE.IDLE)return;
   var labels={ok:'READY',warn:'ATTENTION',degraded:'SAFE MODE'};
   var tips={ok:'All systems healthy',
     warn:'Minor issues \u2014 click for details',
-    degraded:'Some features are off \u2014 click for details'};
+    degraded:'Some features are off \u2014 core skills still work; click for details'};
   setText('status-text',labels[healthOverall]||'ONLINE');
   /* the center tagline must agree with the pill — "SYSTEM ONLINE"
      over a SAFE MODE verdict is exactly the kind of mixed signal
@@ -87,9 +87,11 @@ function setState(next){
   state=next;
   try{document.body.dataset.state=next;}catch(e){}
   var labels={boot:'BOOTING',idle:'',listening:'LISTENING',
-    thinking:'PROCESSING',speaking:'SPEAKING',tool_call:'TOOL CALL',error:'ERROR'};
+    thinking:'THINKING',speaking:'SPEAKING',tool_call:'TOOL CALL',
+    error:'ERROR',done:'DONE'};
   var tags={boot:'INITIALIZING',idle:'SYSTEM ONLINE',listening:'LISTENING',
-    thinking:'PROCESSING',speaking:'SPEAKING',tool_call:'TOOL CALL',error:'ERROR'};
+    thinking:'THINKING',speaking:'SPEAKING',tool_call:'TOOL CALL',
+    error:'ERROR',done:'DONE'};
   if(next===STATE.IDLE){
     /* health verdict owns both pill and tagline while idle — so it
        runs LAST and cannot be clobbered by the generic state text */
@@ -99,6 +101,23 @@ function setState(next){
     setText('status-text',labels[next]||'ONLINE');
     setText('tagline',tags[next]||tags.idle);
   }
+}
+
+/* Completion beat: hold a brief DONE chip after a finished reply so
+   the loop visibly closes before the pill settles back to the live
+   health verdict. Errors settle straight to IDLE — a green DONE
+   after a failure would lie. */
+var doneTimer=null;
+function flashDone(){
+  if(busy)return;
+  if(state!==STATE.SPEAKING&&state!==STATE.THINKING&&
+     state!==STATE.TOOL)return;
+  if(doneTimer)clearTimeout(doneTimer);
+  setState(STATE.DONE);
+  doneTimer=setTimeout(function(){
+    doneTimer=null;
+    if(state===STATE.DONE){setState(STATE.IDLE);updateStatusPill();}
+  },1600);
 }
 
 function initCanvas(){
@@ -359,9 +378,11 @@ function maybeOnboard(info,prefs){
       ?'Local skills already work \u2014 no key needed. Add one any time to unlock AI chat.'
       :'Two quick things to try, then you\u2019re set.';
     var n=0,steps='';
-    if(noKey){n++;steps+='<div class="set-row"><div class="label">'+n+' \u00b7 Add your API key<small>Optional \u2014 unlocks AI chat and reasoning</small></div><div class="actions"><button class="dbtn" id="onboard-key">SET KEY</button></div></div>';}
     n++;steps+='<div class="set-row"><div class="label">'+n+' \u00b7 Ask for the time<small>Answered instantly by a local skill</small></div><div class="actions"><button class="dbtn" id="onboard-try-time">TRY IT</button></div></div>';
     n++;steps+='<div class="set-row"><div class="label">'+n+' \u00b7 Open an app<small>Opens Notepad right on this PC</small></div><div class="actions"><button class="dbtn" id="onboard-try-open">TRY IT</button></div></div>';
+    /* the optional key step comes LAST — listing it as "1" undercut
+       the whole "works without a key" message */
+    if(noKey){n++;steps+='<div class="set-row"><div class="label">'+n+' \u00b7 Add your API key<span class="schip schip--info" style="margin-left:8px">OPTIONAL</span><small>Unlocks AI chat and reasoning</small></div><div class="actions"><button class="dbtn" id="onboard-key">SET KEY</button></div></div>';}
     var badge=noKey?'<span class="schip schip--ok" style="margin-left:10px">SKILLS ACTIVE</span>':'';
     var div=document.createElement('div');
     div.id='onboard-card';
@@ -625,7 +646,7 @@ function speakText(text){
   try{
     window.speechSynthesis.cancel();
     var u=new SpeechSynthesisUtterance(text);u.rate=1.0;
-    u.onend=function(){setState(STATE.IDLE);};
+    u.onend=function(){flashDone();};
     u.onerror=function(){setState(STATE.IDLE);};
     window.speechSynthesis.speak(u);
   }catch(e){}
@@ -1009,7 +1030,7 @@ async function sendCommand(text){
   chipsSessionUsed=true;refreshStarters();
   var cmdEl=$('cmd');if(cmdEl)cmdEl.value='';
   addLog(text,'user');setState(STATE.THINKING);
-  var streamEl=null;var full='';
+  var streamEl=null;var full='';var failed=false;
   try{
     var res=await fetch('/api/command',{method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -1041,7 +1062,7 @@ async function sendCommand(text){
             if(!streamEl)streamEl=addStreamingLog(obj.source==='skill'?'skill':'bot');
             full+=obj.delta;if(streamEl)streamEl.textContent=full;
             var logEl=$('log');if(logEl)logEl.scrollTop=logEl.scrollHeight;
-            /* stay in PROCESSING while text streams; SPEAKING is set
+            /* stay in THINKING while text streams; SPEAKING is set
                only when audio actually starts (obj.speak + unmuted) */
           }
           if(obj.tool_call){
@@ -1058,13 +1079,15 @@ async function sendCommand(text){
         }catch(e){}
       }
     }
-  }catch(err){addLog('Error: '+err.message,'error');}
+  }catch(err){failed=true;addLog('Error: '+err.message,'error');}
   finally{
     busy=false;
     finishThinking();
     // Only reset to IDLE if we're not currently speaking
     if(state!==STATE.SPEAKING&&state!==STATE.IDLE){
-      setState(STATE.IDLE);
+      /* success holds a brief DONE chip; errors settle straight to
+         the health verdict (a green DONE after a failure would lie) */
+      if(failed)setState(STATE.IDLE);else flashDone();
     }
   }
 }
@@ -1242,7 +1265,7 @@ function renderTab(name,data){
   if(name==='library'){
     var lsk=data.skills||[],lmcp=data.mcp||[];
     var html='<div style="margin:0 0 10px"><input id="lib-search" placeholder="Search the library\u2026" style="width:100%;background:#000;color:#fff;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:var(--mono);font-size:11px;box-sizing:border-box"></div>';
-    html+='<div class="set-list" style="margin-bottom:12px"><div class="set-row"><div class="label">Import your own pack<small>JSON: {"id","name","description","code"} or {"packs":[\u2026]} \u2014 validated before it enters</small></div>'+
+    html+='<div class="set-list" style="margin-bottom:12px"><div class="set-row"><div class="label">Import your own pack<small>Paste pack JSON or choose a file \u2014 validated before it\u2019s added</small></div>'+
       '<div class="actions"><input type="file" id="lib-import-file" accept=".json,application/json" style="max-width:150px;font-size:9px;color:var(--dim)">'+
       '<button class="dbtn" data-action="lib-import">IMPORT</button></div></div></div>';
     html+='<div style="margin:4px 0 8px;color:var(--amber);font-size:9px;letter-spacing:2px">SKILL PACKS \u2014 ONE CLICK ('+lsk.length+')</div><div class="set-list" style="margin-bottom:12px">';
@@ -1284,9 +1307,11 @@ function renderTab(name,data){
     var mods=data.modules||[];
     var counts=data.counts||{};
     var perms=data.permissions||{};
-    var html='<div style="margin:0 0 10px;color:var(--dim);font-size:9px;letter-spacing:2px">'+
-      'INSTALLED '+(counts.total||0)+' \u00b7 ACTIVE '+(counts.active||0)+
-      ' \u00b7 INACTIVE '+(counts.inactive||0)+' \u00b7 FAILED '+(counts.failed||0)+'</div>';
+    var html='<div style="margin:0 0 10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;color:var(--dim);font-size:9px;letter-spacing:2px">'+
+      '<span>INSTALLED '+(counts.total||0)+'</span>'+
+      '<span class="schip schip--ok">'+(counts.active||0)+' ACTIVE</span>'+
+      '<span class="schip schip--unknown">'+(counts.inactive||0)+' INACTIVE</span>'+
+      '<span class="schip schip--degraded">'+(counts.failed||0)+' FAILED</span></div>';
     html+='<div class="set-list" style="margin-bottom:12px"><div class="set-row"><div class="label">Install from folder or .zip'+
       '<small>validated before anything loads \u2014 CHECK reports permissions and problems without installing</small></div>'+
       '<div class="actions"><input id="mod-install-path" placeholder="C:\\path\\to\\module" style="max-width:210px;background:#000;color:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-family:var(--mono);font-size:10px">'+
@@ -1312,7 +1337,9 @@ function renderTab(name,data){
         '<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+kind+chip+up+'</div></div>';
       card+='<div style="color:var(--dim);font-size:10px;margin:6px 0">'+esc(m.description||'')+'</div>';
       if(st==='failed'&&m.error)card+='<div style="color:var(--red);font-size:10px;margin:4px 0">'+esc(m.error)+'</div>';
-      var caps=(m.capabilities||[]).map(function(c){return '<span class="schip schip--unknown">'+esc(c)+'</span>';}).join('');
+      var capsAll=(m.capabilities||[]);
+      var caps=capsAll.slice(0,3).map(function(c){return '<span class="schip schip--unknown">'+esc(c)+'</span>';}).join('');
+      if(capsAll.length>3)caps+='<span class="schip schip--unknown">+'+(capsAll.length-3)+'</span>';
       var perr=(m.permissions||[]).map(function(p){
         var cls=(p==='none'||p==='read:text'||p==='memory'||p==='clipboard')?'schip--ok':'schip--warn';
         return '<span class="schip '+cls+'" title="'+esc(perms[p]||p)+'">'+esc(p)+'</span>';}).join('');
@@ -1443,7 +1470,7 @@ function prefToggle(key,on,label,sub){
     var vname={ok:'READY',warn:'ATTENTION',degraded:'SAFE MODE'};
     var vmean={ok:'All systems healthy — nothing to do here.',
       warn:'Minor issues — everything still works.',
-      degraded:'Some features are off — the rows below say what and why.'};
+      degraded:'Some features are off — core skills still work; the rows below say what and why.'};
     var ov=data.overall||'unknown';
     var h='<div class="sys-verdict '+
       (ov==='ok'?'ok':ov==='warn'?'warn':ov==='degraded'?'degraded':'')+'">'+
