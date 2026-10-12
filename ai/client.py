@@ -26,12 +26,38 @@ BASE_PROMPT = (
 )
 
 FALLBACK_CHAIN = [
-    "qwen3.8-flash:free",
     "mimo-v2.5:free",
     "mimo-v2.6-flash:free",
     "deepseek-v4.1-flash:free",
     "deepseek-v4-flash:free",
 ]
+
+# A model the provider declares gone (404, campaign ended, retired…)
+# would be retried on EVERY request forever.  Cool it for a while
+# instead; if it revives, the entry expires and it rejoins rotation.
+_COOL_TTL = 600.0
+_cooling: dict = {}
+
+
+def _cool_down(model: str, ttl: float = _COOL_TTL) -> None:
+    _cooling[model] = time.time() + ttl
+
+
+def _cooling_snapshot() -> set:
+    now = time.time()
+    for m in [m for m, exp in list(_cooling.items()) if exp <= now]:
+        _cooling.pop(m, None)
+    return set(_cooling)
+
+
+def _clip_tool_result(text: str) -> str:
+    """Cap what a tool result costs in model context — one runaway
+    MCP/terminal result can otherwise blow a small free-model window
+    mid-loop and fail the whole request.  Built-in tools already cap
+    themselves below this, so they are untouched."""
+    if len(text) <= 6000:
+        return text
+    return text[:6000] + "\n[truncated: result too large]"
 
 
 def _is_model_error(exc: Exception) -> bool:
@@ -211,10 +237,15 @@ class AIClient:
             if fast:
                 candidates.append((get_client(pname)._client, fast))
         seen = set()
+        cooling = _cooling_snapshot()
         for client_obj, candidate in candidates:
             if candidate in seen:
                 continue
             seen.add(candidate)
+            if candidate in cooling:
+                log.info("Skipping '%s' — cooling down after a failure",
+                         candidate)
+                continue
             try:
                 stream = self._open_stream(candidate, working, tools, mood,
                                            client=client_obj)
@@ -232,6 +263,7 @@ class AIClient:
             except Exception as exc:
                 if _is_model_error(exc):
                     log.warning("Model '%s' failed: %s", candidate, exc)
+                    _cool_down(candidate)
                     continue
                 # Not a model problem — real error, stop trying
                 raise AIError(_friendly_error(exc), detail=str(exc))
@@ -240,7 +272,7 @@ class AIClient:
             raise AIError("No working model found. Try Flash.",
                           detail="All fallback models failed.")
 
-        for _ in range(max_rounds):
+        for rnd in range(max_rounds):
             tool_acc = {}
             content = []
             finish = None
@@ -291,21 +323,54 @@ class AIClient:
                     args = json.loads(t["arguments"] or "{}")
                 except json.JSONDecodeError:
                     args = {}
-                yield ("tool_call", {"name": name, "args": args})
+                yield ("tool_call", {"name": name, "args": args,
+                                     "step": rnd + 1, "steps": max_rounds})
                 try:
                     result = execute_tool(name, args)
                 except Exception as exc:
                     result = f"Tool error: {exc}"
-                yield ("tool_result", {"name": name, "result": str(result)[:300]})
+                out = str(result)
+                yield ("tool_result", {"name": name, "result": out[:300]})
                 working.append({"role": "tool", "tool_call_id": t["id"],
-                                "content": str(result)})
+                                "content": _clip_tool_result(out)})
 
-            # Reopen stream for next round
-            try:
-                stream = self._open_stream(used_model, working, tools, mood,
-                                           client=used_client)
-            except Exception as exc:
-                raise AIError(_friendly_error(exc), detail=str(exc))
+            # Reopen stream for next round — unless the budget is
+            # spent, in which case the final no-tools pass below
+            # replaces it (never open a stream nobody will read).
+            if rnd + 1 < max_rounds:
+                try:
+                    stream = self._open_stream(used_model, working, tools,
+                                               mood, client=used_client)
+                except Exception as exc:
+                    raise AIError(_friendly_error(exc), detail=str(exc))
+
+        # Every round asked for another tool: the budget is spent and
+        # no answer has streamed yet.  One last pass WITHOUT tools so
+        # the user hears what the tools already found, never silence.
+        yield ("status",
+               f"Tool budget reached · {max_rounds} steps — "
+               "answering with what I have")
+        got = False
+        try:
+            final = self._open_stream(used_model, working, None, mood,
+                                      client=used_client)
+            for chunk in final:
+                if not chunk.choices:
+                    continue
+                d = chunk.choices[0].delta
+                piece = getattr(d, "content", None)
+                if piece:
+                    got = True
+                    yield ("content", piece)
+                reasoning = getattr(d, "reasoning_content", None)
+                if reasoning:
+                    yield ("reasoning", reasoning)
+        except Exception as exc:
+            raise AIError(_friendly_error(exc), detail=str(exc))
+        if not got:
+            yield ("content",
+                   "I reached my tool-step budget before finishing "
+                   "that — ask again and I will be more direct.")
 
 
 _clients = {}

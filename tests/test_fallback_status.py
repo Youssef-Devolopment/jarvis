@@ -27,6 +27,13 @@ def _stream_of(*texts):
 
 
 class FallbackStatusTests(unittest.TestCase):
+    def setUp(self):
+        # 1.21.0 cools failed models for 10 minutes; each test here
+        # starts from a pristine rotation.
+        import ai.client as ac
+        ac._cooling.clear()
+        self.addCleanup(ac._cooling.clear)
+
     def _client(self, open_stream):
         import ai.client as ac
         c = ac.AIClient.__new__(ac.AIClient)      # skip key-loading init
