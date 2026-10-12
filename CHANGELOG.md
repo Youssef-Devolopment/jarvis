@@ -4,6 +4,66 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.20.2] — 2026-10-12
+
+Trust-and-polish batch — no new features, only product perception:
+copy tightening, status-chip consistency, and stale-number cleanup
+across the site, README and dashboard.
+
+### Changed
+- **Launch page copy rewrite** — the hero subhead drops from four
+  sentences to two product statements; the honest box no longer
+  repeats the no-key story; the library card tightens from 46 words
+  to 26 (the 18/12 counts stay — specificity is the premium);
+  "Tiered search with fallbacks" becomes plain English; and the
+  closing CTA points at the install steps instead of GitHub, which
+  the nav already carries.
+- **Stale numbers fixed** — the site said 653 tests in two places
+  and the README in two more; ROADMAP still counted 150 API
+  endpoints (real: 117). Skill counts unify on the exact 142.
+- **Dashboard status vocabulary** — the transient chip now reads
+  THINKING (matching the HUD's "JARVIS is thinking…" well), and a
+  DONE chip holds ~1.6s after a reply completes before the pill
+  settles back to the live health verdict; errors skip it, and the
+  muted-speech path routes through the same beat.
+- **Module trust summary** — the installed / active / inactive /
+  failed counts render as colored status chips (the same vocabulary
+  as the rows below), and capability chips cap at three with a +N
+  overflow chip.
+- **First-run card reordered** — the two TRY IT steps come first;
+  the optional API-key step moves to the end with a visible OPTIONAL
+  chip (listing an optional step as "1" undercut the key-optional
+  message).
+- **Safe-mode wording** — the SYSTEM verdict line and the pill
+  tooltip now pair "some features are off" with "core skills still
+  work".
+- **Library import row** — the raw JSON schema dump in the LIBRARY
+  help line becomes one plain sentence.
+
+### Fixed
+- **README dead copy** — the no-key story is told once instead of
+  four times, the eight-line HUD bullet shrinks to three, and the
+  GIF-placeholder comment is replaced by the promo-video link that
+  now exists.
+- **`docs/overlay.png` recaptured** from the real running deck
+  (PrintWindow — the window's own pixels only), replacing the
+  v1.19.1 screenshot.
+
+## [1.20.1] — 2026-10-11
+
+Promo-video asset batch: the 30-second feature tour, built locally
+with ffmpeg from real product captures — no AI generation, no cost.
+
+### Added
+- **`docs/media/jarvis-promo-16x9.mp4`** — the 16:9 cut (30.0s,
+  1920×1080) committed to the repo and served by GitHub Pages at
+  `/media/jarvis-promo-16x9.mp4`; the 9:16 vertical cut was delivered
+  as a local download only, to keep the repository lean.
+
+### Changed
+- **README badges refreshed** (v1.20.1, 665 passing tests) and the
+  promo video linked under the site line.
+
 ## [1.20.0] — 2026-10-11
 
 UI and error-noise cleanup batch, driven by a live HUD screenshot:

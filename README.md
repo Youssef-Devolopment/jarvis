@@ -4,7 +4,7 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.20.1-blue)
+![version](https://img.shields.io/badge/version-v1.20.2-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![tests](https://img.shields.io/badge/tests-665%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
@@ -24,7 +24,7 @@ the web, sets reminders that speak up on their own, and answers
 everyday questions instantly. It sits in your tray, and
 **Alt+Space** summons it over any window.
 
-It works out of the box with no API key (100+ local commands), and
+It works out of the box with no API key (142 local skills), and
 grows into a full AI assistant the moment you add one.
 
 ## What it does for you
@@ -39,8 +39,8 @@ grows into a full AI assistant the moment you add one.
   lost in a chat window.
 - **"Search the web for the Artemis mission."** — real search with
   sources, pages fetched and summarized when you ask.
-- **"What time is it?"** — instant, spoken, no key required. Over
-  100 local skills like this work from the first boot.
+- **"What time is it?"** — instant, spoken; one of 142 local skills
+  that work from the first boot.
 - **Anything else** — the AI chat (DeepSeek or any OpenAI-compatible
   model) picks up what skills don't cover, streaming answers aloud.
 
@@ -73,8 +73,7 @@ Existing files are never touched; already have the repo? Run
 `DEEPSEEK_API_KEY`, SAVE+TEST. The key is verified live against
 your provider (any OpenAI-compatible base URL works), saved to
 `.env` with a backup, and chat unlocks immediately. Skip this if
-you like — skills-only mode already answers 100+ local commands,
-and a banner + a first-run card walk you through the rest.
+you like — everything below works without one.
 
 **Step 3 — launch.**
 
@@ -103,7 +102,7 @@ no install required.
 
 | | Needs | You get |
 |---|---|---|
-| **Core (always on)** | nothing | 100+ local skills: time, apps, timers, reminders, notes, math, clipboard, focus mode |
+| **Core (always on)** | nothing | 142 local skills: time, apps, timers, reminders, notes, math, clipboard, focus mode |
 | **AI chat** | `DEEPSEEK_API_KEY` (or any OpenAI-compatible key) | conversations, reasoning, tool use, anything the skills miss |
 | **Voice input** | `GROQ_API_KEY` + mic | push-to-talk dictation anywhere |
 | **Better web answers** | `BRAVE_API_KEY` or `TAVILY_API_KEY` | higher-tier search results (keyless DDG/Bing fallback works) |
@@ -137,8 +136,8 @@ Details, diagrams and data flow: [ARCHITECTURE.md](ARCHITECTURE.md).
   confirmed, closing apps asks first (until you enable auto mode),
   and a RAM watchdog warns before your machine chokes.
 - **Survives bad days.** A broken skill can't kill the boot, a dead
-  model falls back down a chain, and a missing key lands you in
-  skills-only mode — not a crash screen.
+  model falls back down a chain, and a missing key only narrows what
+  gets answered.
 
 ## What it can do (the full list)
 
@@ -180,13 +179,8 @@ Details, diagrams and data flow: [ARCHITECTURE.md](ARCHITECTURE.md).
   speech (engine pre-warmed at boot), multi-model councils,
   outcome memory, Dream Mode summaries, morning briefing
 - **HUD + dashboard** — glassmorphism UI with mood-reactive accent;
-  `Alt+Space` opens the **HUD glass command deck** — brand-aligned,
-  with a friendly input hint, a cyan listening state, a pulsing
-  "JARVIS is thinking…" reply well while the first token is in
-  flight, a COPY pill that appears only when there is a reply,
-  plain-English errors, and the status pill reading READY /
-  ATTENTION / SAFE MODE from live health; a first boot gives a
-  self-removing guided tour
+  `Alt+Space` opens the command deck anywhere, and the status pill
+  reads READY / ATTENTION / SAFE MODE from live health
 - **Library (one click)** — Settings → LIBRARY: install any of 18
   bundled skill packs (passwords, calculators, ciphers…) or add any
   of 12 MCP servers (memory, filesystem, fetch, git, playwright…)
@@ -253,10 +247,8 @@ a double-fire harmless. Status: `GET /autostart/status`.
 > **▶ Demo:** press **Alt+Space** anywhere — the HUD fades in over the
 > active window, speak or type, `Esc` (or Alt+Space again) dismisses it.
 
-<!-- GIF placeholder: drop a recording at docs/overlay-demo.gif
-     (record ~4s with Win+Alt+R: invoke HUD, ask "what time is it",
-     Esc) and swap the callout above for:
-     **▶ Demo:** ![Alt+Space HUD demo](docs/overlay-demo.gif) -->
+**▶ Watch it:** [the 30-second promo](https://youssef-devolopment.github.io/jarvis/media/jarvis-promo-16x9.mp4)
+— real footage of the HUD, the dashboard and skill packs.
 
 ## For builders
 
@@ -285,7 +277,7 @@ assets/      brand assets: logo banner, icon mark, favicon
              (theme lockups for dark/light in docs/logo-*.svg)
 ```
 
-- `main` builds green: syntax-check every file + **653 unit tests**
+- `main` builds green: syntax-check every file + **665 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -313,7 +305,7 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 653 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 665 tests
 ```
 
 ## Links

@@ -48,7 +48,7 @@ Expected tail:
 
 ```
 ----------------------------------------------------------------------
-Ran 653 tests in ~30s
+Ran 665 tests in ~30s
 OK
 ```
 
@@ -223,7 +223,7 @@ Python 3.10) — same OS family as the product:
 4. `python -m unittest discover -s tests -v` — the whole suite.
 
 "CI green" therefore means: *every file compiles, the UI script
-parses, and all 653 tests pass on a machine that has never seen your
+parses, and all 665 tests pass on a machine that has never seen your
 checkout*. It does **not** mean smoke tests ran — §7 stays manual.
 
 Check the latest run:
@@ -247,7 +247,8 @@ Start JARVIS (`desktop.bat` or `run.py`), then:
 - SYSTEM tab: human check names, Overall row explains its verdict
   in words.
 - Ask a skill command ("tell me the time") → pill cycles
-  PROCESSING → READY, never sticks on SPEAKING (muted or unmuted).
+  THINKING → DONE → READY, never sticks on SPEAKING (muted or
+  unmuted).
 - Over-long command (>4000 chars) → error entry shows the server's
   reason, not "HTTP 400".
 
@@ -346,7 +347,7 @@ API keys, no running server**:
 
 A change is done when **all** of these hold:
 
-1. full suite: `Ran 653 tests … OK` (or the new count);
+1. full suite: `Ran 665 tests … OK` (or the new count);
 2. fresh-copy suite: OK without `.env`;
 3. `check.py`: 11/11;
 4. `node --check static/js/app.js`: clean (if JS changed);
