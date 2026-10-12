@@ -4,6 +4,46 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.21.0] — 2026-10-12
+
+Agent-loop hardening — the bounded tool loop already existed
+(skills first, then the model with its 30 tools and live MCP
+servers, up to 15 rounds); this batch makes it behave like a
+properly run agent: no dead-model taxes, bounded context, and
+never silence.
+
+### Added
+- **Model cooldown rotation** — a provider saying "gone" (campaign
+  ended, 404, retired) now cools that model for ten minutes instead
+  of retrying it on every request; the entry expires on its own, so
+  a revived model rejoins rotation without a restart. This removes
+  the live ~32-second dead-model tax from every reply.
+- **Step progress on tool events** — `tool_call` payloads now carry
+  `step`/`steps`, so consumers can show how deep into the budget the
+  model is.
+- **Guaranteed final answer** — if every round asks for another tool
+  until the 15-step budget runs out, JARVIS makes one last pass with
+  the tools withdrawn and answers from what the tools already found
+  (and a plain fallback sentence if even that yields nothing — the
+  old loop fell off the end with no reply at all).
+
+### Changed
+- **Default fallback chain drops the dead model** — the
+  campaign-ended `qwen3.8-flash:free` leaves the rotation; the chain
+  now starts at Mimo.
+- **Tool results capped at 6,000 characters** before they are fed
+  back into model context — one runaway MCP or terminal result can
+  no longer blow a small free-model window mid-loop. Built-in tools
+  already cap below that (unchanged), and the dashboard keeps its
+  300-character display cap.
+- **Last-round stream reopen skipped** — the loop no longer opens a
+  streaming response on the final budget round just to discard it.
+
+### Fixed
+- **Test isolation for the cooldown table** — `test_fallback_status`
+  clears it in setUp, now that a failed model stays cooled across
+  tests in the same process.
+
 ## [1.20.2] — 2026-10-12
 
 Trust-and-polish batch — no new features, only product perception:

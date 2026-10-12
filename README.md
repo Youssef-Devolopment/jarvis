@@ -4,9 +4,9 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.20.2-blue)
+![version](https://img.shields.io/badge/version-v1.21.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-665%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-672%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 🌐 **Website:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
@@ -118,8 +118,11 @@ JARVIS is a local Flask server with a tray icon, a global hotkey
 and an **Alt+Space** HUD. Your words (voice or text) go through a
 **skill router first** — deterministic Python skills answer
 instantly and offline. Anything unmatched falls through to the LLM,
-which can also call 30 built-in tools. Everything it learns lives
-in a local SQLite database on your machine.
+which can call 30 built-in tools and any running MCP servers in a
+bounded observe-and-repeat loop — up to 15 steps, dead models cooled
+out of the rotation for ten minutes, and a guaranteed final answer
+when the budget runs out. Everything it learns lives in a local
+SQLite database on your machine.
 
 Details, diagrams and data flow: [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -174,6 +177,7 @@ Details, diagrams and data flow: [ARCHITECTURE.md](ARCHITECTURE.md).
   included, summary remembered; async `POST /api/research`
 - **Backup** — *"backup"* zips memory + keys to `logs/backups`
   (last 5 kept); agents that survive dead models via fallback chain
+  and ten-minute cooldowns
 - **System + voice** — volume, brightness, lock, timers, todos,
   reminders, focus lock, Windows dark/light/transparency, Edge/Piper
   speech (engine pre-warmed at boot), multi-model councils,
@@ -277,7 +281,7 @@ assets/      brand assets: logo banner, icon mark, favicon
              (theme lockups for dark/light in docs/logo-*.svg)
 ```
 
-- `main` builds green: syntax-check every file + **665 unit tests**
+- `main` builds green: syntax-check every file + **672 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -305,7 +309,7 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 665 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 672 tests
 ```
 
 ## Links

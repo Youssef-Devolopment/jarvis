@@ -33,7 +33,7 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.19.0** | **Module ecosystem**: `module.json` framework (skill + MCP kinds, declared capabilities/permissions, docs, examples), install from folder/zip with validation and zip-slip guards, active/inactive/failed states with rollback on crash, MODULES tab (state chips, permission chips, DOCS panel, CHECK dry-run), 9 real starter modules, author templates + `MODULES.md`, update-status catalog, 6 new API endpoints |
 | **v1.19.1** | Live-verification micro-fix: `GET /api/modules` no longer hangs behind slow MCP server spawns (one bounded running-status snapshot), boot configures module MCP servers without spawning them (the mcp service starts them right after) |
 
-Stable today: 665 tests (in-tree + fresh-copy, no `.env`), 117 API
+Stable today: 672 tests (in-tree + fresh-copy, no `.env`), 117 API
 endpoints, 142 shipped skills + 9 shipped modules, green CI on
 `windows-latest`, health visible in six layers (preflight / API /
 dashboard / banner / console / log), lifecycle controls for 15
