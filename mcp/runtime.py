@@ -243,6 +243,44 @@ def all_tools() -> list[dict]:
     return out
 
 
+_tools_cache: list = []
+
+
+def tools_snapshot(timeout: float = 1.0) -> list:
+    """A copy of all_tools() that can never hang a request behind a
+    slow server spawn (start_server holds the lock for the whole
+    spawn, up to 45s per server).  Gives up after `timeout` and serves
+    the last-known-good list instead — transient and honest.  Never
+    raises."""
+    global _tools_cache
+    try:
+        if not _lock.acquire(timeout=timeout):
+            log.debug("MCP tools snapshot: lock busy, serving %d cached",
+                      len(_tools_cache))
+            return list(_tools_cache)
+        try:
+            fresh = []
+            for sname, h in _servers.items():
+                if not h:
+                    continue
+                for t in h["tools"]:
+                    fresh.append({
+                        "server": sname,
+                        "name": t["name"],
+                        "description": t["description"],
+                        "input_schema": t["input_schema"],
+                        "full_name": f"mcp__{sname}__{t['name']}",
+                    })
+            _tools_cache = fresh
+            return list(fresh)
+        finally:
+            _lock.release()
+    except Exception as exc:
+        log.debug("MCP tools snapshot failed (%s), serving %d cached",
+                  exc, len(_tools_cache))
+        return list(_tools_cache)
+
+
 def call_tool(server_name: str, tool_name: str, arguments: dict,
               timeout: float = 60.0) -> str:
     """Invoke an MCP tool. Returns a text result."""

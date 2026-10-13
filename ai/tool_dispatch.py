@@ -154,20 +154,47 @@ def execute_tool(name: str, args: dict) -> str:
 
 
 def mcp_schemas() -> list:
-    """Generate OpenAI-style schemas for every MCP tool currently running."""
+    """OpenAI-style schemas for every running MCP tool.  Never raises:
+    one sick server (bad entry, malformed schema, lock held by a spawn,
+    runtime exploding) costs its tools, never the whole AI request.
+    Output is sorted by name so the model sees a deterministic catalog
+    no matter what order servers started in."""
     try:
         from mcp import runtime
+        try:
+            entries = runtime.tools_snapshot()
+        except Exception:
+            return []
     except ImportError:
         return []
     out = []
-    for t in runtime.all_tools():
-        out.append({
-            "type": "function",
-            "function": {
-                "name": t["full_name"],
-                "description": f"[{t['server']}] {t['description']}"[:1000],
-                "parameters": t["input_schema"] or {
-                    "type": "object", "properties": {}},
-            },
-        })
+    for t in entries:
+        try:
+            if not isinstance(t, dict):
+                continue
+            server = t.get("server") or ""
+            name = t.get("name") or ""
+            full = t.get("full_name") or ""
+            if not (isinstance(server, str) and server
+                    and isinstance(name, str) and name
+                    and isinstance(full, str) and full):
+                continue
+            desc = t.get("description") or ""
+            if not isinstance(desc, str):
+                desc = str(desc)
+            params = t.get("input_schema") or {"type": "object",
+                                               "properties": {}}
+            if not isinstance(params, dict):
+                params = {"type": "object", "properties": {}}
+            out.append({
+                "type": "function",
+                "function": {
+                    "name": full,
+                    "description": f"[{server}] {desc}"[:1000],
+                    "parameters": params,
+                },
+            })
+        except Exception:
+            continue
+    out.sort(key=lambda s: s["function"]["name"])
     return out
