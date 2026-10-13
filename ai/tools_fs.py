@@ -1,7 +1,9 @@
 """Filesystem tools for JARVIS."""
 from __future__ import annotations
 import fnmatch
+import json
 import shutil
+import subprocess
 import time
 from pathlib import Path
 from logger import get_logger
@@ -75,6 +77,40 @@ def _safe_path(p: str):
     return None
 
 
+def _verify_after_edit(p: Path, msg: str) -> str:
+    """Mandatory self-check after an edit — never claim a write that
+    does not parse.  Cheap checks only: compiles/parses the file,
+    never runs it.  Non-code files return the message untouched."""
+    suffix = p.suffix.lower()
+    if suffix not in (".py", ".json", ".js", ".mjs", ".cjs"):
+        return msg
+    try:
+        if suffix == ".py":
+            src = p.read_text(encoding="utf-8", errors="replace")
+            compile(src, str(p), "exec")          # parses, never runs
+            return msg + " · verify: ok (syntax)"
+        if suffix == ".json":
+            json.loads(p.read_text(encoding="utf-8", errors="replace"))
+            return msg + " · verify: ok (json)"
+        try:
+            r = subprocess.run(["node", "--check", str(p)],
+                               capture_output=True, text=True, timeout=10)
+        except FileNotFoundError:
+            return msg + " · verify skipped (node not installed)"
+        if r.returncode == 0:
+            return msg + " · verify: ok (syntax)"
+        err = [ln for ln in (r.stderr or r.stdout or "").splitlines()
+               if ln.strip()]
+        return msg + " · VERIFY FAILED: " + (err[-1] if err else "syntax error")
+    except subprocess.TimeoutExpired:
+        return msg + " · verify skipped (timed out)"
+    except SyntaxError as exc:
+        loc = f", line {exc.lineno}" if exc.lineno else ""
+        return msg + f" · VERIFY FAILED: {exc.msg} ({p.name}{loc})"
+    except Exception as exc:
+        return msg + f" · VERIFY FAILED: {exc}"
+
+
 def fs_read(path: str, max_bytes: int = _MAX_READ_BYTES) -> str:
     p = _safe_path(path)
     if not p:
@@ -102,7 +138,8 @@ def fs_write(path: str, content: str) -> str:
             _backup(p)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content, encoding="utf-8")
-        return f"[ok] wrote {len(content)} chars to {p.name}"
+        return _verify_after_edit(
+            p, f"[ok] wrote {len(content)} chars to {p.name}")
     except Exception as exc:
         return f"[error] {exc}"
 
@@ -115,9 +152,48 @@ def fs_append(path: str, content: str) -> str:
         p.parent.mkdir(parents=True, exist_ok=True)
         with p.open("a", encoding="utf-8") as f:
             f.write(content)
-        return f"[ok] appended {len(content)} chars to {p.name}"
+        return _verify_after_edit(
+            p, f"[ok] appended {len(content)} chars to {p.name}")
     except Exception as exc:
         return f"[error] {exc}"
+
+
+def fs_replace(path: str, old: str, new: str,
+               replace_all: bool = False) -> str:
+    """Surgical exact-match edit — the agent's normal way to change a
+    file without rewriting the whole thing.  Backs up first; refuses
+    ambiguous matches unless replace_all is set; verifies like writes."""
+    p = _safe_path(path)
+    if not p:
+        return f"[blocked] {path} outside allowed paths."
+    if not p.exists():
+        return f"[not found] {path}"
+    if p.is_dir():
+        return f"[is a directory] {path}"
+    if not old:
+        return "[error] 'old' must not be empty."
+    try:
+        text = p.read_text(encoding="utf-8", errors="replace")
+    except Exception as exc:
+        return f"[error] {exc}"
+    hits = text.count(old)
+    if hits == 0:
+        return f"[not found] the 'old' text is not present in {p.name}"
+    if hits > 1 and not replace_all:
+        return (f"[ambiguous] {hits} occurrences of the 'old' text in "
+                f"{p.name}; add surrounding context or pass "
+                f"replace_all=true.")
+    try:
+        _backup(p)
+        if replace_all:
+            out, count = text.replace(old, new), hits
+        else:
+            out, count = text.replace(old, new, 1), 1
+        p.write_text(out, encoding="utf-8")
+    except Exception as exc:
+        return f"[error] {exc}"
+    return _verify_after_edit(
+        p, f"[ok] replaced {count} occurrence(s) in {p.name}")
 
 
 def fs_list(path: str = ".") -> str:

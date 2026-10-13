@@ -69,6 +69,13 @@ def execute_tool(name: str, args: dict) -> str:
             return tools_fs.fs_delete(args.get("path", ""))
         if name == "fs_mkdir":
             return tools_fs.fs_mkdir(args.get("path", ""))
+        if name == "fs_replace":
+            r = tools_fs.fs_replace(args.get("path", ""),
+                                    args.get("old", ""),
+                                    args.get("new", ""),
+                                    bool(args.get("replace_all", False)))
+            ctx_tracker.log_event("file", f"edited {args.get('path','')}")
+            return r
         if name == "term_run":
             _cmd = args.get("command", "")[:80]
             ctx_tracker.log_event("action", f"ran: {_cmd}")

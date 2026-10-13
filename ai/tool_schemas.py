@@ -94,6 +94,16 @@ TOOL_SCHEMAS = [
                        "properties": {"path": {"type": "string"}},
                        "required": ["path"]}}},
     {"type": "function", "function": {
+        "name": "fs_replace",
+        "description": "Edit a file surgically: replace exact text "
+                       "(backs up first; add context if ambiguous).",
+        "parameters": {"type": "object",
+                       "properties": {"path": {"type": "string"},
+                                      "old": {"type": "string"},
+                                      "new": {"type": "string"},
+                                      "replace_all": {"type": "boolean"}},
+                       "required": ["path", "old", "new"]}}},
+    {"type": "function", "function": {
         "name": "term_run",
         "description": "Run a safe shell command (git, python, pip, dir, etc.).",
         "parameters": {"type": "object",
