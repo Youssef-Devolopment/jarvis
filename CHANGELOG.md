@@ -4,6 +4,34 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.25.0] — 2026-10-13
+
+Trace + flags, zero new features — the first consolidation batch
+under the agent-OS principles: every action auditable, every rollout
+gated, one safe demo flow as evidence.
+
+### Added
+- **Shared agent audit trail** — new `system/audit.py`: chat-loop
+  tool calls, consent approvals/denials and OS-mission steps land in
+  one append-only file in one line format. `execute_tool` is the
+  single choke point that writes the execution lines, so every
+  caller (loop, missions, verdicts, demos) is trailed uniformly;
+  the OS mission logger and the loop's old ad-hoc audit lines now
+  delegate to it instead of each keeping their own.
+- **GET /api/audit** (118th endpoint) — newest-first tail of the
+  trail (capped at 200 lines), so the dashboard or any client can
+  show what ran, what was denied, and why. Never raises — worst
+  case an empty list.
+- **`subagents_enabled` pref flag** (default on, preserving shipped
+  behavior with an opt-out) — the parallel pool now rolls out
+  staged instead of firing unconditionally.
+
+### Changed
+- **Demo flow as a test, not a feature** — the principles' single
+  safe flow (read → edit → verify → report) runs end-to-end through
+  the real tools in `test_audit_trail.py`, with the audit lines as
+  its evidence. No new skill, no new surface.
+
 ## [1.24.0] — 2026-10-13
 
 Sub-agents + consent — JARVIS now acts like a supervised agent.
