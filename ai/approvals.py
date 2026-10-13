@@ -126,16 +126,36 @@ def handle_approval_text(text: str):
                     f"{ids}.")
         return f"Nothing is waiting under #{pid} — no open requests."
     tool = entry["tool"]
+    try:
+        from system import audit as _trail
+    except Exception:
+        _trail = None
     if verb == "deny":
         log.info("Consent denied: %s #%d", tool, pid)
+        if _trail is not None:
+            try:
+                _trail.record("consent_deny", tool, True, f"#{pid}")
+            except Exception:
+                pass
         return (f"Denied — {tool} was not run. Tell me what to do "
                 f"instead, sir.")
     try:
         from ai.tools import execute_tool
         result = execute_tool(tool, entry["args"])
     except Exception as exc:
+        if _trail is not None:
+            try:
+                _trail.record("consent_run", tool, False,
+                              f"#{pid} {exc}"[:100])
+            except Exception:
+                pass
         return f"Approved, but running {tool} failed: {exc}"
     log.info("Consent approved: %s #%d", tool, pid)
+    if _trail is not None:
+        try:
+            _trail.record("consent_run", tool, True, f"#{pid}")
+        except Exception:
+            pass
     out = str(result)
     if len(out) > _REPLY_CAP:
         out = out[:_REPLY_CAP] + "\n[…trimmed]"

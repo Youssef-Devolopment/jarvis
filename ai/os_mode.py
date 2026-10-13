@@ -9,14 +9,10 @@ from __future__ import annotations
 import json
 import threading
 import time
-from datetime import datetime
 from pathlib import Path
 from logger import get_logger
 
 log = get_logger(__name__)
-
-_ROOT = Path(__file__).resolve().parent.parent
-_AUDIT = _ROOT / "logs" / "code_mode_audit.log"
 _MAX_ROUNDS = 10
 _NAG_GAP = 300  # min seconds between unprompted speeches
 
@@ -36,11 +32,11 @@ _lock = threading.Lock()
 
 
 def _audit(action: str, target: str, ok: bool, extra: str = "") -> None:
+    # Single shared trail (system/audit.py): OS-mission steps sit in
+    # the same file as chat-loop tool calls and consent verdicts.
     try:
-        ts = datetime.now().isoformat(timespec="seconds")
-        with open(_AUDIT, "a", encoding="utf-8") as f:
-            f.write(f"[{ts}] {'OK' if ok else 'FAIL':4} {action:12} "
-                    f"{target} {extra}\n")
+        from system import audit as _audit_trail
+        _audit_trail.record(action, target, ok=ok, extra=extra)
     except Exception:
         pass
 
@@ -152,11 +148,10 @@ def gated_execute(name: str, args: dict, dry_run: bool = False) -> str:
         if dry_run:
             _audit("propose", f"{name} {str(args)[:80]}", True, "dry-run")
             return f"[dry-run] {name} not executed"
-        out = execute_tool(name, args or {})
-        _audit(name, str(args)[:80], True, str(out)[:60])
-        return out
+        # The run itself is audit-trailed inside execute_tool
+        # (single choke point); proposals and denials stay here.
+        return execute_tool(name, args or {})
     except Exception as exc:
-        _audit(name, str(args)[:80], False, str(exc)[:80])
         return f"Tool error: {exc}"
 
 

@@ -337,8 +337,16 @@ class AIClient:
                     # next turn via ai.approvals.handle_approval_text.
                     pid = _appr.propose(name, args)
                     log.info("Consent parked: %s #%d", name, pid)
+                    try:
+                        from system import audit as _trail
+                        _trail.record("consent_park", name, True,
+                                      f"#{pid}")
+                    except Exception:
+                        pass
                     result = _appr.awaiting_text(name, pid)
                 else:
+                    # Executed calls are audit-trailed inside
+                    # execute_tool itself (single choke point).
                     try:
                         result = execute_tool(name, args)
                     except Exception as exc:

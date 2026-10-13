@@ -1403,14 +1403,22 @@ def command():
     schemas = filtered_schemas(TOOL_SCHEMAS) + mcp_schemas()
 
     # Sub-agents: a multi-part question fans out to the parallel pool
-    # first (plan -> run -> merge). A failed pool never surfaces —
-    # the normal single loop below answers instead.
+    # first (plan -> run -> merge). Gated by the subagents_enabled
+    # pref (staged rollout flag — off skips the pool entirely). A
+    # failed pool never surfaces — the normal single loop below
+    # answers instead.
     want_agents = False
     if not is_conversational(text):
         try:
-            want_agents = bool(client.should_use_agents(text))
+            from memory import get_pref
+            _agents_on = bool(get_pref("subagents_enabled", True))
         except Exception:
-            want_agents = False
+            _agents_on = True
+        if _agents_on:
+            try:
+                want_agents = bool(client.should_use_agents(text))
+            except Exception:
+                want_agents = False
 
     def generate():
         collected = []
@@ -1467,6 +1475,21 @@ def command():
     return Response(generate(), mimetype="text/event-stream", headers={
         "Cache-Control": "no-cache", "X-Accel-Buffering": "no",
         "Connection": "keep-alive"})
+
+
+# ---------- AUDIT ----------
+@bp.get("/audit")
+def audit_tail():
+    """Newest-first agent audit lines: tool calls, consent verdicts,
+    mission steps. Tail only, never the whole file. Never raises —
+    worst case an empty list."""
+    from system import audit as _trail
+    try:
+        limit = int(request.args.get("limit") or 50)
+    except (TypeError, ValueError):
+        limit = 50
+    entries = _trail.read_tail(limit)
+    return jsonify({"entries": entries, "count": len(entries)})
 
 
 # ---------- CONTEXT ----------

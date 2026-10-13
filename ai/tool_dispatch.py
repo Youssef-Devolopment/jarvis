@@ -16,7 +16,34 @@ from memory import outcomes
 log = get_logger(__name__)
 
 
+_AUDIT_FAIL_PREFIXES = (
+    "Tool error", "[error]", "[blocked]", "[refused]",
+    "Unknown tool", "Invalid MCP tool name", "MCP server '",
+    "Tool timeout", "Denied by user",
+)
+
+
+def _audit_ok(result: str) -> bool:
+    return not str(result).startswith(_AUDIT_FAIL_PREFIXES)
+
+
 def execute_tool(name: str, args: dict) -> str:
+    """Single choke point for every agent tool call (chat loop, OS
+    missions, consent verdicts, demos): runs the tool and lands one
+    line in the shared audit trail. Same signature, never raises."""
+    try:
+        out = _execute_tool(name, args)
+    except Exception as exc:  # backstop; the body guards itself too
+        out = f"Tool error: {exc}"
+    try:
+        from system import audit as _trail
+        _trail.record(str(name), str(args or {})[:80], _audit_ok(out))
+    except Exception:
+        pass
+    return out
+
+
+def _execute_tool(name: str, args: dict) -> str:
     try:
         _brief = str(args)[:150] if args else ""
         ctx_tracker.log_event("action", f"{name} {_brief}")
