@@ -1109,7 +1109,7 @@ function loadTab(name){
     market:'/api/market',
     library:'/api/library',
     modules:'/api/modules',
-    general:'/api/prefs',system:'/api/health',about:'/api/info',council:'/api/council/levels',
+    general:'/api/prefs',system:'/api/health',audit:'/api/audit?limit=50',about:'/api/info',council:'/api/council/levels',
     capture:'/api/contacts',workspace:'/api/layouts',
     clipboard:'/api/clipboard/recent',dream:'/api/dream/status'};
   fetch(endpoints[name]||'/api/info')
@@ -1194,6 +1194,21 @@ function renderTab(name,data){
       return '<div class="set-row"><div class="label">'+esc(t.name||t)+
         '<small>'+esc(t.description||'')+'</small></div></div>';
     }).join('')+'</div>';
+  }
+  if(name==='audit'){
+    var entries=data.entries||[];
+    var html='<div style="margin:4px 0 8px;color:var(--dim);font-size:9px;letter-spacing:2px">AUDIT TRAIL ('+entries.length+')</div><div class="set-list" style="margin-bottom:12px">';
+    html+='<div class="set-row"><div class="label">Newest first<small>tool calls, consent verdicts, missions</small></div>'+
+      '<div class="actions"><button class="dbtn" data-action="audit-refresh">REFRESH</button></div></div>';
+    if(!entries.length)html+='<div class="set-row"><div class="label">No entries yet<small>Run something and come back</small></div></div>';
+    html+=entries.map(function(line){
+      var m=/^\[(.*?)\]\s+(OK|FAIL)\s+(\S+)\s*([\s\S]*)$/.exec(String(line||''));
+      var st=m?(m[2]==='OK'?'ok':'degraded'):'unknown';
+      var act=m?m[3]:'raw';
+      var rest=m?m[1]+(m[4].trim()?' · '+m[4].trim():''):String(line||'');
+      return '<div class="set-row" title="'+esc(String(line||''))+'"><div class="label"><span class="schip schip--'+st+'">'+(m?m[2]:'?')+'</span> '+esc(act)+'<small>'+esc(rest)+'</small></div></div>';
+    }).join('');
+    return html+'</div>';
   }
   if(name==='market'){
     var html='';
@@ -2250,6 +2265,9 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='health-refresh'){
       loadTab('system');
+    }
+    if(target.getAttribute&&target.getAttribute('data-action')==='audit-refresh'){
+      loadTab('audit');
     }
     if(target.getAttribute&&(target.getAttribute('data-action')==='svc-stop'||target.getAttribute('data-action')==='svc-restart')){
       var sname=target.getAttribute('data-svc');
