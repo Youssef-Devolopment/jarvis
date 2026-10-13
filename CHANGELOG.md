@@ -4,6 +4,38 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.24.0] — 2026-10-13
+
+Sub-agents + consent — JARVIS now acts like a supervised agent.
+Multi-part questions fan out to the parallel pool that sat dormant
+and tested since the agent work began; state-changing tools stop
+running blind and ask first.
+
+### Added
+- **Sub-agent fan-out in the live route** — a question that misses
+  every skill and trips the multi-part gate (`compare`, `research`,
+  `pros and cons`…) runs plan → parallel sub-tasks → merge, with
+  status events while the pool works. A failed pool never surfaces:
+  the normal single loop answers instead, so the worst case is a
+  slower reply, never an error.
+- **Allow/confirm/deny permission layer** — new `ai/approvals.py`:
+  read-only tools run free; file writes, deletes, shell, window
+  control and all third-party MCP side effects park as numbered
+  requests (`[awaiting approval #3]`) and the model asks in plain
+  words. `allow 3` runs the parked call immediately and its result
+  comes back as the reply; `deny 3` refuses without running.
+  Requests expire after 10 minutes, the queue caps at 20, long
+  results trim for speech, and unknown numbers answer honestly.
+- **`tool_approval` pref** (`ask` by default, `auto` runs
+  everything) — flips the whole layer without a restart.
+
+### Fixed
+- **Two real bugs the new tests caught**: the agents branch
+  returned early past the reply-recording `finally` (history,
+  speech and memory extraction silently skipped — now the branch
+  feeds the same `collected` path), and it skipped the `[DONE]`
+  terminator the HUD waits for.
+
 ## [1.23.0] — 2026-10-13
 
 MCP tools safe to offer — the wiring existed (the route appends live
