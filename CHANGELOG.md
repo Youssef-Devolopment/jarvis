@@ -4,6 +4,30 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.22.0] — 2026-10-13
+
+Workspace tools + mandatory self-verification — JARVIS edits files
+like a careful coding agent: surgically, and never claiming a write
+it did not check. The loop's 30 tools become 31.
+
+### Added
+- **`fs_replace` tool** — exact-match surgical editing: replace one
+  text block without rewriting the whole file. Backs up first like
+  every other mutation tool; zero matches report `[not found]`; two
+  or more matches refuse as `[ambiguous]` unless `replace_all` is
+  set, so a sloppy match can never silently rewrite the wrong
+  places. Approval-gated in OS mode like `fs_write` (never runs free
+  in the autonomous loop).
+- **Verify-after-every-edit** — `fs_write`, `fs_append` and
+  `fs_replace` now append a verify verdict for code files: Python is
+  compiled in-process (parses, never runs), JSON is parsed,
+  JavaScript goes through `node --check`. A broken edit reports
+  `VERIFY FAILED` with the location loudly — so the model sees its
+  own breakage in the tool result and fixes it in the next loop
+  round instead of announcing success. Plain-text files stay quiet;
+  a missing or timed-out `node` degrades to "verify skipped", never
+  a false failure.
+
 ## [1.21.0] — 2026-10-12
 
 Agent-loop hardening — the bounded tool loop already existed
