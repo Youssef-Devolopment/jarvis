@@ -189,6 +189,47 @@ logs "just for this one bug".
 
 ---
 
+## 9. Agent operating system, not a chat app with features
+
+**Decision.** All agent work obeys ten principles: (1) **one loop** —
+a single model → tool → observe → model cycle that skills, MCP
+tools, workspace tools and subagents all plug into, no ad-hoc flows
+bypassing it; (2) **small typed tool surface** — strict
+schema-driven tools with explicit input/output, permissions,
+timeouts and validation; (3) **verification before completion** —
+checks after each meaningful action, self-correct and retry, never
+silent success; (4) **permission boundaries** — reads run free,
+writes/shell/MCP/destructive actions gate on allow / confirm /
+deny, allowlists and sandboxing by default; (5) **structured
+results** — compact tool outputs, truncation with a visible warning,
+never raw log/stack dumps into model context; (6) **no fake
+breadth** — fewer real behaviors beat many half-working stubs,
+everything shipped is tested and real; (7) **backward
+compatibility** — additive, non-breaking changes, stable public
+contracts (SSE keys, `stream()` signature, endpoints, prefs);
+(8) **feature flags and staged rollout** — new behavior behind a
+flag, one safe demo flow first (read → edit → verify → report),
+expand only on evidence; (9) **traceable actions** — every tool
+call, permission decision and result visible and auditable;
+(10) **agent-like, not chatty** — act through tools and verify,
+don't narrate.
+
+**Why.** Feature count is not the product; a *reliable operator*
+is. Each principle exists because the opposite already bit us:
+bypass flows hid the z-order bug from tests, an uncapped tool
+result can blow a context window, an ungated write is one
+hallucination from data loss, and an untested breadth claim (an
+auto-drafted skill announcing read-only mode while write tools
+exist) degrades trust faster than any missing feature.
+
+**What it costs.** Consolidation work instead of new features:
+parallel permission models must merge, bypass loops must converge,
+every rollout needs a flag and a demo, and "it works" claims need
+log evidence. Slower cadence, higher trust. Known gaps live in
+`.agent-state.md`, not in marketing copy.
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either
