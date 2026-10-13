@@ -4,6 +4,15 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.27.0] — 2026-10-14
+
+Audit panel — the trail becomes user-visible where users look.
+New AUDIT settings tab: newest-first trail rows with OK/FAIL status
+chips parsed from the shared log, one REFRESH reload. No new
+endpoints (reads the existing `/api/audit` tail), no new CSS (reuses
+set-list/set-row/schip/dbtn), every row escaped. Shipped with eight
+surface tests and a Playwright smoke that clicks the real tab.
+
 ## [1.26.1] — 2026-10-13
 
 README gallery batch: the README now shows the product instead of
