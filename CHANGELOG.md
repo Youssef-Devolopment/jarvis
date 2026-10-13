@@ -4,6 +4,46 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.26.0] — 2026-10-13
+
+Disciplined Agent OS consolidation — no new product surface. The
+organs built across v1.21–v1.25 now obey one operating model
+(`MANUS.md` added, `DECISIONS.md` entry 10).
+
+### Added
+- **MANUS.md** — the operator manual: loop architecture, tool
+  schema format with the `workspace.*` name mapping (aliases,
+  never renames), permission model, subagent bounds, verification
+  workflow, audit trail, feature-flag table, safe extension
+  guide, troubleshooting, security notes.
+- **Unified permission table** (`ai/permissions.py`) — one tier +
+  capability vocabulary (`fs:read/write/delete`, `shell:exec`,
+  `shell:exec:destructive`, `mcp:invoke`, `network:fetch/post`)
+  driving both chat consent and mission gating; the legacy
+  AUTO/CONFIRM sets are frozen views. Destructive shell text parks
+  even in `auto` mode.
+- **Choke-point hardening** — `execute_tool` validates args against
+  `TOOL_SCHEMAS` (required + types, integers/booleans coerced from
+  strings) and redacts secrets before anything model-bound.
+- **Settings toggles** — Sub-agents and Tool approval in GENERAL;
+  consent replies render distinctly (amber, dashed rail).
+
+### Changed
+- **Subagents default off** (`subagents_enabled: false`) with max 2
+  workers, truncated merge evidence, cancelled stragglers, and
+  spawn/complete audit events.
+- **Phantom tools deleted** — `web_search` and `read_current_page`
+  were user-toggleable but had no schema and no implementation;
+  the toggle list is now covered by a test that fails on the next
+  phantom. Unknown tool names run free (the closed dispatcher
+  cannot execute them; the model self-corrects).
+
+### Fixed
+- Three test-caught issues: stacked duplicate return in the new
+  tier function, mention-matching in destructive patterns (now
+  per-segment command matching), and a lazy-SSE lesson re-applied
+  to the new smoke test.
+
 ## [1.25.0] — 2026-10-13
 
 Trace + flags, zero new features — the first consolidation batch

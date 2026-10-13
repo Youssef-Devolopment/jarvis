@@ -4,9 +4,9 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.25.0-blue)
+![version](https://img.shields.io/badge/version-v1.26.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-745%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-763%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 🌐 **Website:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
@@ -283,7 +283,7 @@ assets/      brand assets: logo banner, icon mark, favicon
              (theme lockups for dark/light in docs/logo-*.svg)
 ```
 
-- `main` builds green: syntax-check every file + **745 unit tests**
+- `main` builds green: syntax-check every file + **763 unit tests**
   on Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -294,8 +294,9 @@ assets/      brand assets: logo banner, icon mark, favicon
   `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
   `ARCHITECTURE.md`, `CHANGELOG.md`, `TESTING.md` (how the repo is
   verified), `DECISIONS.md` (why the architecture is shaped this
-  way), `ROADMAP.md` (30/90-day direction), hot-reloadable `plugins/`
-  with a validated template
+  way), `ROADMAP.md` (30/90-day direction), `MANUS.md` (agent-OS
+  operator manual: loop, tools, permissions, verification, audit),
+  hot-reloadable `plugins/` with a validated template
 - AI-continuable: `AGENTS.md` holds the full developer loop
   (layout, commands, constraints, verification) so any coding
   agent can pick up exactly here
@@ -311,7 +312,7 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 745 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 763 tests
 ```
 
 ## Links

@@ -230,6 +230,36 @@ log evidence. Slower cadence, higher trust. Known gaps live in
 
 ---
 
+## 10. Disciplined Agent OS (v1.26.0 consolidation)
+
+**Decision.** The agent organs built across v1.21–v1.25 (loop,
+verify-after-edit, consent, MCP hardening, subagents, audit) are
+consolidated under one operating model instead of extended: a single
+permission table (`ai/permissions.py`) with a capability vocabulary
+drives both chat consent and mission gating; `execute_tool` is the
+single audited choke point; subagents ship **off by default** behind
+`subagents_enabled`; tool names are frozen (operator names like
+`workspace.edit_file` are documented aliases, never renames);
+phantom tools (`web_search`, `read_current_page` toggles for tools
+that never existed) are deleted, not implemented; unknown tool names
+run free because the closed dispatcher cannot execute them. The
+operator manual is `MANUS.md`.
+
+**Why.** Each consolidation exists because the alternative already
+bit us: overlapping CONFIRM/AUTO sets answered the same question
+two ways; per-caller audit lines meant some paths were trailed and
+some weren't; an unflagged pool burned LLM calls unconditionally;
+toggle entries for nonexistent tools were fake breadth served to
+the UI. One table, one trail, one flag each.
+
+**What it costs.** Two deliberate behavior changes: subagents no
+longer fire unless enabled in Settings → GENERAL, and destructive
+shell text parks even in `auto` mode. Both are the spec, not bugs.
+The mission-context `mcp__` carve-out remains the single documented
+exception (supervised context + kill switch).
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either
