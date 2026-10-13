@@ -44,6 +44,7 @@ _DEFAULTS = {
     "sentinel_folders": [],
     "autonomy_enabled": False,
     "autonomy_confirm_timeout": 120,
+    "tool_approval": "ask",
     "code_mode_enabled": False,
     "code_mode_allowed": [],
     "desktop_control_enabled": True,

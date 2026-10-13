@@ -272,6 +272,12 @@ class AIClient:
             raise AIError("No working model found. Try Flash.",
                           detail="All fallback models failed.")
 
+        try:
+            from ai import approvals as _appr
+            _gate = _appr.gate_active()
+        except Exception:
+            _appr, _gate = None, False
+
         for rnd in range(max_rounds):
             tool_acc = {}
             content = []
@@ -325,10 +331,18 @@ class AIClient:
                     args = {}
                 yield ("tool_call", {"name": name, "args": args,
                                      "step": rnd + 1, "steps": max_rounds})
-                try:
-                    result = execute_tool(name, args)
-                except Exception as exc:
-                    result = f"Tool error: {exc}"
+                if _gate and _appr.needs_approval(name):
+                    # Consent tier: park it, do NOT run it. The model
+                    # asks the user; "allow N"/"deny N" resolves it
+                    # next turn via ai.approvals.handle_approval_text.
+                    pid = _appr.propose(name, args)
+                    log.info("Consent parked: %s #%d", name, pid)
+                    result = _appr.awaiting_text(name, pid)
+                else:
+                    try:
+                        result = execute_tool(name, args)
+                    except Exception as exc:
+                        result = f"Tool error: {exc}"
                 out = str(result)
                 yield ("tool_result", {"name": name, "result": out[:300]})
                 working.append({"role": "tool", "tool_call_id": t["id"],

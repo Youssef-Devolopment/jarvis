@@ -1318,6 +1318,29 @@ def command():
             "Cache-Control": "no-cache", "X-Accel-Buffering": "no",
             "Connection": "keep-alive"})
 
+    # Tool-consent verdicts ("allow 3" / "deny 3") resolve a parked
+    # agent-loop request before anything else can claim the turn.
+    if not is_conversational(text):
+        try:
+            from ai import approvals as _appr
+            _decided = _appr.handle_approval_text(text)
+        except Exception:
+            _decided = None
+        if _decided:
+            def _ca():
+                yield f"data: {json.dumps({'delta': _decided, 'source': 'consent'})}\n\n"
+                yield "data: [DONE]\n\n"
+            try:
+                storeA = get_store()
+                storeA.messages_for(sid, text)
+                storeA.record_reply(sid, _decided)
+            except Exception:
+                pass
+            _speak_quiet(_decided)
+            return Response(_ca(), mimetype="text/event-stream", headers={
+                "Cache-Control": "no-cache", "X-Accel-Buffering": "no",
+                "Connection": "keep-alive"})
+
     # Auto-generate hook: approve/reject commands first, then draft on miss.
     if not is_conversational(text):
         try:
@@ -1379,24 +1402,54 @@ def command():
     from ai.tools import mcp_schemas
     schemas = filtered_schemas(TOOL_SCHEMAS) + mcp_schemas()
 
+    # Sub-agents: a multi-part question fans out to the parallel pool
+    # first (plan -> run -> merge). A failed pool never surfaces —
+    # the normal single loop below answers instead.
+    want_agents = False
+    if not is_conversational(text):
+        try:
+            want_agents = bool(client.should_use_agents(text))
+        except Exception:
+            want_agents = False
+
     def generate():
         collected = []
         yield f"data: {json.dumps({'route': route})}\n\n"
         try:
-            for kind, payload in client.stream(messages, tools=schemas):
-                if kind == "content":
-                    collected.append(payload)
-                    yield f"data: {json.dumps({'delta': payload, 'source': 'llm'})}\n\n"
-                elif kind == "reasoning":
-                    yield f"data: {json.dumps({'reasoning': payload})}\n\n"
-                elif kind == "tool_call":
-                    yield f"data: {json.dumps({'tool_call': payload})}\n\n"
-                elif kind == "tool_result":
-                    yield f"data: {json.dumps({'tool_result': payload})}\n\n"
-                elif kind == "status":
-                    # informational only — never collected, stored,
-                    # spoken or rendered into the reply body
-                    yield f"data: {json.dumps({'status': payload})}\n\n"
+            if want_agents:
+                yield f"data: {json.dumps({'status': 'Consulting sub-agents…'})}\n\n"
+                try:
+                    from ai import agents as _agents
+                    _ares = _agents.run(text)
+                except Exception as exc:
+                    log.warning("Sub-agents failed: %s", exc)
+                    _ares = {"ok": False}
+                _aanswer = (_ares.get("answer") or "").strip() \
+                    if _ares.get("ok") else ""
+                if _aanswer:
+                    if _ares.get("mode") == "parallel":
+                        _astat = (f"{_ares.get('ok_tasks', 0)}/"
+                                  f"{_ares.get('tasks', 0)} sub-tasks answered")
+                        yield f"data: {json.dumps({'status': _astat})}\n\n"
+                    collected.append(_aanswer)
+                    yield f"data: {json.dumps({'delta': _aanswer, 'source': 'llm'})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'status': 'Sub-agents came up empty — answering directly'})}\n\n"
+            if not collected:
+                for kind, payload in client.stream(messages, tools=schemas):
+                    if kind == "content":
+                        collected.append(payload)
+                        yield f"data: {json.dumps({'delta': payload, 'source': 'llm'})}\n\n"
+                    elif kind == "reasoning":
+                        yield f"data: {json.dumps({'reasoning': payload})}\n\n"
+                    elif kind == "tool_call":
+                        yield f"data: {json.dumps({'tool_call': payload})}\n\n"
+                    elif kind == "tool_result":
+                        yield f"data: {json.dumps({'tool_result': payload})}\n\n"
+                    elif kind == "status":
+                        # informational only — never collected, stored,
+                        # spoken or rendered into the reply body
+                        yield f"data: {json.dumps({'status': payload})}\n\n"
         except AIError as exc:
             yield f"data: {json.dumps({'error': exc.public_message, 'detail': exc.detail})}\n\n"
         finally:
