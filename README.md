@@ -4,7 +4,7 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.26.0-blue)
+![version](https://img.shields.io/badge/version-v1.26.1-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![tests](https://img.shields.io/badge/tests-763%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
@@ -14,8 +14,14 @@
 always tracking the latest release.
 
 **Promo video (16:9):**
-[watch the 30-second feature tour](https://youssef-devolopment.github.io/jarvis/media/jarvis-promo-16x9.mp4)
-— real product footage, served straight from this repo.
+[![watch the 30-second feature tour](docs/media/promo-poster.jpg)](https://youssef-devolopment.github.io/jarvis/media/jarvis-promo-16x9.mp4)
+— real product footage, served straight from this repo. Click to watch.
+
+## See it in action
+
+| Dashboard | HUD overlay (Alt+Space) |
+|---|---|
+| ![JARVIS dashboard with status pill, model cards and activity log](docs/dashboard.png) | ![JARVIS HUD overlay deck](docs/overlay.png) |
 
 JARVIS is a voice-first assistant that lives on your Windows machine.
 Say or type what you want in plain English — it opens and closes

@@ -4,6 +4,15 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.26.1] — 2026-10-13
+
+README gallery batch: the README now shows the product instead of
+only describing it — a "See it in action" section with the live
+dashboard and the HUD overlay side by side, and the promo-video
+link becomes a clickable poster frame. All captures are real (no
+mockups): the dashboard shot is the running v1.26.0 deck, the
+poster is a frame of the committed video.
+
 ## [1.26.0] — 2026-10-13
 
 Disciplined Agent OS consolidation — no new product surface. The
