@@ -45,7 +45,7 @@ _DEFAULTS = {
     "autonomy_enabled": False,
     "autonomy_confirm_timeout": 120,
     "tool_approval": "ask",
-    "subagents_enabled": True,
+    "subagents_enabled": False,
     "code_mode_enabled": False,
     "code_mode_allowed": [],
     "desktop_control_enabled": True,

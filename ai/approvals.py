@@ -20,12 +20,18 @@ from logger import get_logger
 log = get_logger(__name__)
 
 # State-changing tools: parked until the user says allow.
-CONFIRM_TOOLS = {
-    "fs_write", "fs_append", "fs_replace", "fs_delete", "fs_mkdir",
-    "term_run", "term_python",
-    "win_click", "win_type", "focus_app", "launch_app",
-    "bridge_transfer", "computer_run",
-}
+# Single source is ai.permissions (one table); this set is kept as a
+# frozen view so existing imports keep working.
+try:
+    from ai import permissions as _permissions
+    CONFIRM_TOOLS = set(_permissions.confirm_tools())
+except Exception:
+    CONFIRM_TOOLS = {
+        "fs_write", "fs_append", "fs_replace", "fs_delete", "fs_mkdir",
+        "term_run", "term_python",
+        "win_click", "win_type", "focus_app", "launch_app",
+        "bridge_transfer", "computer_run",
+    }
 
 _TTL = 600.0
 _CAP = 20
@@ -40,10 +46,15 @@ _APPROVAL_RE = re.compile(r"(allow|approve|deny|reject)\s+#?(\d+)\s*\.?\s*$",
 
 
 def needs_approval(name: str) -> bool:
-    """True when calling `name` must park for consent first."""
-    if not isinstance(name, str) or not name:
-        return False
-    return name in CONFIRM_TOOLS or name.startswith("mcp__")
+    """True when calling `name` must park for consent first.
+    Decided by the unified table (ai.permissions)."""
+    try:
+        from ai import permissions as _permissions
+        return _permissions.tier_of(name) == _permissions.CONFIRM
+    except Exception:
+        if not isinstance(name, str) or not name:
+            return False
+        return name in CONFIRM_TOOLS or name.startswith("mcp__")
 
 
 def approval_mode() -> str:
@@ -157,6 +168,11 @@ def handle_approval_text(text: str):
         except Exception:
             pass
     out = str(result)
+    try:
+        from logger import redact as _redact
+        out = _redact(out)
+    except Exception:
+        pass
     if len(out) > _REPLY_CAP:
         out = out[:_REPLY_CAP] + "\n[…trimmed]"
     return out or "(done, no output)"

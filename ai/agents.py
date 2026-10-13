@@ -106,6 +106,8 @@ def _merge(question: str, results: list) -> str:
     for i, r in enumerate(ok_results, 1):
         parts.append(f"[Sub-task {i}] {r['task']}\n{r['answer']}")
     evidence = "\n---\n".join(parts)
+    if len(evidence) > 4000:
+        evidence = evidence[:4000] + "\n[sub-agent evidence truncated]"
     failed = len(results) - len(ok_results)
     note = (f"\n\nNote: {failed} of {len(results)} sub-tasks FAILED — "
             "answer confidently with what you have, do not mention "
@@ -158,11 +160,22 @@ def run(question: str, show_progress: bool = True) -> dict:
     log.info("Agents: starting for %r", question[:80])
     t0 = time.time()
 
+    def _trail(action, target, ok, extra=""):
+        try:
+            from system import audit as _audit_trail
+            _audit_trail.record(action, target, ok=ok, extra=extra)
+        except Exception:
+            pass
+
     try:
         tasks = _plan_split(question)
         if not tasks:
             # Too simple — single agent
             r = _run_one(question)
+            _trail("subagent_spawned", "single", True, question[:60])
+            _trail("subagent_completed",
+                   f"mode=single ok={int(bool(r.get('ok')))}",
+                   bool(r.get("ok")), f"{time.time() - t0:.1f}s")
             return {
                 "ok": r.get("ok", False),
                 "mode": "single",
@@ -173,12 +186,19 @@ def run(question: str, show_progress: bool = True) -> dict:
             }
 
         log.info("Agents: %d sub-tasks", len(tasks))
+        _trail("subagent_spawned", f"{len(tasks)} tasks", True,
+               question[:60])
 
         from ai.agent_pool import run_parallel
-        results = run_parallel(tasks, _run_one, timeout_per_task=_TASK_TIMEOUT)
+        results = run_parallel(tasks, _run_one,
+                               timeout_per_task=_TASK_TIMEOUT,
+                               max_workers=2)
 
         final = _merge(question, results)
         ok_count = sum(1 for r in results if r.get("ok"))
+        _trail("subagent_completed",
+               f"mode=parallel ok={ok_count}/{len(tasks)}",
+               ok_count > 0, f"{time.time() - t0:.1f}s")
 
         return {
             "ok": ok_count > 0,

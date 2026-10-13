@@ -1059,7 +1059,7 @@ async function sendCommand(text){
           if(obj.route)addLog('Route: '+obj.route,'system');
           if(obj.reasoning)appendThinking(obj.reasoning);
           if(obj.delta){
-            if(!streamEl)streamEl=addStreamingLog(obj.source==='skill'?'skill':'bot');
+            if(!streamEl)streamEl=addStreamingLog(obj.source==='skill'?'skill':(obj.source==='consent'?'consent':'bot'));
             full+=obj.delta;if(streamEl)streamEl.textContent=full;
             var logEl=$('log');if(logEl)logEl.scrollTop=logEl.scrollHeight;
             /* stay in THINKING while text streams; SPEAKING is set
@@ -1436,6 +1436,9 @@ function prefToggle(key,on,label,sub){
       prefToggle('sentinel_enabled',!!p3.sentinel_enabled,'Folder sentinel','Master switch for watched folders')+
       prefToggle('guard_enabled',!!p3.guard_enabled,'Memory guard','Warn when RAM crosses the threshold')+
       prefToggle('autonomy_enabled',!!p3.autonomy_enabled,'Autonomy','Background agent loop (supervised)')+
+      prefToggle('subagents_enabled',!!p3.subagents_enabled,'Sub-agents','Parallel workers for multi-part questions')+
+      '<div class="set-row"><div class="label">Tool approval<small>Ask before writes (OFF = auto-run)</small></div>'+
+      '<div class="actions"><button class="dbtn'+(p3.tool_approval!=='auto'?' on':'')+'" data-action="set-pref" data-key="tool_approval" data-value="'+(p3.tool_approval!=='auto'?'auto':'ask')+'">'+(p3.tool_approval!=='auto'?'ON':'OFF')+'</button></div></div>'+
       prefToggle('dnd',!!p3.dnd,'Do not disturb','Silence unprompted speech')+
       prefToggle('desktop_control_enabled',!!p3.desktop_control_enabled,'Desktop control','Mouse/keyboard/window control')+
       '<div class="set-row"><div class="label">Auto summarize<small>'+(p3.auto_summarize?'On':'Off')+'</small></div></div>'+

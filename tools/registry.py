@@ -6,7 +6,7 @@ log = get_logger(__name__)
 _lock = Lock()
 _disabled = set()
 
-_ALL = ["web_search", "open_url", "read_current_page",
+_ALL = ["open_url",
         "remember_fact", "switch_mood", "read_own_code",
         "outcome_stats", "reality_check_tool", "bridge_transfer"]
 

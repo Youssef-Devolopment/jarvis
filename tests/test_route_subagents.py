@@ -48,6 +48,11 @@ class RouteSubagentsTests(unittest.TestCase):
             mock.patch("routes.api.extract_memory_async",
                        return_value=None),
             mock.patch("memory.outcomes.record", return_value=None),
+            # Pin the rollout flag: these tests prove pool wiring,
+            # not the default (which is off — see test_audit_trail).
+            mock.patch("memory.get_pref",
+                       side_effect=lambda k, d=None:
+                       True if k == "subagents_enabled" else d),
         ]
         for p in patches:
             p.start()

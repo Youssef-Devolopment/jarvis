@@ -341,10 +341,10 @@ class SubagentsFlagTests(unittest.TestCase):
         self.assertIn("Consulting sub-agents", body)
         self.assertIn("Pooled.", body)
 
-    def test_flag_defaults_on_when_pref_missing(self):
+    def test_flag_defaults_off_when_pref_missing(self):
         from memory import prefs as prefs_mod
         self.assertIn("subagents_enabled", prefs_mod._DEFAULTS)
-        self.assertTrue(prefs_mod._DEFAULTS["subagents_enabled"])
+        self.assertFalse(prefs_mod._DEFAULTS["subagents_enabled"])
 
 
 if __name__ == "__main__":

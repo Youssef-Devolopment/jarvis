@@ -1,9 +1,11 @@
 """OS Mode — autonomous driver on JARVIS's own engine.
 
 Mission -> propose -> confirm (voice/toast) -> execute -> self-correct.
-No new frameworks: reuses client + TOOL_SCHEMAS + execute_tool + audit.
-Tiers: AUTO tools run free; everything else asks first (dynamic rule);
-unknown tools are refused. Kill switch: autonomy_enabled=false.
+Tiers come from the unified table (ai.permissions): AUTO tools run
+free, everything else asks first; unknown tools are refused. The one
+mission-context rule: mcp__ tools run free inside supervised missions
+(autonomy_enabled kill switch covers all of them). Kill switch:
+autonomy_enabled=false.
 """
 from __future__ import annotations
 import json
@@ -16,12 +18,18 @@ log = get_logger(__name__)
 _MAX_ROUNDS = 10
 _NAG_GAP = 300  # min seconds between unprompted speeches
 
-AUTO_TOOLS = {
-    "remember_fact", "read_own_code", "deep_search",
-    "silent_browse", "silent_search", "silent_read",
-    "fs_read", "fs_list", "fs_search", "list_open_apps",
-    "read_screen", "folder_watch", "folder_unwatch", "open_url",
-}
+try:
+    from ai import permissions as _permissions
+    AUTO_TOOLS = set(_permissions.auto_tools())
+except Exception:
+    AUTO_TOOLS = {
+        "remember_fact", "read_own_code", "deep_search",
+        "silent_browse", "silent_search", "silent_read",
+        "fs_read", "fs_list", "fs_search", "list_open_apps",
+        "read_screen", "folder_watch", "folder_unwatch", "open_url",
+        "outcome_stats", "reality_check_tool", "switch_mood",
+        "silent_click",
+    }
 
 # Never offered to missions: nested-agent recursion (missions already ARE
 # an agent; computer_run would spawn an agent inside the agent).

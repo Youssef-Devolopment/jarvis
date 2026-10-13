@@ -274,9 +274,10 @@ class AIClient:
 
         try:
             from ai import approvals as _appr
-            _gate = _appr.gate_active()
+            from ai import permissions as _perms
+            _mode = _appr.approval_mode()
         except Exception:
-            _appr, _gate = None, False
+            _appr, _perms, _mode = None, None, "ask"
 
         for rnd in range(max_rounds):
             tool_acc = {}
@@ -331,7 +332,13 @@ class AIClient:
                     args = {}
                 yield ("tool_call", {"name": name, "args": args,
                                      "step": rnd + 1, "steps": max_rounds})
-                if _gate and _appr.needs_approval(name):
+                try:
+                    _park = _perms.decide(name, args, _mode) == "park"
+                except Exception:
+                    _park = (_appr is not None
+                             and _appr.gate_active()
+                             and _appr.needs_approval(name))
+                if _park:
                     # Consent tier: park it, do NOT run it. The model
                     # asks the user; "allow N"/"deny N" resolves it
                     # next turn via ai.approvals.handle_approval_text.
@@ -352,9 +359,15 @@ class AIClient:
                     except Exception as exc:
                         result = f"Tool error: {exc}"
                 out = str(result)
-                yield ("tool_result", {"name": name, "result": out[:300]})
+                try:
+                    from logger import redact as _redact
+                    clean = _redact(out)
+                except Exception:
+                    clean = out
+                yield ("tool_result",
+                       {"name": name, "result": clean[:300]})
                 working.append({"role": "tool", "tool_call_id": t["id"],
-                                "content": _clip_tool_result(out)})
+                                "content": _clip_tool_result(clean)})
 
             # Reopen stream for next round — unless the budget is
             # spent, in which case the final no-tools pass below

@@ -368,6 +368,13 @@ body[data-uimode="dev"] .dev-only.side-block{display:block!important}
 .log-entry.bot{color:var(--text)}
 .log-entry.skill{color:var(--green)}
 .log-entry.tool{color:var(--cyan)}
+/* consent verdicts are decisions awaiting the user, not chat — amber
+   like a warning, but dashed rail so they read as "act on me" */
+.log-entry.consent{
+  color:var(--amber);background:rgba(255,184,77,.06);
+  border-left:2px dashed rgba(255,184,77,.65);padding-left:8px;
+  border-radius:0 4px 4px 0;
+}
 /* warnings/errors get a tinted rail, not just color — a failed step
    must be findable at a glance, not hidden in a wall of text */
 .log-entry.warn{

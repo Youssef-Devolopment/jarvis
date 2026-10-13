@@ -27,17 +27,98 @@ def _audit_ok(result: str) -> bool:
     return not str(result).startswith(_AUDIT_FAIL_PREFIXES)
 
 
+def _coerce_arg(value, want: str):
+    """Coerce an LLM-supplied arg to the schema type. Returns
+    (ok, value). Strings stay strict; numbers/bools accept their
+    obvious string forms ("30", "true")."""
+    if want == "string":
+        return (isinstance(value, str), value)
+    if want == "integer":
+        if isinstance(value, bool):
+            return False, value
+        if isinstance(value, int):
+            return True, value
+        if isinstance(value, str) and value.strip().lstrip("-").isdigit():
+            return True, int(value.strip())
+        return False, value
+    if want == "number":
+        if isinstance(value, bool):
+            return False, value
+        if isinstance(value, (int, float)):
+            return True, value
+        try:
+            return True, float(str(value).strip())
+        except (ValueError, TypeError):
+            return False, value
+    if want == "boolean":
+        if isinstance(value, bool):
+            return True, value
+        if isinstance(value, str) and value.strip().lower() in (
+                "true", "false"):
+            return True, value.strip().lower() == "true"
+        return False, value
+    return True, value  # object/array/unknown: structural check skipped
+
+
+def validate_tool_args(name: str, args: dict):
+    """Validate args against the central TOOL_SCHEMAS entry. Returns
+    (ok, args_or_error): on success a (possibly coerced) args dict,
+    on failure an error string. MCP/unknown names skip strict checks
+    (dict shape only) — their schemas live across the wire."""
+    if not isinstance(args, dict):
+        return False, f"Tool error: invalid arguments for {name}: not an object."
+    if not isinstance(name, str) or name.startswith("mcp__"):
+        return True, args
+    try:
+        entry = next(t for t in tool_schemas.TOOL_SCHEMAS
+                     if t.get("function", {}).get("name") == name)
+        params = entry.get("function", {}).get("parameters", {})
+    except Exception:
+        return True, args
+    required = params.get("required", []) or []
+    for key in required:
+        if key not in args or args[key] is None:
+            return False, (f"Tool error: invalid arguments for {name}: "
+                           f"missing required '{key}'.")
+    props = params.get("properties", {}) or {}
+    clean = dict(args)
+    for key, spec in props.items():
+        if key not in clean or not isinstance(spec, dict):
+            continue
+        want = spec.get("type")
+        if not want:
+            continue
+        ok, value = _coerce_arg(clean[key], want)
+        if not ok:
+            return False, (f"Tool error: invalid arguments for {name}: "
+                           f"'{key}' must be {want}.")
+        clean[key] = value
+    return True, clean
+
+
 def execute_tool(name: str, args: dict) -> str:
     """Single choke point for every agent tool call (chat loop, OS
-    missions, consent verdicts, demos): runs the tool and lands one
-    line in the shared audit trail. Same signature, never raises."""
+    missions, consent verdicts, demos): validates args, runs the tool
+    and lands one line in the shared audit trail. Same signature,
+    never raises."""
+    ok, checked = validate_tool_args(name, args)
+    if not ok:
+        try:
+            from system import audit as _trail
+            _trail.record(str(name), str(args or {})[:80], False,
+                          "invalid arguments")
+        except Exception:
+            pass
+        return checked
     try:
-        out = _execute_tool(name, args)
+        out = _execute_tool(name, checked)
     except Exception as exc:  # backstop; the body guards itself too
         out = f"Tool error: {exc}"
     try:
         from system import audit as _trail
-        _trail.record(str(name), str(args or {})[:80], _audit_ok(out))
+        from logger import redact as _redact
+        _trail.record(str(name), _redact(str(checked or {}))[:80],
+                      _audit_ok(out))
     except Exception:
         pass
     return out
