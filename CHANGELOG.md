@@ -4,6 +4,29 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.23.0] — 2026-10-13
+
+MCP tools safe to offer — the wiring existed (the route appends live
+MCP schemas, the loop calls `mcp__server__tool`), but it had never
+been tested and three sharp edges could ruin a request: one
+malformed server entry raised through the schema build and killed
+the whole AI reply, a catalog built mid-spawn blocked behind the
+runtime lock for up to 45 seconds per server, and tool order
+followed server start order.
+
+### Changed
+- **Bounded MCP snapshot** — `mcp_schemas()` now builds from
+  `runtime.tools_snapshot()` (1-second lock budget, mirroring the
+  module scan's `_running_snapshot`): a hot lock serves the
+  last-known-good list instead of blocking the user's reply, and the
+  whole path never raises — worst case the round goes out with no
+  MCP tools rather than no answer at all.
+- **Per-entry schema validation** — entries missing names, non-dict
+  payloads and non-dict input schemas are skipped or replaced
+  individually; one sick server costs its tools, never the request.
+- **Deterministic catalog** — schemas sort by name, so the model
+  sees the same tool list no matter what order servers started in.
+
 ## [1.22.0] — 2026-10-13
 
 Workspace tools + mandatory self-verification — JARVIS edits files
