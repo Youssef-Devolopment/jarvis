@@ -58,6 +58,7 @@ def _configure(level: str = "INFO") -> None:
     _configured = True
     root = logging.getLogger()
     root.setLevel(getattr(logging, level.upper(), logging.INFO))
+    _install_thread_hook()
     ch = logging.StreamHandler(sys.stderr)
     ch.setLevel(logging.INFO)
     ch.setFormatter(logging.Formatter(_FMT, _DATE))
@@ -69,6 +70,29 @@ def _configure(level: str = "INFO") -> None:
     fh.setFormatter(logging.Formatter(_FMT, _DATE))
     fh.addFilter(RedactFilter())
     root.addHandler(fh)
+
+
+def _install_thread_hook() -> None:
+    """Route unhandled background-thread exceptions into the log file.
+    Daemon threads die silently otherwise — invisible under pythonw,
+    where stderr goes nowhere. Idempotent; never raises."""
+    import threading
+
+    def _hook(args):
+        try:
+            logging.getLogger("thread-crash").error(
+                "Unhandled exception in thread %s",
+                getattr(args, "thread", "?"),
+                exc_info=(getattr(args, "exc_type", None),
+                          getattr(args, "exc_value", None),
+                          getattr(args, "exc_traceback", None)))
+        except Exception:
+            pass
+
+    try:
+        threading.excepthook = _hook
+    except Exception:
+        pass
 
 
 def setup_logging(level: str = "INFO") -> None:

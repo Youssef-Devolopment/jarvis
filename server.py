@@ -1,6 +1,7 @@
 from __future__ import annotations
+import os
 import time
-from flask import Flask, g, request
+from flask import Flask, g, jsonify, request
 from config import get_settings, Settings, ensure_flask_secret
 from errors import register_error_handlers, ConfigError
 from logger import get_logger, setup_logging
@@ -10,6 +11,46 @@ log = get_logger(__name__)
 
 # Requests slower than this get a WARNING line (tests patch this down).
 SLOW_REQUEST_S = 2.0
+
+_LOOPBACK = ("127.0.0.1", "::1")
+_LAN_GUARDED_METHODS = ("POST", "PUT", "DELETE", "PATCH")
+
+
+def _lan_guard():
+    """Token gate for off-machine writers. Localhost always passes;
+    reads always pass; anything else needs X-Jarvis-Token matching
+    the JARVIS_TOKEN env value. Fail-closed. Never raises."""
+    try:
+        if request.method not in _LAN_GUARDED_METHODS:
+            return None
+        if not (request.path or "").startswith("/api"):
+            return None
+        remote = request.remote_addr or ""
+        if remote in _LOOPBACK:
+            return None
+        want = os.getenv("JARVIS_TOKEN", "")
+        got = request.headers.get("X-Jarvis-Token", "")
+        if want and got and got == want:
+            return None
+        log.warning("Blocked LAN %s %s from %s (no valid token)",
+                    request.method, request.path, remote)
+        if not want:
+            return jsonify({
+                "error": "LAN API access needs JARVIS_TOKEN set in .env; "
+                         "localhost is always allowed.",
+                "detail": "Set JARVIS_TOKEN and retry with the "
+                          "X-Jarvis-Token header.",
+                "type": "AuthError"}), 403
+        return jsonify({
+            "error": "Invalid API token.",
+            "detail": "Retry with the X-Jarvis-Token header matching "
+                      "JARVIS_TOKEN.",
+            "type": "AuthError"}), 401
+    except Exception as exc:
+        log.warning("LAN guard failed closed: %s", exc)
+        return jsonify({"error": "Request refused.",
+                        "detail": "Auth check unavailable.",
+                        "type": "AuthError"}), 403
 
 # Post-boot health glance (entry points schedule it; tests call the
 # function directly with delay=0).
@@ -83,9 +124,10 @@ def create_app() -> Flask:
     app = Flask(__name__, static_folder="static", template_folder="templates")
     app.config["SECRET_KEY"] = ensure_flask_secret()
     if s.host not in ("127.0.0.1", "localhost", "::1"):
-        log.warning("Listening on %s — the API has no auth. "
-                    "Prefer 127.0.0.1 unless you know what you are doing.",
-                    s.host)
+        log.warning("Listening on %s — mutating API calls from off-machine "
+                    "clients need the X-Jarvis-Token header matching "
+                    "JARVIS_TOKEN in .env. Prefer 127.0.0.1 unless you know "
+                    "what you are doing.", s.host)
     register_error_handlers(app)
     app.register_blueprint(views_bp)
     app.register_blueprint(api_bp)
@@ -94,6 +136,7 @@ def create_app() -> Flask:
     @app.before_request
     def _req_started():
         g._req_t0 = time.time()
+        return _lan_guard()
 
     @app.after_request
     def _req_slow(resp):

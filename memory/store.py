@@ -19,6 +19,8 @@ def _get_conn() -> sqlite3.Connection:
         with _lock:
             if _conn is None:
                 _conn = sqlite3.connect(str(_DB_PATH), check_same_thread=False)
+                from memory.schema import ensure_wal
+                ensure_wal(_conn)
                 _conn.execute("""CREATE TABLE IF NOT EXISTS facts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     fact TEXT NOT NULL,

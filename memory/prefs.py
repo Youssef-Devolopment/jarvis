@@ -72,6 +72,8 @@ _DEFAULTS = {
 
 def _conn():
     c = sqlite3.connect(str(_DB), check_same_thread=False)
+    from memory.schema import ensure_wal
+    ensure_wal(c)
     c.execute("""CREATE TABLE IF NOT EXISTS prefs (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL,

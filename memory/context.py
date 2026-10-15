@@ -14,6 +14,8 @@ _lock = threading.Lock()
 
 def _conn():
     c = sqlite3.connect(str(_DB), check_same_thread=False)
+    from memory.schema import ensure_wal
+    ensure_wal(c)
     c.execute("""CREATE TABLE IF NOT EXISTS context_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         kind TEXT NOT NULL,

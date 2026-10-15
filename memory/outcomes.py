@@ -35,6 +35,8 @@ _CONFIRM = [re.compile(p, re.IGNORECASE) for p in CONFIRMATION_PATTERNS]
 
 def _conn():
     c = sqlite3.connect(str(_DB), check_same_thread=False)
+    from memory.schema import ensure_wal
+    ensure_wal(c)
     c.execute("""CREATE TABLE IF NOT EXISTS outcomes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         question TEXT NOT NULL,

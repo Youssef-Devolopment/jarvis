@@ -32,6 +32,18 @@ _BACKUP_KEEP = 3  # pre-migration snapshots kept next to the DB
 _MIGRATIONS: Dict[int, Callable[[sqlite3.Connection], None]] = {}
 
 
+def ensure_wal(conn: sqlite3.Connection) -> str:
+    """Enable WAL journal mode on an open memory connection. Readers
+    stop blocking writers (research jobs, reminders, dream mode and
+    web fetches all share this file). Idempotent and persistent per
+    file; returns the mode, "" on any failure. Never raises."""
+    try:
+        row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+        return (row[0] if row else "").lower()
+    except Exception:
+        return ""
+
+
 def _backup_before(conn: sqlite3.Connection, ver: int) -> Optional[Path]:
     """Snapshot the DB to memory/backups/ before a migration runs.
 
