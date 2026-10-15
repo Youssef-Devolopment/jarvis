@@ -4,6 +4,17 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.29.0] — 2026-10-14
+
+Drafter quality bar (principle 6) — seen live: an auto-drafted skill
+passed isolation and auto-approved while telling the user "no
+file-writing tool exists". Now handler code and the registered
+description are screened for capability lies; a hit parks the draft
+for a human verdict (with the reason shown) instead of
+auto-approving, and the generation prompt teaches honesty up front.
+Explicit manual approval still works — the human read the warning.
+No behavior change for honest drafts.
+
 ## [1.28.0] — 2026-10-14
 
 Boot-race fix — the v1.27.0 restart wedged because Flask's first
