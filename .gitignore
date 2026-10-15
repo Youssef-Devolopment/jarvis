@@ -16,6 +16,8 @@ logs/
 docs/research/
 memory/*.db
 memory/*.db-journal
+memory/*.db-shm
+memory/*.db-wal
 memory/backups/
 memory/user_notes.json
 jarvis_data/

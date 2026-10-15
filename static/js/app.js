@@ -2497,7 +2497,17 @@ document.addEventListener('DOMContentLoaded',function(){
         if(d.ok){
           var vmsg='Valid: '+d.name+' v'+d.version+' ('+d.kind+') \u2014 permissions: '+(d.permissions||[]).join(', ');
           if(d.warnings&&d.warnings.length)vmsg+=' \u2014 warnings: '+d.warnings.join('; ');
-          addLog(vmsg,'system');
+          var pd=d.perm_diff;
+          if(pd&&pd.available){
+            var pa=pd.added||[], pr=pd.removed||[];
+            if(pa.length||pr.length){
+              vmsg+=' \u2014 permission changes vs installed v'+pd.current_version+': '+
+                (pa.length?('NEW: '+pa.join(', ')):'')+((pa.length&&pr.length)?'; ':'')+(pr.length?('DROPPED: '+pr.join(', ')):'');
+            }else{
+              vmsg+=' \u2014 permissions unchanged vs installed';
+            }
+          }
+          addLog(vmsg,(pd&&pd.available&&(pd.added||[]).length)?'warn':'system');
         }else{
           addLog('Rejected: '+(d.error||'invalid'),'error');
         }

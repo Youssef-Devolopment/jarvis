@@ -139,6 +139,36 @@ def _update_info(mid: str, version: str, latest_map: dict) -> dict:
             "latest": latest}
 
 
+def diff_permissions(mid: str, new_perms: list) -> dict:
+    """Compare proposed permissions against the installed manifest —
+    the supply-chain question "what does this update newly ask for?".
+    Returns {available, current_version, current, added, removed}.
+    Unavailable when nothing usable is installed (fresh install or a
+    broken manifest — both reported honestly, never raised)."""
+    try:
+        mid = str(mid or "")
+        if not _ID_RE.fullmatch(mid):
+            return {"available": False}
+        man_path = _ROOT / mid / "module.json"
+        try:
+            inside = man_path.resolve().is_relative_to(_ROOT.resolve())
+        except Exception:
+            inside = False
+        if not inside or not man_path.is_file():
+            return {"available": False}
+        installed = validate_manifest(
+            json.loads(man_path.read_text(encoding="utf-8")))
+        cur = list(installed.get("permissions") or [])
+        new = [p for p in (new_perms or []) if isinstance(p, str)]
+        return {"available": True,
+                "current_version": installed.get("version", "?"),
+                "current": cur,
+                "added": sorted(set(new) - set(cur)),
+                "removed": sorted(set(cur) - set(new))}
+    except Exception:
+        return {"available": False}
+
+
 def _expand(value):
     """Expand {HOME}/{DOCUMENTS}/{DESKTOP} in a string or list."""
     if isinstance(value, list):
@@ -728,6 +758,7 @@ def validate_path(src) -> dict:
             "version": m["version"], "kind": m["kind"],
             "author": m.get("author", ""), "description": m["description"],
             "permissions": m["permissions"],
+            "perm_diff": diff_permissions(m["id"], m["permissions"]),
             "capabilities": m["capabilities"], "examples": m["examples"],
             "warnings": res["warnings"]}
 
