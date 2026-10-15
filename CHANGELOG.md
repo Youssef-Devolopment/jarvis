@@ -4,6 +4,14 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.31.0] — 2026-10-15
+
+Module permission diff — reinstalling a module can no longer
+silently gain access. CHECK now reports added and dropped
+permissions versus the installed manifest, with an amber warning
+when the candidate asks for more. Fresh installs and broken
+manifests report honestly instead. WAL sidecar files ignored.
+
 ## [1.30.0] — 2026-10-15
 
 Review-fix batch — an external review listed twenty weaknesses; four
