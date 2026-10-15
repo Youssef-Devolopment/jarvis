@@ -64,9 +64,56 @@ def _sdk():
     restore everything. Already-bound names (manager, runtime) are
     unaffected.
 
+    The surgery touches process-global import state, so it runs ONCE
+    per process and the result is cached: every server spawn used to
+    reopen the window, and a boot-time Flask import landing inside it
+    died with "cannot import name 'all_servers' from 'mcp'". Call
+    prewarm() on the main thread before background threads spread to
+    close even that single window.
+
     Returns (ClientSession, StdioServerParameters, stdio_client,
     TextContent). Raises ImportError when the SDK is missing.
     """
+    global _sdk_cache
+    if _sdk_cache is not None:
+        if _sdk_cache is _SDK_FAILED:
+            raise ImportError("mcp package not installed")
+        return _sdk_cache
+    with _sdk_lock:
+        if _sdk_cache is not None:
+            if _sdk_cache is _SDK_FAILED:
+                raise ImportError("mcp package not installed")
+            return _sdk_cache
+        try:
+            _sdk_cache = _sdk_uncached()
+        except ImportError:
+            _sdk_cache = _SDK_FAILED
+            raise
+        return _sdk_cache
+
+
+def prewarm() -> bool:
+    """Import the real MCP SDK now, on the calling thread — call on
+    the main thread before background threads spread (both entry
+    points do), so the single import-state surgery never races a
+    concurrent local import. Never raises; True when the SDK loaded.
+    """
+    try:
+        _sdk()
+        log.info("MCP SDK prewarmed")
+        return True
+    except Exception as exc:
+        log.debug("MCP SDK prewarm skipped: %s", exc)
+        return False
+
+
+_sdk_cache = None
+_sdk_lock = threading.Lock()
+_SDK_FAILED = object()
+
+
+def _sdk_uncached():
+    """One real surgery run. See _sdk() for why this executes once."""
     import sys
 
     saved_modules = {k: v for k, v in sys.modules.items()

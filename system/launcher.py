@@ -156,6 +156,15 @@ def run_desktop_mode(open_browser: bool = False):
     if not singleton.acquire():
         log.warning("Duplicate desktop boot refused — already running.")
         return
+    # Import-state surgery for the MCP SDK happens exactly once per
+    # process: do it here, on the main thread, before the Flask and
+    # service threads spread — otherwise a boot-time local import
+    # landing inside the window dies ("cannot import name ...").
+    try:
+        from mcp import runtime as _mcp_runtime
+        _mcp_runtime.prewarm()
+    except Exception:
+        pass
     summary = start_background() or {}
 
     # Boot greeting: toast always (with the honest boot verdict —

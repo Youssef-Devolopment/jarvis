@@ -50,6 +50,13 @@ def main():
     # One registry boots every background service — the same set the
     # desktop launcher uses. Each service is isolated and timed;
     # immediate failures print here, async results land in /api/health.
+    # First, the single MCP SDK import-state surgery, while this main
+    # thread is still alone (same reason as the desktop launcher).
+    try:
+        from mcp import runtime as _mcp_runtime
+        _mcp_runtime.prewarm()
+    except Exception:
+        pass
     from system import services
     summary = services.boot(mode="console")
     degraded = (" — degraded: " + ", ".join(summary["failed"])
