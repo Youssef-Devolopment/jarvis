@@ -4,6 +4,16 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.28.0] — 2026-10-14
+
+Boot-race fix — the v1.27.0 restart wedged because Flask's first
+import landed inside the MCP SDK's `sys.modules` surgery (which ran
+on every server spawn: ~11 windows per boot) and died with "cannot
+import name 'all_servers' from 'mcp'". The surgery now runs once per
+process (cached, failures cached too), and both entry points
+pre-warm it single-threaded before background threads spread — no
+window left for a concurrent local import to fall into.
+
 ## [1.27.0] — 2026-10-14
 
 Audit panel — the trail becomes user-visible where users look.
