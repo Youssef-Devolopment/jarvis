@@ -4,6 +4,18 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.30.0] — 2026-10-15
+
+Review-fix batch — an external review listed twenty weaknesses; four
+survived verification against the code (the rest were already fixed,
+already covered, or declined with reasons in the session notes).
+WAL journal mode on the shared memory database (background writers
+stop blocking readers), a global thread-crash hook (unhandled
+background exceptions reach the log file instead of vanishing under
+pythonw), token auth for off-machine API writers (`X-Jarvis-Token`
+vs `JARVIS_TOKEN`; localhost and all reads untouched), and a pinned
+`requirements-lock.txt`. No behavior change on localhost.
+
 ## [1.29.0] — 2026-10-14
 
 Drafter quality bar (principle 6) — seen live: an auto-drafted skill
