@@ -73,6 +73,11 @@ Rules:
 - Handler signature: def skill_func(text, match). Return a short
   spoken-friendly string, or None when the request does not apply.
 - Keep it under 40 lines.
+- Honesty: never claim a tool, skill, or capability does not exist.
+  If the request needs something outside your allowed imports
+  (files, shell, network writes), say what you need instead of
+  pretending it is impossible. The runner rejects capability lies
+  and you will not be installed.
 """
 
 # Import roots a generated skill may use (top-level package name).
@@ -235,6 +240,35 @@ def _validate(code: str, trusted: bool = False) -> dict:
     return {"name": name, "patterns": list(patterns), "description": desc}
 
 
+# Capability-lie patterns: claims about JARVIS's own toolset that a
+# read-only drafted skill must never make (seen live: a draft telling
+# the user "no file-writing tool exists" while 31 tools exist). These
+# target assistant-toolset claims, not honest self-limits ("I can't do
+# that" passes — it names no capability).
+_CLAIM_RES = [
+    re.compile(r"no\s+[\w-]*\s*tools?\s+(exists|available|found)",
+               re.IGNORECASE),
+    re.compile(r"read-?only\s+(skills?|mode|here|available)",
+               re.IGNORECASE),
+    re.compile(r"only\s+have\s+read-?only", re.IGNORECASE),
+    re.compile(r"(?:don't|do not|have no)\s+(?:a\s+|any\s+)?"
+               r"(?:file|shell|write|tool)", re.IGNORECASE),
+]
+
+
+def _check_claims(code: str, meta: dict) -> str | None:
+    """Return the offending claim, or None when the draft is honest
+    about capabilities. Scans the handler code and the registered
+    description (the exact places the lie shipped)."""
+    haystacks = [code or "", (meta or {}).get("description") or ""]
+    for text in haystacks:
+        for rx in _CLAIM_RES:
+            m = rx.search(text)
+            if m:
+                return m.group(0).strip()[:120]
+    return None
+
+
 # Utterances no new skill may swallow (hijack guard). A draft matching
 # 2+ of these is a catch-all wearing a name tag.
 _NEGATIVE_CORPUS = (
@@ -394,6 +428,17 @@ def stage_candidate(code: str, user_request: str = "", *,
     else:
         test = test_in_isolation(code, user_request, execute=execute,
                                  trusted=trusted)
+        if test["ok"] and not trusted:
+            # Capability-honesty bar (principle 6): a draft that passed
+            # isolation can still be a lie (seen live: "no file-writing
+            # tool exists"). Park it for a human verdict instead of
+            # auto-approving — manual "approve skill X" still works.
+            claim = _check_claims(code, meta)
+            if claim:
+                test = {"ok": False,
+                        "output": f"capability-claim rejected: {claim!r}"}
+                _audit("claims_reject",
+                       f"{meta['name']} claim={claim[:80]!r}")
         cand_path = _LOG_DIR / f"{meta['name']}_{h}.py"
         cand_path.write_text(code, encoding="utf-8")
         _PENDING[meta["name"]] = {
