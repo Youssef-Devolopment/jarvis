@@ -124,7 +124,7 @@ class LanAuthTests(unittest.TestCase):
     def test_lan_write_with_token_passes_through(self):
         from errors import ConfigError
         with mock.patch.dict(os.environ, {"JARVIS_TOKEN": "right"}), \
-                mock.patch("routes.api.get_client",
+                mock.patch("routes.api_chat.get_client",
                            side_effect=ConfigError("no key")):
             r = self._post("hello there", remote=self.LAN,
                            token="right")
@@ -135,7 +135,7 @@ class LanAuthTests(unittest.TestCase):
         from errors import ConfigError
         with mock.patch.dict(os.environ):
             os.environ.pop("JARVIS_TOKEN", None)
-            with mock.patch("routes.api.get_client",
+            with mock.patch("routes.api_chat.get_client",
                              side_effect=ConfigError("no key")):
                 r = self._post("hello there")
         self.assertEqual(r.status_code, 200)

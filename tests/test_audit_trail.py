@@ -289,14 +289,14 @@ class SubagentsFlagTests(unittest.TestCase):
                                              "content": text}],
             record_reply=lambda sid, text: self.saved.append(text))
         patches = [
-            mock.patch("routes.api.get_store", return_value=store),
-            mock.patch("routes.api.dispatch_skill", return_value=None),
+            mock.patch("routes.api_chat.get_store", return_value=store),
+            mock.patch("routes.api_chat.dispatch_skill", return_value=None),
             mock.patch("skills.auto_generator.handle_approval_text",
                        return_value=None),
             mock.patch("skills.auto_generator.propose_if_enabled",
                        return_value=None),
-            mock.patch("routes.api._speak_quiet", return_value=None),
-            mock.patch("routes.api.extract_memory_async",
+            mock.patch("routes.api_chat._speak_quiet", return_value=None),
+            mock.patch("routes.api_chat.extract_memory_async",
                        return_value=None),
             mock.patch("memory.outcomes.record", return_value=None),
         ]
@@ -310,7 +310,7 @@ class SubagentsFlagTests(unittest.TestCase):
                 return agents_on
             return default
         with mock.patch("memory.get_pref", side_effect=pref), \
-                mock.patch("routes.api.get_client", return_value=client):
+                mock.patch("routes.api_chat.get_client", return_value=client):
             r = self.client.post("/api/command", json={"text": text})
             return r.get_data(as_text=True)
 

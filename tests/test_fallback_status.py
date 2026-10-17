@@ -103,7 +103,7 @@ class SseMappingTests(unittest.TestCase):
     def test_route_maps_status_kind(self):
         # the SSE layer forwards status events as their own key so no
         # consumer mistakes them for deltas
-        import routes.api as api
+        import routes.api_chat as api
         with open(api.__file__, encoding="utf-8") as f:
             body = f.read()
         self.assertIn('elif kind == "status":', body)

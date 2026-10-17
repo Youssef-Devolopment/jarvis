@@ -36,7 +36,7 @@ class ProviderFailureTests(unittest.TestCase):
 
     def test_provider_down_is_structured_502_not_html(self):
         from errors import AIError
-        with mock.patch("routes.api.get_client",
+        with mock.patch("routes.api_chat.get_client",
                         side_effect=AIError("provider down")):
             r = self.client.post("/api/command",
                                  json={"text": "hello there"})
@@ -48,7 +48,7 @@ class ProviderFailureTests(unittest.TestCase):
 
     def test_missing_key_degrades_to_hint_not_500(self):
         from errors import ConfigError
-        with mock.patch("routes.api.get_client",
+        with mock.patch("routes.api_chat.get_client",
                         side_effect=ConfigError("no key")):
             r = self.client.post("/api/command",
                                  json={"text": "hello there"})

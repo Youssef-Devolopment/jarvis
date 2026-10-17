@@ -127,7 +127,7 @@ class NoKeyAppTests(unittest.TestCase):
         self.assertTrue(len(d["skills"]) > 50)
 
     def test_skill_command_works_without_key(self):
-        import routes.api as api
+        import routes._common as api
         real_speak = api.speak_async
         said = []
         api.speak_async = lambda t, **k: said.append(t)
@@ -153,7 +153,7 @@ class NoKeyAppTests(unittest.TestCase):
         self.assertIn("Skills-only mode", body)
 
     def test_quiet_speak_never_raises(self):
-        import routes.api as api
+        import routes._common as api
         real_speak = api.speak_async
         api.speak_async = lambda *a, **k: (_ for _ in ()).throw(
             RuntimeError("speaker down"))

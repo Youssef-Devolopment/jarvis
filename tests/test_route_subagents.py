@@ -37,15 +37,15 @@ class RouteSubagentsTests(unittest.TestCase):
     def setUp(self):
         self.saved = []
         patches = [
-            mock.patch("routes.api.get_store",
+            mock.patch("routes.api_chat.get_store",
                        return_value=_store_fake(self.saved)),
-            mock.patch("routes.api.dispatch_skill", return_value=None),
+            mock.patch("routes.api_chat.dispatch_skill", return_value=None),
             mock.patch("skills.auto_generator.handle_approval_text",
                        return_value=None),
             mock.patch("skills.auto_generator.propose_if_enabled",
                        return_value=None),
-            mock.patch("routes.api._speak_quiet", return_value=None),
-            mock.patch("routes.api.extract_memory_async",
+            mock.patch("routes.api_chat._speak_quiet", return_value=None),
+            mock.patch("routes.api_chat.extract_memory_async",
                        return_value=None),
             mock.patch("memory.outcomes.record", return_value=None),
             # Pin the rollout flag: these tests prove pool wiring,
@@ -66,7 +66,7 @@ class RouteSubagentsTests(unittest.TestCase):
     def _post(self, text, client):
         # Consume INSIDE the caller's mock context: the SSE generate()
         # below is lazy, and patches must still be active when it runs.
-        with mock.patch("routes.api.get_client", return_value=client):
+        with mock.patch("routes.api_chat.get_client", return_value=client):
             r = self.client.post("/api/command", json={"text": text})
             body = r.get_data(as_text=True)
         return r, body
@@ -139,14 +139,14 @@ class RouteConsentTests(unittest.TestCase):
         self.addCleanup(ap._pending.clear)
         self.saved = []
         patches = [
-            mock.patch("routes.api.get_store",
+            mock.patch("routes.api_chat.get_store",
                        return_value=_store_fake(self.saved)),
-            mock.patch("routes.api.dispatch_skill", return_value=None),
+            mock.patch("routes.api_chat.dispatch_skill", return_value=None),
             mock.patch("skills.auto_generator.handle_approval_text",
                        return_value=None),
             mock.patch("skills.auto_generator.propose_if_enabled",
                        return_value=None),
-            mock.patch("routes.api._speak_quiet", return_value=None),
+            mock.patch("routes.api_chat._speak_quiet", return_value=None),
         ]
         for p in patches:
             p.start()

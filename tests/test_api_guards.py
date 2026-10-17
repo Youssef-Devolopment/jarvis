@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import unittest
 
-from routes.api import _to_int
+from routes._common import _to_int
 
 
 class ToIntTests(unittest.TestCase):
