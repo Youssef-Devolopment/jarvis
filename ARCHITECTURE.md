@@ -114,10 +114,9 @@ voice is playing. The web UI additionally has a browser
   (`silence_duration`, capped by `max_record_sec`; the overlay calls
   it with a 60 s timeout), so latency = that pause + the Groq round
   trip.
-- Known nit: `/api/listen`'s empty-result hint still reads "Whisper
-  may not be installed. Run: pip install faster-whisper"
-  (`routes/api_voice.py`) although STT moved to Groq — the hint is
-  stale.
+- `/api/listen` returns an empty transcript the same way for a missing
+  `GROQ_API_KEY` and for a silent/muted mic, so `_listen_hint()`
+  (`routes/api_voice.py`) names which one it most likely is.
 
 ## Replaceable without touching core
 

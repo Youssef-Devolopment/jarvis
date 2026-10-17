@@ -10,6 +10,24 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.33.3] — 2026-10-17
+
+Three small correctness fixes found while auditing the repo:
+
+- `.env.example` read `TAVILY_API_KEY=   :: optional …`. `dotenv`
+  parsed the trailing note as the *value*, so a fresh
+  `cp .env.example .env` produced a boot warning
+  ("TAVILY_API_KEY does not start with 'tvly-'") and a failing Tavily
+  tier on every search. The note is now its own `#` line and the key
+  is empty.
+- `/api/listen`'s empty-result hint no longer says "pip install
+  faster-whisper" — STT runs on Groq. `_listen_hint()` now separates a
+  missing `GROQ_API_KEY` from a silent or muted mic.
+- The README `version` badge was pinned at v1.32.0; it now tracks the
+  release.
+
+Five new tests cover the hint.
+
 ## [1.33.2] — 2026-10-17
 
 Documentation. `ARCHITECTURE.md` gains **The voice command path (end to
