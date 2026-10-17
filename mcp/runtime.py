@@ -5,6 +5,7 @@ import asyncio
 import os
 import shutil
 import threading
+import time
 from contextlib import contextmanager as _contextmanager
 
 from logger import get_logger
@@ -333,8 +334,17 @@ def start_server(name: str, attempts: int = 2) -> bool:
         return False
 
 
-def start_all() -> dict:
-    """Start every enabled MCP server. Returns summary."""
+def start_all(retry_delay: float = 20.0) -> dict:
+    """Start every enabled MCP server, then retry the failures once.
+
+    A stdio server can die during the boot burst — a cold `npx` fetch
+    while the same process is also loading modules, prewarming the
+    browser and starting the tray — and then come up fine seconds
+    later (the boot verdict already calls that state "still
+    starting"). Rather than record a transient failure as the
+    session's verdict, let the burst settle and try the failures
+    again. `retry_delay=0` disables the second pass (tests).
+    """
     started, failed = [], []
     for srv in all_servers():
         if not srv.get("enabled", True):
@@ -344,6 +354,21 @@ def start_all() -> dict:
             started.append(name)
         else:
             failed.append(name)
+
+    if failed and retry_delay > 0:
+        log.warning("MCP: %d server(s) down after the first pass (%s); "
+                    "retrying in %.0fs", len(failed), ", ".join(failed),
+                    retry_delay)
+        time.sleep(retry_delay)
+        still = []
+        for name in failed:
+            if start_server(name):
+                started.append(name)
+                log.info("MCP '%s' recovered on the boot-settle retry", name)
+            else:
+                still.append(name)
+        failed = still
+
     return {"started": started, "failed": failed}
 
 

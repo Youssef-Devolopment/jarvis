@@ -230,5 +230,52 @@ class AbandonedStartTests(unittest.TestCase):
         self.assertNotIn("x", runtime._servers)
 
 
+class StartAllHealTests(unittest.TestCase):
+    """A server that dies in the boot burst gets one settled retry."""
+
+    def _srv(self, enabled=True):
+        return {"name": "s", "command": "c", "enabled": enabled}
+
+    def test_second_pass_recovers_a_transient_failure(self):
+        from mcp import runtime
+        calls = []
+
+        def fake_start(name, attempts=2):
+            calls.append(name)
+            return len(calls) >= 2          # first pass fails, heal OK
+
+        with mock.patch.object(runtime, "all_servers",
+                               return_value=[self._srv()]), \
+                mock.patch.object(runtime, "start_server",
+                                  side_effect=fake_start):
+            r = runtime.start_all(retry_delay=0.01)
+
+        self.assertEqual(r["started"], ["s"])
+        self.assertEqual(r["failed"], [])
+        self.assertEqual(len(calls), 2)
+
+    def test_no_second_pass_when_everything_started(self):
+        from mcp import runtime
+        with mock.patch.object(runtime, "all_servers",
+                               return_value=[self._srv()]), \
+                mock.patch.object(runtime, "start_server",
+                                  return_value=True) as start:
+            r = runtime.start_all(retry_delay=5)
+
+        self.assertEqual(r["started"], ["s"])
+        self.assertEqual(r["failed"], [])
+        self.assertEqual(start.call_count, 1)   # no settle wait, no retry
+
+    def test_disabled_servers_are_skipped(self):
+        from mcp import runtime
+        with mock.patch.object(runtime, "all_servers",
+                               return_value=[self._srv(enabled=False)]), \
+                mock.patch.object(runtime, "start_server") as start:
+            r = runtime.start_all(retry_delay=0)
+
+        self.assertEqual(r, {"started": [], "failed": []})
+        start.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
