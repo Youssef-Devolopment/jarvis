@@ -283,7 +283,8 @@ system/      tray, hotkey, overlay, singleton, autostart, launcher,
              snapshot), services (one boot registry shared by both
              entry points), startup (first-run boot messaging),
              app_learner (scan + skills), app_close (kill by name)
-routes/      Flask blueprints (119 endpoints)
+routes/      one /api blueprint split across per-domain api_*.py
+             modules over a shared routes/_common.py (119 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 assets/      brand assets: logo banner, icon mark, favicon
              (theme lockups for dark/light in docs/logo-*.svg)

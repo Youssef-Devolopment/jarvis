@@ -279,6 +279,22 @@ loop meant captured suggestions were silently dropped.
 each ignored rule needs a reason here, and widening the set later is
 its own batch. Coverage is reported, not yet enforced by threshold.
 
+## 12. One blueprint, many route modules
+
+**Decision.** The `/api` surface is a single Flask blueprint (`bp` in
+`routes/_common.py`) whose handlers live in per-domain
+`routes/api_*.py` modules; `routes/api.py` is a thin aggregator that
+just imports them.
+
+**Why.** A 58 KB single file is where contributors stop reading. The
+split keeps every URL and endpoint name identical — proven by diffing
+`app.url_map` before and after — while letting a change touch one
+domain. Shared imports and helpers stay in exactly one place.
+
+**What it costs.** Handlers now resolve shared names from their own
+module, so a test that used to patch `routes.api.get_client` must
+patch `routes.api_chat.get_client`. Keep the aggregator import-only.
+
 ---
 
 ## How to use this document

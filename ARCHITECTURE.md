@@ -5,7 +5,8 @@ user text → skills.dispatch() → skill reply
               │ miss (+not conversational)
               ├→ auto_generator.propose → approval → skills/auto_generated/
               └→ AIClient.stream() + TOOL_SCHEMAS → execute_tool()
-/command (SSE) · /chat-style JSON · 144 REST endpoints (routes/api.py)
+/command (SSE) · /chat-style JSON · 119 REST endpoints (one /api
+blueprint split across routes/api_*.py, shared routes/_common.py)
 ```
 
 ## Stable seams (safe to build on)

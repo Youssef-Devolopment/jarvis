@@ -4,6 +4,16 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.33.0] — 2026-10-17
+
+The 58 KB `routes/api.py` is now nine per-domain modules behind one
+shared blueprint. `routes/_common.py` holds the imports, helpers and
+the `bp` object; each `routes/api_*.py` registers its own slice
+(chat, skills, market, reasoning, desktop, memory, mcp, voice, core).
+No URL, method or behaviour changed — `app.url_map` is byte-identical
+before and after and the suite still passes — but tests that patched
+the old module namespace now target the module that holds the code.
+
 ## [1.32.0] — 2026-10-17
 
 Hardening and provability. The LAN token check is now constant-time
