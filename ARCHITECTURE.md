@@ -23,7 +23,8 @@ blueprint split across routes/api_*.py, shared routes/_common.py)
   `integrity()`); `memory/schema.py` versions the DB and snapshots it
   to `memory/backups/` before any migration.
 - **Voice**: `voice/output.py:speak_async(text)`,
-  `voice/input.py:listen_until_silence()`. Swap TTS/STT behind these.
+  `voice/input.py:listen_until_silence()`. Swap TTS/STT behind these;
+  the end-to-end flow is in *The voice command path* below.
 - **Config**: `config.py` + `.env` (all models OpenAI-compatible).
 - **Desktop**: `system/launcher.py` (tray, hotkey, autostart, notify).
 - **Service lifecycle**: `system/services.py` — one registry boots
@@ -55,6 +56,68 @@ blueprint split across routes/api_*.py, shared routes/_common.py)
   `run.py` and `system/launcher.py`.
 - **Screen context**: `ai/screen_context.py` (RAM-only loop) →
   `ai/screen_text.ask_image()` shared with on-demand OCR.
+
+## The voice command path (end to end)
+
+There is **no wake word** — capture is push-to-talk, and there are
+**two different microphones** feeding the *same* `/api/command` turn
+that typed text uses. Voice has no separate brain.
+
+**A. Overlay HUD (Alt+Space) — the server machine's mic.**
+`system/overlay.py:_mic()` → `POST /api/listen` →
+`voice/input.py:listen_until_silence()`: a 16 kHz mono stream in 0.1 s
+blocks, RMS voice-activity detection — records until `silence_duration`
+of quiet, gives up after 2 s of nothing, trims to the loud region.
+The WAV goes to **Groq Whisper** (`groq_stt_model`; the prompt tells
+it Arabic and English may be mixed). The transcript comes back as a
+`"heard"` action → fills the entry field → **auto-submits**.
+
+**B. Web UI mic (or Ctrl+M) — the browser's mic.**
+`static/js/app.js:startRecording()` (`getUserMedia` + `MediaRecorder`,
+webm/opus) → `POST /api/transcribe` →
+`voice/input.py:transcribe_audio_bytes()` → the same Groq call →
+`sendCommand(text)` → **auto-sends**. The VOICE button is *mute for
+JARVIS's speech*, not the mic.
+
+**The turn — `routes/api_chat.py:/command`:**
+
+1. cheap intents, in order, *before* skills or the LLM: rejection /
+   confirmation of the previous answer, `is_conversational` chitchat,
+   tool-consent verdicts ("allow 3"/"deny 3"), auto-skill approve plus
+   draft-on-miss;
+2. `dispatch_skill()` → `skills/registry.py:dispatch()` — skills run in
+   registration order save for auto-learned app skills (front); the
+   first `pattern` match whose handler returns truthy wins
+   (`source:"skill"`);
+3. on a miss, the LLM: route `reasoning`/`fast` (`needs_reasoning`),
+   session history, `filtered_schemas(TOOL_SCHEMAS) + mcp_schemas()`,
+   optional sub-agent fan-out (`subagents_enabled`), else
+   `client.stream(messages, tools=…)`;
+4. on finish: `store.record_reply`, **`_speak_quiet(full)`**,
+   `extract_memory_async`, `outcomes.record`.
+
+**Answering out loud.** `voice/output.py:speak_async()` splits the
+reply into sentences, synthesizes them in parallel (Piper local,
+edge-tts fallback), and plays them through pygame on the host;
+`system/audio_duck` lowers other audio while the mic is open or the
+voice is playing. The web UI additionally has a browser
+`speechSynthesis` path (`speakText`) for payloads carrying `speak`.
+
+**Things that bite**
+
+- STT is a **second provider**: voice needs `GROQ_API_KEY`; a healthy
+  chat model says nothing about whether the mic works.
+- Dispatch is **first-match-wins and regex-based**, so a broad skill
+  (e.g. `math`, which matches nearly any sentence) can swallow a
+  spoken command before the model ever sees it.
+- `/api/listen` blocks for the pause the user leaves
+  (`silence_duration`, capped by `max_record_sec`; the overlay calls
+  it with a 60 s timeout), so latency = that pause + the Groq round
+  trip.
+- Known nit: `/api/listen`'s empty-result hint still reads "Whisper
+  may not be installed. Run: pip install faster-whisper"
+  (`routes/api_voice.py`) although STT moved to Groq — the hint is
+  stale.
 
 ## Replaceable without touching core
 

@@ -10,6 +10,17 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.33.2] — 2026-10-17
+
+Documentation. `ARCHITECTURE.md` gains **The voice command path (end to
+end)**: the two push-to-talk capture routes (the overlay HUD's
+`/api/listen` on the host mic, and the web mic's `/api/transcribe` in
+the browser), how both funnel into the same `/api/command` turn, and
+then skill dispatch → LLM stream → `speak_async` output. It also names
+the traps: STT is a second provider (Groq, not the chat model),
+`dispatch()` is first-match-wins so a broad skill can swallow a spoken
+command, and `/api/listen` blocks for the pause the user leaves.
+
 ## [1.33.1] — 2026-10-17
 
 Fix the MCP start path, which could leave the health row `degraded`
