@@ -10,6 +10,21 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.33.1] — 2026-10-17
+
+Fix the MCP start path, which could leave the health row `degraded`
+with orphaned `npx`/`node` children on a loaded machine:
+
+- A failed handshake now closes the transport and session context
+  managers it opened, so a dead server no longer leaks its child
+  process (and pipes).
+- A start slower than the 45s join is marked abandoned and closes its
+  own handle when the thread finishes, instead of lingering as an
+  unreachable server that nothing can call or stop.
+- A failed start is retried once before the server is reported down.
+
+Six new tests cover the teardown, the retry, and the abandon path.
+
 ## [1.33.0] — 2026-10-17
 
 The 58 KB `routes/api.py` is now nine per-domain modules behind one
