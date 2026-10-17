@@ -58,6 +58,7 @@ blueprint split across routes/api_*.py, shared routes/_common.py)
 
 ## Replaceable without touching core
 
-Moods (`moods/presets.py`), personalities, HTTP layer (add blueprints
-in `routes/`), frontend (`static/`, `templates/`), schedulers
+Moods (`moods/presets.py`), personalities, HTTP layer (per-domain
+modules in `routes/`), frontend (`static/`, `templates/` — note
+`static/js/app.js` is one IIFE, by decision #13), schedulers
 (`system/scheduler.py`, `dream_scheduler.py`), STT/TTS engines.

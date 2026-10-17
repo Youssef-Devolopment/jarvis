@@ -54,6 +54,11 @@ services, structured errors on every known failure path.
   MCP settles (~60–90s on a loaded machine). Honest but slow; a fix
   wants lock-free status reads (separate state dict) without touching
   the start path.
+- **Frontend monolith (`static/js/app.js`)** — one ~127 KB IIFE; a
+  real split needs an ES-module conversion (see `DECISIONS.md` #13),
+  deferred until a build step or a second contributor exists. The DOM
+  smoke is the only guard today, so it should be expanded before any
+  conversion.
 - **README / landing media refresh** — `docs/overlay.png` + GIF still
   show the older HUD; recapture on a quiet session. The landing page
   (`docs/index.html`) is designed to be complete without screenshots —

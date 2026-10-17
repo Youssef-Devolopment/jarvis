@@ -4,6 +4,12 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [Unreleased]
+
+- **Frontend split deferred.** `static/js/app.js` stays one IIFE for
+  now; a real split needs an ES-module conversion (see `DECISIONS.md`
+  #13). Recorded here so the decision is visible in the release log.
+
 ## [1.33.0] — 2026-10-17
 
 The 58 KB `routes/api.py` is now nine per-domain modules behind one

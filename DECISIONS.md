@@ -295,6 +295,27 @@ domain. Shared imports and helpers stay in exactly one place.
 module, so a test that used to patch `routes.api.get_client` must
 patch `routes.api_chat.get_client`. Keep the aggregator import-only.
 
+## 13. The frontend stays one file (for now)
+
+**Decision.** `static/js/app.js` stays a single ~127 KB script wrapped
+in one IIFE. We are *not* splitting it into multiple files or ES
+modules yet; the API split (decision 12) was the one worth doing now.
+
+**Why.** Unlike `routes/api.py`, the frontend can't be split
+mechanically: the whole file lives inside one top-level IIFE
+(`(function(){ … })();`), so no two parts share scope and every
+cross-reference would break. The only real paths are a full ES-module
+conversion (`<script type="module">` + `export`/`import` for ~100
+shared symbols) or a global-namespace rewrite — both are large,
+delicate rewrites of a stable UI whose only automated guard is the DOM
+smoke. The payoff (readability) doesn't yet outweigh the regression
+risk on a personal tool.
+
+**What it costs.** The UI monolith stays large. Revisit when a build
+step or a second contributor exists — then the conversion is its own
+batch, with the smoke suite expanded first. Until then, every *big*
+change gets a written update here.
+
 ---
 
 ## How to use this document
