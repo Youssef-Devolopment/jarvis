@@ -10,6 +10,21 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.33.4] — 2026-10-17
+
+An MCP server that dies during the boot burst is no longer recorded as
+a permanent failure:
+
+- `mcp/runtime.py:start_all()` now makes a second pass over any failed
+  servers once the boot burst has settled (20s). A transient
+  "Connection closed" from a cold `npx`/`uvx` start used to leave the
+  rest of the session reading `services: degraded` beside
+  `mcp: ok` — a contradiction the health page could not explain.
+- The immediate retry from 1.33.1 stays; the second pass is bounded —
+  one extra attempt per failed server, no polling and no loop.
+
+See `DECISIONS.md` #14.
+
 ## [1.33.3] — 2026-10-17
 
 Three small correctness fixes found while auditing the repo:

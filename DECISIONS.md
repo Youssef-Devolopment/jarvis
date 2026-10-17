@@ -318,6 +318,30 @@ change gets a written update here.
 
 ---
 
+## 14. Boot-settle retry for MCP servers, not a transient verdict
+
+**Decision.** `mcp/runtime.py:start_all()` makes two passes: it starts
+every enabled server, and if any failed it waits for the boot burst to
+settle (20s) and tries those failures again. The `services` health row
+is a boot snapshot, so a server that died in the burst and would have
+recovered on its own must not read as `degraded` for the whole session.
+
+**Why.** MCP stdio servers are child processes launched by `npx`/`uvx`.
+Under a cold cache, on a machine already loading modules, prewarming
+Chromium and starting the tray, one can exit mid-handshake
+("Connection closed") and then start perfectly a minute later — start
+it on demand (`POST /api/mcp/start`) and it comes up. The older code
+retried once *inside* the burst and then froze the failure:
+`GET /api/health` would show `mcp: ok` beside `services: degraded`,
+which is worse than useless to someone reading the verdict.
+
+**What it costs.** A genuinely broken server adds one 20s wait before
+the verdict lands (in a daemon thread — boot stays non-blocking and
+the check labels the gap "still starting"). The retry is bounded: one
+extra pass, no polling, no loop.
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either
