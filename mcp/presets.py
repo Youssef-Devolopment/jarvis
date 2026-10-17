@@ -1,7 +1,9 @@
 """MCP presets — one-click servers + Claude config import."""
 
 from __future__ import annotations
+
 import shutil
+
 from logger import get_logger
 
 log = get_logger(__name__)

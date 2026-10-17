@@ -1,6 +1,8 @@
 ﻿"""Proactive behavior — JARVIS offers help without being asked."""
 from __future__ import annotations
+
 from datetime import datetime
+
 from logger import get_logger
 
 log = get_logger(__name__)

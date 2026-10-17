@@ -1,7 +1,12 @@
 from __future__ import annotations
-import concurrent.futures, queue, threading, time
+
+import concurrent.futures
+import queue
+import threading
+import time
 from pathlib import Path
 from urllib.parse import quote
+
 from config import get_settings
 from errors import BrowserError
 from logger import get_logger
@@ -9,7 +14,8 @@ from logger import get_logger
 log = get_logger(__name__)
 
 try:
-    from playwright.sync_api import sync_playwright, Error as PWError
+    from playwright.sync_api import Error as PWError
+    from playwright.sync_api import sync_playwright
     _HAS = True
 except ImportError:
     _HAS = False

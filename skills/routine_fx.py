@@ -1,9 +1,11 @@
 """Exchange rates via open.er-api.com."""
 from __future__ import annotations
+
 import urllib.parse
-from skills.registry import register
-from skills.http_util import http_get
+
 from logger import get_logger
+from skills.http_util import http_get
+from skills.registry import register
 
 log = get_logger(__name__)
 

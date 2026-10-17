@@ -6,7 +6,9 @@ Every branch reuses the existing validated backend — this file adds
 routing only, no new safety semantics.
 """
 from __future__ import annotations
+
 import re
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -134,9 +136,9 @@ def _add_mcp(t: str) -> str | None:
 
 def _add_app(query: str) -> str:
     try:
+        from skills.registry import get_skill
         from system import app_learner
         from system.app_learner import _norm
-        from skills.registry import get_skill
     except Exception as exc:
         return f"Could not learn that app: {exc}"[:160]
     try:

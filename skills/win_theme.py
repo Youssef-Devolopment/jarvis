@@ -4,8 +4,9 @@ HKCU-only (no elevation), broadcast applied instantly. No confirm
 gate: every action is one click reversible in Settings.
 """
 from __future__ import annotations
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 

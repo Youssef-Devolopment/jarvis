@@ -1,5 +1,6 @@
 """Library pack: anagram check."""
 import re
+
 from skills.registry import register
 
 

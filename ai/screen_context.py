@@ -14,9 +14,9 @@ usually <20s old, otherwise a live grab is taken.
 """
 from __future__ import annotations
 
-import io
 import threading
 import time
+
 from logger import get_logger
 
 log = get_logger(__name__)

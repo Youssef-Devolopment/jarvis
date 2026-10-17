@@ -1,5 +1,6 @@
 """End-to-end test of the native MCP stdio server (JSON-RPC handshake)."""
 from __future__ import annotations
+
 import json
 import subprocess
 import sys

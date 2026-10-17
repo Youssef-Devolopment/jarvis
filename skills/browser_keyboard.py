@@ -1,8 +1,8 @@
 """Browser keyboard control: type, press keys, tab management, scroll."""
 from __future__ import annotations
-import time
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 

@@ -1,6 +1,7 @@
 """Snippet vault — save and retrieve code snippets."""
 
 from __future__ import annotations
+
 from logger import get_logger
 
 log = get_logger(__name__)

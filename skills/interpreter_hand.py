@@ -5,8 +5,9 @@ the result when done. Fire-and-forget: the HTTP request never waits on
 the model. Unavailable package -> install hint, never a crash.
 """
 from __future__ import annotations
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 
@@ -22,8 +23,7 @@ def _done_summary(res: dict) -> str:
 
 def _launch(task: str) -> str:
     try:
-        from system.interpreter_hand import (
-            is_available, run_goal_async, status)
+        from system.interpreter_hand import is_available, run_goal_async, status
     except Exception as exc:
         log.warning("Interpreter hand import failed: %s", exc)
         return "The computer hand is not wired up."

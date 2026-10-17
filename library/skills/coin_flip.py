@@ -1,5 +1,6 @@
 """Library pack: coin flip."""
 import random
+
 from skills.registry import register
 
 

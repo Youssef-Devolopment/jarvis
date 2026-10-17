@@ -1,18 +1,40 @@
-from memory.store import (
-    remember, recall, all_facts, count_facts, forget, forget_all,
-    facts_block, integrity,
-    save_message, load_recent_messages, load_full_session, clear_session,
-    all_sessions, ensure_session, delete_session,
-    save_contact, list_contacts, find_contact,
-    save_reminder, list_reminders, mark_reminder_fired, due_reminders,
-    save_snippet, list_snippets, get_snippet, delete_snippet,
-    save_layout, list_layouts, get_layout, delete_layout,
-    log_time_entry, time_summary,
-)
+from memory import context, outcomes
 from memory.extractor import extract_and_store
-from memory.prefs import all_prefs, get_pref, set_pref, reset_prefs
-from memory import context
-from memory import outcomes
+from memory.prefs import all_prefs, get_pref, reset_prefs, set_pref
+from memory.store import (
+    all_facts,
+    all_sessions,
+    clear_session,
+    count_facts,
+    delete_layout,
+    delete_session,
+    delete_snippet,
+    due_reminders,
+    ensure_session,
+    facts_block,
+    find_contact,
+    forget,
+    forget_all,
+    get_layout,
+    get_snippet,
+    integrity,
+    list_contacts,
+    list_layouts,
+    list_reminders,
+    list_snippets,
+    load_full_session,
+    load_recent_messages,
+    log_time_entry,
+    mark_reminder_fired,
+    recall,
+    remember,
+    save_contact,
+    save_layout,
+    save_message,
+    save_reminder,
+    save_snippet,
+    time_summary,
+)
 
 __all__ = [
     "remember", "recall", "all_facts", "count_facts", "forget",
@@ -26,5 +48,5 @@ __all__ = [
     "save_reminder", "list_reminders", "mark_reminder_fired", "due_reminders",
     "save_snippet", "list_snippets", "get_snippet", "delete_snippet",
     "save_layout", "list_layouts", "get_layout", "delete_layout",
-    "log_time_entry", "time_summary",
+    "log_time_entry", "time_summary", "integrity",
 ]

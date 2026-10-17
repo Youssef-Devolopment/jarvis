@@ -10,12 +10,14 @@ remembered so later chats can recall it.
 All I/O behind injectable params so tests never touch the network.
 """
 from __future__ import annotations
+
 import re
 import threading
 import time
 import uuid
 from datetime import datetime
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -160,7 +162,7 @@ def _default_llm(topic: str, digests: list[dict]) -> str | None:
     try:
         from ai.client import get_client
         from config import get_settings
-        s = get_settings()
+        get_settings()  # ensure config is loaded before the client
         c = get_client()
         brief = "\n\n".join(
             f"SOURCE: {d['title']}\nURL: {d['url']}\n"

@@ -1,9 +1,13 @@
 from __future__ import annotations
+
+import hmac
 import os
 import time
+
 from flask import Flask, g, jsonify, request
-from config import get_settings, Settings, ensure_flask_secret
-from errors import register_error_handlers, ConfigError
+
+from config import Settings, ensure_flask_secret, get_settings
+from errors import ConfigError, register_error_handlers
 from logger import get_logger, setup_logging
 from routes import api_bp, views_bp
 
@@ -30,7 +34,8 @@ def _lan_guard():
             return None
         want = os.getenv("JARVIS_TOKEN", "")
         got = request.headers.get("X-Jarvis-Token", "")
-        if want and got and got == want:
+        if want and got and hmac.compare_digest(got.encode("utf-8"),
+                                                want.encode("utf-8")):
             return None
         log.warning("Blocked LAN %s %s from %s (no valid token)",
                     request.method, request.path, remote)

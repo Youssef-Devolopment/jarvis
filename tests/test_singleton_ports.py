@@ -1,5 +1,6 @@
 """Tests for the single-instance guard and the port sentinel."""
 from __future__ import annotations
+
 import os
 import tempfile
 import unittest

@@ -1,8 +1,11 @@
 """Timers and reminders."""
 from __future__ import annotations
-import threading, time
-from skills.registry import register
+
+import threading
+import time
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 
@@ -31,6 +34,7 @@ def _fire(msg, secs):
     # when the scheduler library isn't installed.
     try:
         import functools
+
         from system.scheduler import add_one_shot, is_available
         if is_available() and add_one_shot(functools.partial(_speak, msg),
                                            secs):

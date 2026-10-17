@@ -1,9 +1,11 @@
 """Decide which escalation level a query needs."""
 
 from __future__ import annotations
+
 import re
-from moods.levels import Level
+
 from logger import get_logger
+from moods.levels import Level
 
 log = get_logger(__name__)
 
@@ -57,7 +59,6 @@ def classify(text: str, prev_failed_level: Level = None) -> Level:
         return Level.QUICK
 
     t = text.strip()
-    low = t.lower()
 
     # Simple check first
     for pat in _SIMPLE:

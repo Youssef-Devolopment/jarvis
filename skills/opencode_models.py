@@ -1,17 +1,18 @@
 """List & select OpenCode models via CLI."""
 
 from __future__ import annotations
+
 import os
 import re
 import shutil
 import subprocess
-from typing import Optional
+
 from logger import get_logger
 
 log = get_logger(__name__)
 
 
-def _exe() -> Optional[str]:
+def _exe() -> str | None:
     for name in ("opencode.cmd", "opencode.exe", "opencode"):
         p = shutil.which(name)
         if p:

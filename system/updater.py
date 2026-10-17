@@ -17,7 +17,7 @@ import re
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from logger import get_logger
 
@@ -25,10 +25,10 @@ log = get_logger("updater")
 
 ROOT = Path(__file__).resolve().parents[1]
 _GIT_TIMEOUT = 45  # network fetches can be slow on bad connections
-_last: Dict[str, Any] = {}  # most recent check() result, for /api/health
+_last: dict[str, Any] = {}  # most recent check() result, for /api/health
 
 
-def _run_git(args: List[str], timeout: int = _GIT_TIMEOUT) -> subprocess.CompletedProcess:
+def _run_git(args: list[str], timeout: int = _GIT_TIMEOUT) -> subprocess.CompletedProcess:
     """Run git in the repo root. Never raises for git failures."""
     try:
         return subprocess.run(
@@ -44,7 +44,7 @@ def _run_git(args: List[str], timeout: int = _GIT_TIMEOUT) -> subprocess.Complet
         return subprocess.CompletedProcess(args, 1, "", str(exc))
 
 
-def _parse_version(text: str) -> Optional[str]:
+def _parse_version(text: str) -> str | None:
     """Pull VERSION = "x.y.z" out of a config.py source blob."""
     m = re.search(r'^\s*VERSION\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
     return m.group(1) if m else None
@@ -58,7 +58,7 @@ def _local_version() -> str:
         return "0.0.0"
 
 
-def _dirty_files(limit: int = 10) -> List[str]:
+def _dirty_files(limit: int = 10) -> list[str]:
     """Tracked files with local edits (untracked personal files don't count)."""
     r = _run_git(["status", "--porcelain", "--untracked-files=no"])
     if r.returncode != 0:
@@ -70,7 +70,7 @@ def _dirty_files(limit: int = 10) -> List[str]:
     return out[:limit]
 
 
-def check() -> Dict[str, Any]:
+def check() -> dict[str, Any]:
     """Fetch origin/main and report whether a newer version exists.
 
     Returns {ok, current, latest, available, dirty, reason}. The result is
@@ -82,13 +82,13 @@ def check() -> Dict[str, Any]:
     return result
 
 
-def last_check() -> Dict[str, Any]:
+def last_check() -> dict[str, Any]:
     """Most recent check() this session ({} when never checked)."""
     return dict(_last)
 
 
-def _check_once() -> Dict[str, Any]:
-    result: Dict[str, Any] = {
+def _check_once() -> dict[str, Any]:
+    result: dict[str, Any] = {
         "ok": False,
         "current": _local_version(),
         "latest": _local_version(),
@@ -130,9 +130,9 @@ def _check_once() -> Dict[str, Any]:
     return result
 
 
-def update() -> Dict[str, Any]:
+def update() -> dict[str, Any]:
     """Fast-forward to origin/main. Refuses over local edits/commits."""
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "ok": False,
         "version": _local_version(),
         "reason": "",

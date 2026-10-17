@@ -1,8 +1,9 @@
 """URL cleaner — remove tracking params."""
 
 from __future__ import annotations
+
 import re
-from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 TRACKING_PARAMS = {
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",

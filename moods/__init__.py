@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 from threading import Lock
-from moods.presets import MOODS, DEFAULT_MOOD
-from moods.base import Mood
+
 from logger import get_logger
+from moods.base import Mood
+from moods.presets import DEFAULT_MOOD, MOODS
 
 log = get_logger(__name__)
 _lock = Lock()

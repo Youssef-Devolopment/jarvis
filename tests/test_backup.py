@@ -7,8 +7,8 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from system import backup as B
 from skills.backup_skill import BACKUP_PATTERNS
+from system import backup as B
 
 
 def _root_with(files: dict) -> Path:

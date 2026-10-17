@@ -1,5 +1,6 @@
 """Library pack: tip calculator (default 15%)."""
 import math
+
 from skills.registry import register
 
 

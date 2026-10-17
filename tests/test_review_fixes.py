@@ -15,8 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class WalModeTests(unittest.TestCase):
     def setUp(self):
-        import memory.store as st
         import memory.prefs as prefs
+        import memory.store as st
         self.st = st
         self.prefs = prefs
         self._real_db = st._DB_PATH
@@ -146,6 +146,18 @@ class LanAuthTests(unittest.TestCase):
             r = self.client.get("/api/info",
                                 environ_overrides=self.LAN)
         self.assertEqual(r.status_code, 200)
+
+    def test_lan_write_wrong_same_length_token_rejected(self):
+        with mock.patch.dict(os.environ, {"JARVIS_TOKEN": "abcd"}):
+            r = self._post("hello there", remote=self.LAN, token="abce")
+        self.assertEqual(r.status_code, 401)
+
+    def test_lan_write_non_ascii_token_no_crash(self):
+        # hmac.compare_digest on encoded bytes must not 500 on non-ASCII.
+        with mock.patch.dict(os.environ, {"JARVIS_TOKEN": "sécrèt"}):
+            r = self._post("hello there", remote=self.LAN,
+                           token="different")
+        self.assertEqual(r.status_code, 401)
 
 
 class LockfileTests(unittest.TestCase):

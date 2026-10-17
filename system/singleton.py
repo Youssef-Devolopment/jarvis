@@ -5,9 +5,11 @@ the PID is really a live JARVIS process (command-line check, so PID
 reuse can never block a fresh start) and exits(2) with a clear warning.
 """
 from __future__ import annotations
+
 import atexit
 import os
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)

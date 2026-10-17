@@ -1,11 +1,13 @@
 """System control skills: volume, brightness, lock, screenshot."""
 from __future__ import annotations
+
 import platform
 import subprocess
 import time
 from pathlib import Path
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 IS_WIN = platform.system() == "Windows"
@@ -143,7 +145,8 @@ def s_volume_set(text, m):
     # pyautogui approach — press up/down until level reached is
     # unreliable, so use pycaw if available else nudge
     try:
-        from ctypes import cast, POINTER
+        from ctypes import POINTER, cast
+
         from comtypes import CLSCTX_ALL
         from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
         devices = AudioUtilities.GetSpeakers()
@@ -152,7 +155,7 @@ def s_volume_set(text, m):
         vol.SetMasterVolumeLevelScalar(level / 100.0, None)
         return f"Volume set to {level}%."
     except Exception:
-        return f"Cannot set exact volume. Try 'volume up' or 'volume down'."
+        return "Cannot set exact volume. Try 'volume up' or 'volume down'."
 
 
 @register("brightness_set", [

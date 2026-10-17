@@ -1,7 +1,9 @@
 """Reality Check — verify answers against a second source before speaking."""
 
 from __future__ import annotations
+
 import re
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -99,7 +101,7 @@ def _ask_judge(question: str, primary: str, second: str) -> dict:
         f"Second source: {second[:800]}"
     )
     try:
-        from ai.client import get_client, create_with_temp_fallback
+        from ai.client import create_with_temp_fallback, get_client
         c = get_client()
         model = getattr(c, "model", None) or c.default_model
         r = create_with_temp_fallback(

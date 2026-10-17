@@ -1,5 +1,6 @@
 """Open ANY url as a REAL tab in your browser."""
 import re
+
 from skills.registry import register
 
 

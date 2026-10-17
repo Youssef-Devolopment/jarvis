@@ -1,5 +1,6 @@
 """Library pack: pick one option at random."""
 import random
+
 from skills.registry import register
 
 

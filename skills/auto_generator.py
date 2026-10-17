@@ -20,6 +20,7 @@ Safety:
 """
 
 from __future__ import annotations
+
 import ast
 import hashlib
 import importlib
@@ -30,6 +31,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)

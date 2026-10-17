@@ -64,7 +64,7 @@ class StatusLinesTests(unittest.TestCase):
         with mock.patch("memory.all_facts",
                         side_effect=OSError("disk error")):
             lines = startup.status_lines(_settings())
-        mem = [l for l in lines if l.strip().startswith("Memory")]
+        mem = [ln for ln in lines if ln.strip().startswith("Memory")]
         self.assertTrue(mem, lines)
         self.assertIn("UNAVAILABLE", mem[0])
 
@@ -72,8 +72,8 @@ class StatusLinesTests(unittest.TestCase):
         with mock.patch("moods.current_name",
                         side_effect=RuntimeError("boom")):
             lines = startup.status_lines(_settings())
-        self.assertTrue(any(l.strip().startswith("Mood") and
-                            "unavailable" in l for l in lines), lines)
+        self.assertTrue(any(ln.strip().startswith("Mood") and
+                            "unavailable" in ln for ln in lines), lines)
 
 
 class SafeModeBlockTests(unittest.TestCase):
@@ -107,8 +107,8 @@ class HealthBlockTests(unittest.TestCase):
         lines = startup.health_block(
             _snap("ok", {"api_key": {"status": "ok"},
                          "services": {"items": {}}}))
-        self.assertTrue(any("OK — all systems healthy" in l
-                            for l in lines), lines)
+        self.assertTrue(any("OK — all systems healthy" in ln
+                            for ln in lines), lines)
 
     def test_ok_with_pending_service_says_still_starting(self):
         snap = _snap("ok", {
@@ -247,7 +247,7 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(check.bucket("Memory store"), "core")
 
     def test_exit_code_all_pass_is_zero(self):
-        res = [(True, l, "", check.bucket(l)) for l, _f in check.CHECKS]
+        res = [(True, ln, "", check.bucket(ln)) for ln, _f in check.CHECKS]
         self.assertEqual(check.verdict(res)["code"], 0)
 
     def test_exit_code_core_failure_is_one(self):

@@ -1,7 +1,8 @@
 """Close/kill a desktop application by name (graceful first)."""
 from __future__ import annotations
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 

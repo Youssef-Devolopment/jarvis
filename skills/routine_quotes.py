@@ -1,8 +1,12 @@
 """Quotes via zenquotes.io."""
 from __future__ import annotations
-import json, random, urllib.request
-from skills.registry import register
+
+import json
+import random
+import urllib.request
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 

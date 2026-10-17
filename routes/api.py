@@ -1,21 +1,25 @@
 from __future__ import annotations
+
 import json
 import os
 import sys
-import threading
+
 from flask import Blueprint, Response, jsonify, request
-from ai import get_client, get_store, extract_memory_async
+
+from ai import extract_memory_async, get_client, get_store
 from ai.tools import TOOL_SCHEMAS
-from config import get_settings, try_settings, VERSION
+from config import VERSION, try_settings
 from errors import AIError, ConfigError, ValidationError, VoiceError
 from logger import get_logger
-from skills import dispatch as dispatch_skill, all_skills, toggle_skill
-from tools import all_tools, toggle_tool, filtered_schemas
-from mcp import all_servers as mcp_list, add_server as mcp_add, \
-                remove_server as mcp_remove, toggle_server as mcp_toggle
+from mcp import add_server as mcp_add
+from mcp import all_servers as mcp_list
+from skills import all_skills, toggle_skill
+from skills import dispatch as dispatch_skill
+from tools import all_tools, filtered_schemas, toggle_tool
+
 try:
-    from voice import (speak_async, listen_until_silence,
-                       set_voice as set_voice_impl, current_voice, all_voices)
+    from voice import all_voices, current_voice, listen_until_silence, speak_async
+    from voice import set_voice as set_voice_impl
 except Exception as _voice_import_exc:
     # Skills-only (no-key) boot: voice/output.py reads settings at import.
     # Stub the entry points so text endpoints stay up; voice endpoints
@@ -56,19 +60,35 @@ def _to_int(value, default: int, lo: int | None = None,
     if hi is not None:
         v = min(hi, v)
     return v
-from moods.models import (get_active, set_active, set_cache, get_cache,
-                           theme_for, label_for, build_fallback_list)
-from moods.router import needs_reasoning
-from moods import council, moderator
-from moods.levels import Level, LEVEL_SPECS
+import harness
+import memory
+import moods
+from ai import (
+    agents,
+    auto_format,
+    clipboard_watcher,
+    dream_mode,
+    focus_lock,
+    quick_capture,
+    reality_check,
+    screen_text,
+    snippets,
+    time_tracker,
+    url_cleaner,
+    window_layouts,
+)
 from memory import outcomes
-from ai import reality_check
-from ai import agents
-from ai import dream_mode
-from ai import (clipboard_watcher, quick_capture, screen_text,
-                focus_lock, snippets, window_layouts, url_cleaner,
-                auto_format, time_tracker)
-import moods, memory, harness
+from moods.levels import LEVEL_SPECS, Level
+from moods.models import (
+    build_fallback_list,
+    get_active,
+    get_cache,
+    label_for,
+    set_active,
+    set_cache,
+    theme_for,
+)
+from moods.router import needs_reasoning
 
 log = get_logger(__name__)
 bp = Blueprint("api", __name__, url_prefix="/api")
@@ -242,6 +262,20 @@ def skills_list():
     })
 
 
+@bp.get("/skills/match")
+def skills_match():
+    """Diagnostic: which skill patterns match a phrase, and which skill
+    last actually answered. No handler runs — safe to call any time."""
+    from skills.registry import last_match, match_only
+    text = (request.args.get("text") or "").strip()
+    if not text:
+        raise ValidationError("Missing 'text'.",
+                              detail="Pass ?text=your phrase.")
+    out = {"text": text, "last": last_match()}
+    out.update(match_only(text))
+    return jsonify(out)
+
+
 @bp.post("/skill")
 def skill_toggle():
     d = request.get_json(silent=True) or {}
@@ -325,11 +359,11 @@ def plugins_install():
 def market_catalog():
     """One catalog for everything installable: skills, pending
     drafts, plugins, MCP presets/servers, pinned sites."""
+    from mcp.manager import all_servers
+    from mcp.presets import list_presets
+    from plugins import status as plugins_status
     from skills import all_skills
     from skills import auto_generator as _ag
-    from plugins import status as plugins_status
-    from mcp.presets import list_presets
-    from mcp.manager import all_servers
     from system import launch as L
     skills = []
     for s in all_skills():
@@ -1563,7 +1597,7 @@ def opencode_ready_route():
 
 @bp.get("/opencode/models")
 def opencode_models_list():
-    from skills.opencode_models import list_models, get_active_model
+    from skills.opencode_models import get_active_model, list_models
     return jsonify({
         "models": list_models(),
         "active": get_active_model(),
@@ -1594,6 +1628,7 @@ def opencode_chat():
     import os
     import shutil
     import subprocess
+
     from flask import Response
 
     d = request.get_json(silent=True) or {}

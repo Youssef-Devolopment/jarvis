@@ -1,11 +1,14 @@
 """Self-edit proposals. Writes require user approval."""
 from __future__ import annotations
-import difflib, shutil, uuid
+
+import difflib
+import shutil
+import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
-from logger import get_logger
+
 from harness.self_read import _safe_path, read_file
+from logger import get_logger
 
 log = get_logger(__name__)
 _ROOT = Path(__file__).resolve().parent.parent

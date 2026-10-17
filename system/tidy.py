@@ -5,9 +5,11 @@ delete only on explicit confirm — voice ("tidy confirm"), API, or the
 nightly Dream run (pref-gated, user must be idle anyway).
 """
 from __future__ import annotations
+
 import os
 import time
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)

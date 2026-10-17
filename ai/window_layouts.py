@@ -1,7 +1,11 @@
 """Window layouts — save and restore window positions."""
 
 from __future__ import annotations
-import json, platform, time
+
+import json
+import platform
+import time
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -69,13 +73,16 @@ def restore(name):
 
         @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
         def cb(hwnd, lparam):
+            # title/found are loop variables, but EnumWindows calls cb
+            # synchronously below — before the next iteration — so the
+            # late binding B023 warns about never actually happens.
             if not user32.IsWindowVisible(hwnd): return True
             length = user32.GetWindowTextLengthW(hwnd)
             if length == 0: return True
             buf = ctypes.create_unicode_buffer(length + 1)
             user32.GetWindowTextW(hwnd, buf, length + 1)
-            if title.lower()[:40] in buf.value.lower():
-                found.append(hwnd)
+            if title.lower()[:40] in buf.value.lower():  # noqa: B023
+                found.append(hwnd)  # noqa: B023
                 return False
             return True
         user32.EnumWindows(cb, 0)

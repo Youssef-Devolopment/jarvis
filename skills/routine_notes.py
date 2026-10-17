@@ -1,10 +1,13 @@
 """Save and read notes (Obsidian vault when available, else SQLite)."""
 from __future__ import annotations
-import sqlite3, threading
+
+import sqlite3
+import threading
 from datetime import datetime
 from pathlib import Path
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 

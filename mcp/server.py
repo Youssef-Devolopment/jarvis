@@ -53,6 +53,7 @@ def _version() -> str:
 # ---------------------------------------------------------------- helpers
 def _http_get(path: str, timeout: int = 15) -> dict:
     import urllib.request
+
     from config import get_settings
     s = get_settings()
     with urllib.request.urlopen(
@@ -63,6 +64,7 @@ def _http_get(path: str, timeout: int = 15) -> dict:
 def _command_reply(text: str) -> str:
     """POST /api/command and stitch the SSE stream into one reply."""
     import urllib.request
+
     from config import get_settings
     from system.overlay import stitch_sse
     s = get_settings()

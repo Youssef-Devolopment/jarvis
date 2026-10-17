@@ -1,6 +1,6 @@
 """Focus lock skill."""
-import re
 from skills.registry import register
+
 
 @register("focus_lock", [
     r"^(?:focus|deep\s+work)\s+(?:for\s+)?(?P<mins>\d+)\s*(?:minutes?|mins?|m)[\?\.\!]?$",

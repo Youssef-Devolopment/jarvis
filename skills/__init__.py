@@ -1,7 +1,6 @@
-from skills.base import Skill
-from skills.registry import (all_skills, dispatch, get_skill, toggle_skill,
-                             unregister)
 from logger import get_logger
+from skills.base import Skill
+from skills.registry import all_skills, dispatch, get_skill, toggle_skill, unregister
 
 log = get_logger(__name__)
 

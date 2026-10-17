@@ -1,6 +1,6 @@
 """Download Piper voice models. Run once: python scripts/download_piper_voice.py"""
 from __future__ import annotations
-import os
+
 import sys
 import urllib.request
 from pathlib import Path

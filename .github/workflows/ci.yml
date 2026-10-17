@@ -43,8 +43,15 @@ jobs:
       - name: Syntax-check frontend
         run: node --check static/js/app.js
 
-      - name: Run test suite
+      - name: Install dev tooling
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Run test suite (with coverage)
         shell: pwsh
         run: |
           $env:PYTHONIOENCODING = "utf-8"
-          python -m unittest discover -s tests -v
+          coverage run -m unittest discover -s tests
+          coverage report -m

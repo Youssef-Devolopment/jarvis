@@ -5,6 +5,7 @@ history is copied first so the running browser's lock never blocks).
 Cached to logs/site_index.json.
 """
 from __future__ import annotations
+
 import json
 import shutil
 import sqlite3
@@ -12,6 +13,7 @@ import tempfile
 import time
 from pathlib import Path
 from urllib.parse import urlparse
+
 from logger import get_logger
 
 log = get_logger(__name__)

@@ -10,7 +10,7 @@ psutil call per minute, the process scan only happens when firing.
 from __future__ import annotations
 
 import threading
-from typing import Any, Dict, Optional
+from typing import Any
 
 from logger import get_logger
 
@@ -18,10 +18,10 @@ log = get_logger("guard")
 
 _interval = 60.0
 _rearm_below = 5  # percentage points under threshold to re-arm
-_thread: Optional[threading.Thread] = None
+_thread: threading.Thread | None = None
 _stop = threading.Event()
 _armed = True
-_last: Dict[str, Any] = {}
+_last: dict[str, Any] = {}
 _fired_count = 0
 
 
@@ -35,7 +35,7 @@ def _prefs() -> tuple[bool, int]:
     return enabled, max(50, min(99, threshold))
 
 
-def sample() -> Dict[str, Any]:
+def sample() -> dict[str, Any]:
     """One cheap memory snapshot."""
     import psutil
     vm = psutil.virtual_memory()
@@ -49,7 +49,7 @@ def sample() -> Dict[str, Any]:
     return out
 
 
-def top_consumer(min_mb: float = 200.0) -> Optional[tuple]:
+def top_consumer(min_mb: float = 200.0) -> tuple | None:
     """(name, mb) of the hungriest process — only called when firing."""
     try:
         import psutil
@@ -77,7 +77,7 @@ def _should_fire(pct: int, threshold: int) -> bool:
     return False
 
 
-def run_once(notify_fn=None) -> Optional[str]:
+def run_once(notify_fn=None) -> str | None:
     """Sample + evaluate + maybe alert. Returns the alert text if fired."""
     enabled, threshold = _prefs()
     if not enabled:
@@ -130,7 +130,7 @@ def stop() -> None:
     _stop.set()
 
 
-def status() -> Dict[str, Any]:
+def status() -> dict[str, Any]:
     """Current state for the skill / API."""
     enabled, threshold = _prefs()
     try:

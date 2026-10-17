@@ -1,12 +1,13 @@
 """Outcome memory — track replies, detect rejections, learn."""
 
 from __future__ import annotations
+
 import re
 import sqlite3
 import threading
-import time
 from datetime import datetime
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)

@@ -32,9 +32,13 @@ class MergeTest(unittest.TestCase):
                 __import__(mod)
 
     def test_search_agent_helpers_intact(self):
-        from skills.web_search import (_http_get, _strip_html,
-                                       _search_ddg_html, search_all,
-                                       fetch_page)
+        from skills.web_search import (
+            _http_get,
+            _search_ddg_html,
+            _strip_html,
+            fetch_page,
+            search_all,
+        )
         for fn in (_http_get, _strip_html, _search_ddg_html,
                    search_all, fetch_page):
             self.assertTrue(callable(fn))

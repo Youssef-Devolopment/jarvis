@@ -14,9 +14,11 @@ the single-instance guard makes a double-fire harmless (second one
 logs a warning and exits).
 """
 from __future__ import annotations
+
 import os
 import subprocess
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)

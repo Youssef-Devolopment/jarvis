@@ -1,11 +1,13 @@
 """Todoist API integration."""
 from __future__ import annotations
+
 import json
 import os
 import urllib.parse
 import urllib.request
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 

@@ -4,7 +4,6 @@ clear setup hint instead of a crash or a bare 500.
 """
 from __future__ import annotations
 
-import json
 import os
 import unittest
 

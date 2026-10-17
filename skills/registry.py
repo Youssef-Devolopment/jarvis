@@ -1,6 +1,7 @@
 from __future__ import annotations
+
 import re
-from typing import Optional
+
 from skills.base import Skill
 
 _SKILLS = []
@@ -32,6 +33,9 @@ def unregister(name):
     return len(_SKILLS) != before
 
 
+_LAST = {}
+
+
 def dispatch(text):
     for s in _SKILLS:
         if not s.enabled:
@@ -40,8 +44,28 @@ def dispatch(text):
         if m:
             r = s.run(text, m)
             if r:
+                _LAST.update({"text": str(text)[:200], "skill": s.name})
                 return r
     return None
+
+
+def match_only(text: str) -> dict:
+    """Which skills' patterns match `text` — WITHOUT running anything.
+
+    A safe diagnostic for "why did that fire?": dispatch returns the
+    first match that yields a truthy result, so `first` is the first
+    candidate tried (execution can fall through to the next) and
+    `conflict` flags overlapping patterns worth reviewing.
+    """
+    hits = [s.name for s in _SKILLS if s.enabled and s.match(text)]
+    return {"candidates": hits,
+            "first": hits[0] if hits else None,
+            "conflict": len(hits) > 1}
+
+
+def last_match() -> dict:
+    """The skill whose handler most recently produced a result."""
+    return dict(_LAST)
 
 
 def all_skills():

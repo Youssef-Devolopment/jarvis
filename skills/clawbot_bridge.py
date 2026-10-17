@@ -1,11 +1,12 @@
 """ClawBot Plus bridge — full computer control for JARVIS."""
 from __future__ import annotations
+
 import os
 import shutil
 import subprocess
-from pathlib import Path
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 

@@ -1,6 +1,7 @@
 """Auto-format — detect and reformat JSON, JSON-minify, etc."""
 
 from __future__ import annotations
+
 import json
 import re
 

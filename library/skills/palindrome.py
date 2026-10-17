@@ -1,5 +1,6 @@
 """Library pack: palindrome check."""
 import re
+
 from skills.registry import register
 
 

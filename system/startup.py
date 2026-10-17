@@ -11,7 +11,7 @@ never disagree about the system's state.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Service name -> what the user loses while it is down (safe-mode wording).
 _SERVICE_LOSS = {
@@ -40,7 +40,7 @@ def _short(exc: BaseException, limit: int = 60) -> str:
     return s[:limit]
 
 
-def status_lines(s, skills_only: bool = False) -> List[str]:
+def status_lines(s, skills_only: bool = False) -> list[str]:
     """The boot status block (console).
 
     Every subsystem read here is guarded: a broken memory DB or an
@@ -82,8 +82,8 @@ def status_lines(s, skills_only: bool = False) -> List[str]:
     return lines
 
 
-def safe_mode_block(failed, healthy: Optional[int] = None,
-                    skills_only: bool = False) -> List[str]:
+def safe_mode_block(failed, healthy: int | None = None,
+                    skills_only: bool = False) -> list[str]:
     """The honest degraded-boot block: what failed, what works, next step.
 
     Returns [] when nothing failed — callers print nothing on a clean
@@ -113,7 +113,7 @@ def safe_mode_block(failed, healthy: Optional[int] = None,
             "the failed service, or see logs/jarvis.log"]
 
 
-def health_block(snapshot: Dict[str, Any]) -> List[str]:
+def health_block(snapshot: dict[str, Any]) -> list[str]:
     """Startup health verdict from the /api/health snapshot.
 
     ok      -> one reassurance line
@@ -173,7 +173,7 @@ def toast_status(failed=None, has_key: bool = True) -> str:
     return "Press Ctrl+Alt+J to open"
 
 
-def degraded_toast(snapshot: Dict[str, Any]) -> Optional[str]:
+def degraded_toast(snapshot: dict[str, Any]) -> str | None:
     """Deferred (T+20s) toast text when services failed async, else None.
 
     Returns the message only — callers decide whether to toast, so
@@ -189,7 +189,7 @@ def degraded_toast(snapshot: Dict[str, Any]) -> Optional[str]:
             "open Settings > SYSTEM to restart")
 
 
-def toast_if_degraded(snapshot: Dict[str, Any]) -> None:
+def toast_if_degraded(snapshot: dict[str, Any]) -> None:
     """Deferred health toast (desktop mode); silent when healthy."""
     msg = degraded_toast(snapshot)
     if not msg:
@@ -210,7 +210,7 @@ def bind_error(exc: BaseException, host: str, port: Any) -> str:
             "      set a free PORT in .env and start again.\n")
 
 
-def ensure_port(host: Any, port: Any) -> Optional[str]:
+def ensure_port(host: Any, port: Any) -> str | None:
     """Probe-bind the port before booting subsystems.
 
     Returns None when the port looks free, otherwise the OS error text.

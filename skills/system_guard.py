@@ -55,7 +55,7 @@ def skill_mic_test(text, match):
     except Exception as exc:
         return f"Mic test unavailable (audio module missing: {exc})."
     try:
-        devs = sd.query_devices()
+        sd.query_devices()  # probe: raises when no audio backend
         default_in = sd.default.device[0]
         info = sd.query_devices(default_in, "input")
         name = info.get("name", "unknown device")
@@ -70,7 +70,6 @@ def skill_mic_test(text, match):
         sd.wait()
         arr = np.asarray(rec).flatten()
         peak = int(np.abs(arr).max()) if arr.size else 0
-        rms = float(np.sqrt((arr.astype("float64") ** 2).mean())) if arr.size else 0.0
         pct = min(100, round(peak / 32767 * 100))
     except Exception as exc:
         return f"Mic found ({name}) but the test read failed: {exc}"

@@ -1,4 +1,7 @@
-import ast, operator, re
+import ast
+import operator
+import re
+
 from skills.registry import register
 
 _BINOPS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
@@ -18,9 +21,9 @@ def _safe_eval(expr: str) -> float:
         if isinstance(n, ast.BinOp):
             op = _BINOPS.get(type(n.op))
             if op is None: raise ValueError
-            l, r = walk(n.left), walk(n.right)
+            left, r = walk(n.left), walk(n.right)
             if op is operator.pow and abs(r) > 1000: raise ValueError
-            return op(l, r)
+            return op(left, r)
         if isinstance(n, ast.UnaryOp):
             op = _UNARY.get(type(n.op))
             if op is None: raise ValueError

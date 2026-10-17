@@ -1,13 +1,14 @@
 """OpenCode CLI bridge — auto-start headless server + run tasks."""
 
 from __future__ import annotations
+
 import os
 import shutil
 import subprocess
 import time
-from typing import Optional
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 
@@ -15,7 +16,7 @@ PORT = int(os.getenv("OPENCODE_PORT", "4096"))
 URL = f"http://127.0.0.1:{PORT}"
 HOST = "127.0.0.1"
 
-_proc: Optional[subprocess.Popen] = None
+_proc: subprocess.Popen | None = None
 
 
 def _opencode_exe() -> str | None:
@@ -100,8 +101,8 @@ def is_web_up(timeout: int = 3) -> bool:
     Any HTTP response counts — even 401 (auth-gated still means
     the server is up and the browser tab will load).
     """
-    import urllib.request
     import urllib.error
+    import urllib.request
     try:
         urllib.request.urlopen(URL, timeout=timeout)
         return True

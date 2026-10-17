@@ -5,10 +5,12 @@ Opt-in only: nothing is watched until the user says
 otherwise the skill replies with an install hint.
 """
 from __future__ import annotations
+
 import threading
 from pathlib import Path
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 
@@ -56,8 +58,8 @@ def _ensure_observer():
     global _observer, _handler
     if _observer is not None:
         return _observer
-    from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import Observer
 
     class _Handler(FileSystemEventHandler):
         def on_created(self, event):
@@ -74,7 +76,7 @@ def _ensure_observer():
 
 def _persist() -> None:
     try:
-        from memory import set_pref, get_pref
+        from memory import set_pref
         set_pref("sentinel_folders", sorted(_watching))
         set_pref("sentinel_enabled", bool(_watching))
     except Exception:

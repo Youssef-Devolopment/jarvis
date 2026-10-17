@@ -1,13 +1,15 @@
 """Snippet vault, layouts, URL cleaner, time summary skills."""
 from skills.registry import register
 
+
 @register("snippet_save", [
     r"^(?:save|حفظ)\s+snippet\s+(?P<title>.+?)[\?\.\!]?$",
 ], "Save clipboard as snippet")
 def skill_snippet_save(text, match):
     try:
-        from ai import snippets
         import pyperclip
+
+        from ai import snippets
         code = pyperclip.paste() or ""
         if not code: return "Clipboard empty."
         title = match.group("title").strip()

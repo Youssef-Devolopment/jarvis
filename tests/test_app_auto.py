@@ -6,8 +6,8 @@ from __future__ import annotations
 import unittest
 from unittest import mock
 
-from system import app_learner as AL
 from system import app_close
+from system import app_learner as AL
 
 
 class _AutoPref:

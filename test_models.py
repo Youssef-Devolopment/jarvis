@@ -1,6 +1,10 @@
 """Test which models actually respond. Run: python test_models.py"""
 from __future__ import annotations
-import os, sys, time
+
+import os
+import sys
+import time
+
 from dotenv import load_dotenv
 from openai import OpenAI
 

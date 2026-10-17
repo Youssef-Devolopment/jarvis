@@ -6,13 +6,11 @@ and dropped permissions. Fresh installs report unavailable (nothing
 to compare); broken installed manifests report unavailable too —
 never a crash, never a silent pass.
 """
-import json
 import unittest
 from pathlib import Path
-from unittest import mock
 
-from tests.test_modules import _TempRoot, _manifest, _write_module
 import system.modules as modsys
+from tests.test_modules import _manifest, _TempRoot, _write_module
 
 
 class PermDiffTests(_TempRoot):

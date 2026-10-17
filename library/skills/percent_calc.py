@@ -1,5 +1,6 @@
 """Library pack: quick percentages."""
 import math
+
 from skills.registry import register
 
 

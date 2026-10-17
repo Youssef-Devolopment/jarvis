@@ -148,8 +148,8 @@ class AppLearnerTests(unittest.TestCase):
     # ---------- approval gate (durable auto_approve_skills pref) ----------
     def _gate_off(self):
         """auto-approve OFF + isolated candidate/pending/audit state."""
-        from skills import auto_generator as gen
         from memory import set_pref
+        from skills import auto_generator as gen
         self._ag_gen = gen
         root = Path(self.tmp.name)
         (root / "cand").mkdir(exist_ok=True)

@@ -1,0 +1,28 @@
+# Ruff config — the JARVIS lint gate (CI runs `ruff check .`).
+#
+# A curated strong rule set. A few pure-formatting rules are off on
+# purpose so the gate catches real problems without demanding a
+# cosmetic rewrite of a stable codebase:
+#   E501 line-too-long             long lines are deliberate in places
+#   E701/E702 one-line statements  the house style is `if x: return`
+#   E402 import-not-at-top         entry points set env before importing
+#   UP031/UP032 printf / f-string  formatting preference, not correctness
+#   B904 raise-without-`from`      message-first error style; chaining
+#                                  edits would touch frozen error paths
+#
+# Excluded by policy: the frozen voice modules (never edit) and
+# user/generated code (installed plugins + runtime-learned skills).
+
+target-version = "py310"
+line-length = 88
+extend-exclude = [
+    ".venv",
+    "plugins",
+    "skills/auto_generated",
+    "voice/output.py",
+    "voice/voices.py",
+]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501", "E701", "E702", "E402", "UP031", "UP032", "B904"]

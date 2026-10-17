@@ -79,8 +79,6 @@ class AgentLoopTests(unittest.TestCase):
         class SingleSplit(FakeCompletions):
             def create(self, **kw):
                 self.calls.append(kw)
-                user = " ".join(m.get("content", "")
-                                for m in kw.get("messages", []))
                 if "INDEPENDENT sub-tasks" in kw["messages"][0]["content"]:
                     return _Resp("SINGLE")
                 return _Resp("Only answer.")

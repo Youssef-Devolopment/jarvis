@@ -7,8 +7,8 @@ import re
 import unittest
 from unittest import mock
 
-from system import app_close
 from skills.app_closer import CLOSE_PATTERNS
+from system import app_close
 
 
 class FakeProc:

@@ -5,13 +5,14 @@ Model detects image format from content, not filename.
 Supports JPEG, PNG, GIF, WebP.
 """
 from __future__ import annotations
+
 import base64
 import os
 import time
 from pathlib import Path
 
-from skills.registry import register
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 

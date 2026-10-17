@@ -7,6 +7,7 @@ everything else is confirmed first by the caller. URLs are normalized,
 scheme-checked (http/https only), and opened as REAL tabs.
 """
 from __future__ import annotations
+
 import difflib
 import os
 import platform
@@ -14,6 +15,7 @@ import shutil
 import subprocess
 import webbrowser
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)

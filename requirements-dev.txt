@@ -1,0 +1,5 @@
+# Dev-only tooling — NOT part of the runtime install, and deliberately
+# kept out of requirements-lock.txt. CI installs these for the lint +
+# coverage gate; pin to the versions the maintainer runs locally.
+ruff==0.17.1
+coverage==7.16.2

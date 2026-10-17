@@ -1,9 +1,11 @@
 ﻿"""Context tracker — record of what JARVIS is doing on the PC."""
 from __future__ import annotations
+
 import sqlite3
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)

@@ -8,7 +8,6 @@ principle-8 demo flow (read -> edit -> verify -> report) runs here
 end-to-end through the real tools as its log evidence.
 """
 import contextlib
-import re
 import tempfile
 import unittest
 from pathlib import Path

@@ -1,5 +1,6 @@
 """Self-awareness — detect conversational vs task-oriented input."""
 from __future__ import annotations
+
 import re
 
 # Patterns that indicate purely conversational / chitchat input

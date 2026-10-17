@@ -10,8 +10,8 @@ from pathlib import Path
 from unittest import mock
 
 import memory.store as st
-from system import research_agent as ra
 from skills.deep_research import RESEARCH_PATTERNS
+from system import research_agent as ra
 
 _FAKE_RESULTS = [
     {"title": "A", "url": "https://a.example/x", "snippet": "s1"},
@@ -88,7 +88,8 @@ class SynthTests(unittest.TestCase):
               "text": "Beta line one.\nMore beta."}]
 
     def test_llm_path_parses(self):
-        llm = lambda t, d: "TL;DR: Things work.\n- point one\n- point two"
+        def llm(t, d):
+            return "TL;DR: Things work.\n- point one\n- point two"
         tldr, points = ra.synthesize("t", self._srcs, llm_fn=llm)
         self.assertEqual(tldr, "Things work.")
         self.assertEqual(points, ["point one", "point two"])

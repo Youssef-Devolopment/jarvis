@@ -8,10 +8,12 @@ mission-context rule: mcp__ tools run free inside supervised missions
 autonomy_enabled=false.
 """
 from __future__ import annotations
+
 import json
 import threading
 import time
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -112,7 +114,7 @@ def ask_approval(question: str) -> bool:
     try:
         from memory import get_pref
         if not get_pref("dnd", False):
-            from voice import speak_async, is_speaking
+            from voice import is_speaking, speak_async
             if not is_speaking():
                 speak_async(question + " Say yes or no.")
                 _mark_spoke()
@@ -164,7 +166,7 @@ def gated_execute(name: str, args: dict, dry_run: bool = False) -> str:
 
 
 def _snapshot() -> str:
-    lines = [f"cwd: {Path.cwd()}", f"OS: Windows"]
+    lines = [f"cwd: {Path.cwd()}", "OS: Windows"]
     try:
         from memory import get_pref
         allowed = get_pref("code_mode_allowed", []) or []
@@ -205,7 +207,7 @@ def run_mission(goal: str, dry_run: bool = False,
     c = get_client()
     final = ""
     try:
-        for rnd in range(max(1, max_rounds)):
+        for _rnd in range(max(1, max_rounds)):
             resp = c._client.chat.completions.create(
                 model=FAST_MODEL, messages=messages,
                 tools=schemas or None, temperature=0.2, max_tokens=800)

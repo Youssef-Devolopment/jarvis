@@ -1,6 +1,6 @@
 """Global hotkeys — Ctrl+Alt+J opens JARVIS, Alt+Space shows the overlay."""
 from __future__ import annotations
-import webbrowser
+
 from logger import get_logger
 
 log = get_logger(__name__)

@@ -1,13 +1,12 @@
 """Desktop launcher — runs JARVIS like a real Windows app."""
 
 from __future__ import annotations
-import os
-import signal
-import sys
+
 import threading
 import time
 import webbrowser
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -24,8 +23,8 @@ def _start_flask():
     if _flask_started:
         return
     try:
-        from server import app
         from config import try_settings
+        from server import app
         s = try_settings()
         host = s.host if s else "127.0.0.1"
         port = s.port if s else 5000
@@ -111,8 +110,9 @@ def wait():
 def _system_uptime() -> str:
     """How long the PC has been on, as a short human string."""
     try:
-        import psutil
         import time as _t
+
+        import psutil
         secs = int(_t.time() - psutil.boot_time())
     except Exception:
         try:
@@ -171,7 +171,8 @@ def run_desktop_mode(open_browser: bool = False):
     # skills-only and safe-mode states are said out loud), spoken
     # welcome best-effort.
     try:
-        from system import notify, startup as _startup
+        from system import notify
+        from system import startup as _startup
         has_key = True
         try:
             from config import try_settings

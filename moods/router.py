@@ -1,8 +1,10 @@
 """Router — decides between JARVIS fast skills and OpenHands heavy tasks."""
 from __future__ import annotations
+
 import re
-from moods.levels import Level
+
 from moods.classifier import classify, needs_user_confirmation
+from moods.levels import Level
 
 FAST_MODEL = "qwen3.8-flash:free"
 REASON_MODEL = "deepseek-v4.1-flash:free"

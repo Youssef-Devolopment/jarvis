@@ -9,10 +9,12 @@ via the audio stack at boot). Every operation therefore runs inside a
 short-lived worker thread; results come back as plain strings.
 """
 from __future__ import annotations
+
 import concurrent.futures
 import re
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 

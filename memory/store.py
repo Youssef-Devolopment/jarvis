@@ -1,16 +1,17 @@
 """SQLite memory: facts (long-term) + messages + sessions (chat history)."""
 from __future__ import annotations
+
 import sqlite3
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+
 from logger import get_logger
 
 log = get_logger(__name__)
 _DB_PATH = Path(__file__).resolve().parent / "jarvis_memory.db"
 _lock = threading.Lock()
-_conn: Optional[sqlite3.Connection] = None
+_conn: sqlite3.Connection | None = None
 
 
 def _get_conn() -> sqlite3.Connection:
@@ -541,7 +542,8 @@ def log_time_entry(app, window_title, duration_sec):
 
 
 def time_summary(hours=24):
-    from datetime import datetime as _dt, timedelta
+    from datetime import datetime as _dt
+    from datetime import timedelta
     since = (_dt.now() - timedelta(hours=hours)).isoformat(timespec="seconds")
     c = _get_conn()
     with _lock:

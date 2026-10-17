@@ -12,7 +12,6 @@ from pathlib import Path
 from unittest import mock
 
 import config
-from config import Settings
 from errors import ValidationError
 
 _TMP_KEY = "sk-test-verify-abc123"

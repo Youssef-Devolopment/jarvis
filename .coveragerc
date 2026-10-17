@@ -1,0 +1,12 @@
+# Coverage config — used by CI and locally (`coverage run -m unittest`).
+# `ignore_errors` because a few tests import throwaway modules from temp
+# dirs that no longer exist by report time.
+[run]
+source = .
+
+[report]
+ignore_errors = True
+omit =
+    tests/*
+    skills/auto_generated/*
+    plugins/*

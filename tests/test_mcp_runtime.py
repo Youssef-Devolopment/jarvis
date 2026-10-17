@@ -72,6 +72,7 @@ class SdkPathTests(unittest.TestCase):
 
     def test_sdk_window_removes_nothing_and_pins_sdk_first(self):
         import sys
+
         from mcp import runtime
         before = list(sys.path)
         with runtime._sdk_path() as sdk_base:

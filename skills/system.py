@@ -1,6 +1,9 @@
-import platform, shutil
+import platform
+import shutil
 from pathlib import Path
+
 from skills.registry import register
+
 try:
     import psutil
 except ImportError:

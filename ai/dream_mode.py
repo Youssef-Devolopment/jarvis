@@ -1,10 +1,12 @@
 """Dream Mode — nightly autonomous routine."""
 
 from __future__ import annotations
+
 import shutil
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -206,7 +208,7 @@ def summarize_day() -> str:
             f"{events[0]['timestamp'][11:16]}\n"
         )
         try:
-            from ai.client import get_client, create_with_temp_fallback
+            from ai.client import create_with_temp_fallback, get_client
             c = get_client()
             model = getattr(c, "model", None) or c.default_model
             r = create_with_temp_fallback(

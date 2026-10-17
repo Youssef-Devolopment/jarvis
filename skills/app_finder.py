@@ -1,6 +1,6 @@
 """App finder — where is it installed, what apps do I have."""
-from skills.registry import register
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 

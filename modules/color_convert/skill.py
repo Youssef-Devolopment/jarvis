@@ -43,9 +43,9 @@ def _answer(hexstr, target):
         return None
     r, g, b = rgb
     if target == "hsl":
-        h, s, l = _hsl(r, g, b)
+        h, s, light = _hsl(r, g, b)
         return (f"{_hex(r, g, b)} is hsl({h:.0f}, {s * 100:.0f}%, "
-                f"{l * 100:.0f}%).")
+                f"{light * 100:.0f}%).")
     if target in ("rgb", "rgba"):
         return f"{_hex(r, g, b)} is rgb({r}, {g}, {b})."
     return None

@@ -1,9 +1,9 @@
 """Piper TTS — local, fast, high-quality British voice."""
 from __future__ import annotations
+
 import wave
 from pathlib import Path
 from threading import Lock
-from typing import Optional
 
 from logger import get_logger
 

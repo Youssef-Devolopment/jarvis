@@ -41,6 +41,7 @@ import queue
 import threading
 import urllib.error
 import urllib.request
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -320,10 +321,10 @@ def _run() -> None:
                        font=("Bahnschrift", 9), padx=8, pady=1,
                        highlightthickness=1,
                        highlightbackground=EDGE_DIM)
-        hdr_win = cv.create_window(140, 29, window=hdr, anchor="w")
+        cv.create_window(140, 29, window=hdr, anchor="w")
         ver = tk.Label(cv, text="", bg=PANEL, fg=DIM,
                        font=("Bahnschrift", 8))
-        ver_win = cv.create_window(W - 44, 29, window=ver, anchor="e")
+        cv.create_window(W - 44, 29, window=ver, anchor="e")
 
         # status dot (halo + core) right before the version
         dot_x, dot_y = W - 170, 29

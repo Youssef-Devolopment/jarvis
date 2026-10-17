@@ -5,11 +5,13 @@ Desktop shortcuts, pinned taskbar items. Cached to
 logs/app_index.json, rebuilt when older than 24h or on demand.
 """
 from __future__ import annotations
+
 import difflib
 import json
 import os
 import time
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)

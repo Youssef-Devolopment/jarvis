@@ -1,5 +1,8 @@
 from __future__ import annotations
-import logging, re, sys
+
+import logging
+import re
+import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 

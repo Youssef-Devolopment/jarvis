@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from logger import get_logger
 
@@ -49,20 +50,20 @@ class ServiceSpec:
     name: str
     group: str
     start: Callable[[], Any]
-    pref: Optional[str] = None
+    pref: str | None = None
     pref_default: bool = True
     threaded: bool = False
     detail: str = ""
-    stop: Optional[Callable[[], Any]] = None
+    stop: Callable[[], Any] | None = None
     restartable: bool = True
 
 
 _lock = threading.Lock()
-_results: Dict[str, Dict[str, Any]] = {}
-_booted_mode: Optional[str] = None  # set by boot(); guides _find_spec
+_results: dict[str, dict[str, Any]] = {}
+_booted_mode: str | None = None  # set by boot(); guides _find_spec
 
 
-def results() -> Dict[str, Dict[str, Any]]:
+def results() -> dict[str, dict[str, Any]]:
     """Snapshot of every recorded service result (name -> {ok, detail, ms, group})."""
     with _lock:
         return {k: dict(v) for k, v in _results.items()}
@@ -75,7 +76,7 @@ def reset() -> None:
 
 
 def _record(name: str, group: str, ok: bool, detail: str, ms: int,
-            spec: Optional[ServiceSpec] = None) -> None:
+            spec: ServiceSpec | None = None) -> None:
     with _lock:
         rec = {"ok": bool(ok), "detail": str(detail)[:200],
                "ms": int(ms), "group": group}
@@ -101,7 +102,7 @@ def _pref_allows(spec: ServiceSpec) -> bool:
 
 
 # ---------------------------------------------------------------- starters
-def _mk_starters(mode: str) -> Dict[str, Callable[[], Any]]:
+def _mk_starters(mode: str) -> dict[str, Callable[[], Any]]:
     """Lazy-import starters, closed over the boot mode where it matters."""
 
     def updater():
@@ -218,7 +219,7 @@ def _mk_starters(mode: str) -> Dict[str, Callable[[], Any]]:
 
 
 # --------------------------------------------------------------- stoppers
-def _mk_stoppers() -> Dict[str, Callable[[], Any]]:
+def _mk_stoppers() -> dict[str, Callable[[], Any]]:
     """Lazy-import stop handlers (sync, safe to call when not running).
 
     Only services with a verified stop -> start cycle appear here; warmup
@@ -278,7 +279,7 @@ def _mk_stoppers() -> Dict[str, Callable[[], Any]]:
     }
 
 
-def _specs(mode: str) -> List[ServiceSpec]:
+def _specs(mode: str) -> list[ServiceSpec]:
     s = _mk_starters(mode)
     p = _mk_stoppers()
     specs = [
@@ -361,7 +362,7 @@ def _run(spec: ServiceSpec) -> None:
 
 
 def boot(mode: str = "console",
-         only: Optional[List[str]] = None) -> Dict[str, Any]:
+         only: list[str] | None = None) -> dict[str, Any]:
     """Start every service for this mode. Never raises.
 
     Returns {mode, launched, failed, skipped, ms, pending} where
@@ -374,8 +375,8 @@ def boot(mode: str = "console",
     specs = _specs(mode)
     if only is not None:
         specs = [s for s in specs if s.name in only]
-    failed: List[str] = []
-    skipped: List[str] = []
+    failed: list[str] = []
+    skipped: list[str] = []
     for spec in specs:
         try:
             _run(spec)
@@ -401,7 +402,7 @@ def boot(mode: str = "console",
 
 
 # --------------------------------------------------------------- control
-def _find_spec(name: str) -> Optional[ServiceSpec]:
+def _find_spec(name: str) -> ServiceSpec | None:
     """Locate a spec by name across boot modes (booted mode first)."""
     modes = ["console", "desktop"]
     if _booted_mode in modes:
@@ -413,7 +414,7 @@ def _find_spec(name: str) -> Optional[ServiceSpec]:
     return None
 
 
-def describe(name: str) -> Optional[Dict[str, Any]]:
+def describe(name: str) -> dict[str, Any] | None:
     """Control metadata + current state for one service (None = unknown)."""
     spec = _find_spec(name)
     if spec is None:
@@ -426,7 +427,7 @@ def describe(name: str) -> Optional[Dict[str, Any]]:
             "ms": cur.get("ms", 0)}
 
 
-def stop_service(name: str) -> Dict[str, Any]:
+def stop_service(name: str) -> dict[str, Any]:
     """Run a service's stop handler, recording 'stopped'. Raises for
     unknown names or services without a stop handler; a handler that
     fails records the failure and returns it (ok=False)."""
@@ -450,7 +451,7 @@ def stop_service(name: str) -> Dict[str, Any]:
     return results().get(name, {})
 
 
-def restart(name: str) -> Dict[str, Any]:
+def restart(name: str) -> dict[str, Any]:
     """Stop (when a handler exists) then start the service again.
 
     A failed stop does not abort the start — the start's own record

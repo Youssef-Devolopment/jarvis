@@ -1,11 +1,12 @@
 """Parallel multi-model deliberation."""
 
 from __future__ import annotations
+
 import concurrent.futures
 import time
-from typing import Optional
-from moods.levels import Level, LEVEL_SPECS
+
 from logger import get_logger
+from moods.levels import LEVEL_SPECS, Level
 
 log = get_logger(__name__)
 

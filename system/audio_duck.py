@@ -7,8 +7,10 @@ voice stays loud. Everything degrades to a no-op when pycaw is missing
 or ducking is disabled in prefs.
 """
 from __future__ import annotations
+
 import os
 import threading
+
 from logger import get_logger
 
 log = get_logger(__name__)

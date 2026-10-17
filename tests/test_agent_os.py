@@ -41,8 +41,8 @@ def _tool_call_stream(name, args):
 class PermissionTableTests(unittest.TestCase):
     def test_legacy_sets_are_frozen_views(self):
         from ai import permissions as pm
-        from ai.os_mode import AUTO_TOOLS
         from ai.approvals import CONFIRM_TOOLS
+        from ai.os_mode import AUTO_TOOLS
         self.assertEqual(set(AUTO_TOOLS), set(pm.auto_tools()))
         self.assertEqual(set(CONFIRM_TOOLS), set(pm.confirm_tools()))
         self.assertFalse(set(AUTO_TOOLS) & set(CONFIRM_TOOLS))
@@ -61,9 +61,9 @@ class PermissionTableTests(unittest.TestCase):
         # Principle 6: every user-toggleable tool must resolve to a
         # real schema + dispatcher branch (web_search and
         # read_current_page were toggles for tools that never existed).
-        from tools import registry as reg
         from ai.tool_schemas import TOOL_SCHEMAS
         from ai.tools import execute_tool
+        from tools import registry as reg
         names = {t["function"]["name"] for t in TOOL_SCHEMAS}
         for n in reg._ALL:
             self.assertIn(n, names, n)

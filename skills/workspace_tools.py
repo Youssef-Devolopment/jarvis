@@ -132,7 +132,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
                      "const port = process.env.PORT || 3000;\n"
                      "http.createServer((req, res) => {\n"
                      "  res.end(JSON.stringify({ status: 'ok' }));\n"
-                     f"}}).listen(port, () => console.log('__NAME__ on ' + port));\n"),
+                     "}).listen(port, () => console.log('__NAME__ on ' + port));\n"),
         "tests/smoke.test.js": ("const assert = require('assert');\n"
                                 "assert.ok(true);\n"
                                 "console.log('smoke ok');\n"),

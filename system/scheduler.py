@@ -6,8 +6,10 @@ so the module is safe even when APScheduler isn't installed — callers
 get a clear False / fallback path instead of a crash.
 """
 from __future__ import annotations
+
 import threading
 from datetime import datetime, timedelta
+
 from logger import get_logger
 
 log = get_logger(__name__)

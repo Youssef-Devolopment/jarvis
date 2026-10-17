@@ -1,6 +1,7 @@
 """Library pack: strong random passwords (crypto RNG)."""
 import random
 import secrets
+
 from skills.registry import register
 
 _LOWER = "abcdefghijkmnopqrstuvwxyz"

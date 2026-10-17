@@ -1,7 +1,11 @@
 """Time tracker — log foreground window every 30s."""
 
 from __future__ import annotations
-import platform, threading, time
+
+import platform
+import threading
+import time
+
 from logger import get_logger
 
 log = get_logger(__name__)

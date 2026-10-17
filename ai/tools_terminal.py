@@ -1,7 +1,9 @@
 """Terminal tools for JARVIS — safe shell command execution."""
 from __future__ import annotations
+
 import subprocess
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)

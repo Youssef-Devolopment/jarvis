@@ -1,12 +1,12 @@
 """Speech input — records locally, transcribes via Groq. Verbose logging."""
 from __future__ import annotations
+
 import queue
 import tempfile
 import threading
 import time
 import wave
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import sounddevice as sd
@@ -34,7 +34,7 @@ def _rms(chunk: np.ndarray) -> float:
     return float(np.sqrt(np.mean(chunk.astype(np.float32) ** 2)))
 
 
-def _transcribe_groq(wav_path: Path) -> Optional[str]:
+def _transcribe_groq(wav_path: Path) -> str | None:
     if not _settings.groq_api_key:
         log.error("STT: GROQ_API_KEY missing from .env")
         return None
@@ -66,7 +66,7 @@ def _transcribe_groq(wav_path: Path) -> Optional[str]:
         return None
 
 
-def listen_until_silence(verbose: bool = True) -> Optional[str]:
+def listen_until_silence(verbose: bool = True) -> str | None:
     log.info("STT: entering listen_until_silence")
     if not _settings.groq_api_key:
         log.error("STT: Groq API key not set — cannot transcribe")
@@ -173,11 +173,11 @@ def listen_until_silence(verbose: bool = True) -> Optional[str]:
             pass
 
 
-def listen() -> Optional[str]:
+def listen() -> str | None:
     return listen_until_silence()
 
 
-def transcribe_audio_bytes(audio_bytes: bytes, suffix: str = ".webm") -> Optional[str]:
+def transcribe_audio_bytes(audio_bytes: bytes, suffix: str = ".webm") -> str | None:
     """Transcribe raw audio bytes directly via Groq. No local recording."""
     if not audio_bytes:
         return None

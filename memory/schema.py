@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import sqlite3
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, Optional
 
 from logger import get_logger
 
@@ -29,7 +29,7 @@ _BACKUP_KEEP = 3  # pre-migration snapshots kept next to the DB
 
 # version -> migration step. v1 is the baseline (tables are created by
 # CREATE TABLE IF NOT EXISTS in store.py), so no entry is needed for it.
-_MIGRATIONS: Dict[int, Callable[[sqlite3.Connection], None]] = {}
+_MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {}
 
 
 def ensure_wal(conn: sqlite3.Connection) -> str:
@@ -44,7 +44,7 @@ def ensure_wal(conn: sqlite3.Connection) -> str:
         return ""
 
 
-def _backup_before(conn: sqlite3.Connection, ver: int) -> Optional[Path]:
+def _backup_before(conn: sqlite3.Connection, ver: int) -> Path | None:
     """Snapshot the DB to memory/backups/ before a migration runs.
 
     Uses sqlite3's backup API so the copy is consistent even with WAL

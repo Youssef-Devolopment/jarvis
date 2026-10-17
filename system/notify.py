@@ -5,8 +5,10 @@ import lazy: without the library everything degrades to log lines and
 confirm() safely defaults to False (deny).
 """
 from __future__ import annotations
+
 import platform
 import threading
+
 from logger import get_logger
 
 log = get_logger(__name__)

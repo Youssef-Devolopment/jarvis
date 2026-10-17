@@ -1,6 +1,9 @@
 """After each exchange, ask the LLM to extract memorable facts."""
 from __future__ import annotations
-import json, re
+
+import json
+import re
+
 from logger import get_logger
 from memory.store import remember
 

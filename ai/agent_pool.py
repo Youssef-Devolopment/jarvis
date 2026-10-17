@@ -1,9 +1,10 @@
 """Parallel execution pool for sub-agents."""
 
 from __future__ import annotations
+
 import concurrent.futures
-import time
-from typing import Callable
+from collections.abc import Callable
+
 from logger import get_logger
 
 log = get_logger(__name__)

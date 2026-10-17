@@ -15,10 +15,12 @@ Safety rules (non-negotiable):
   returns a clear install hint instead of crashing the boot.
 """
 from __future__ import annotations
+
 import threading
 import time
 from datetime import datetime
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)

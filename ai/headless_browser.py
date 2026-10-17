@@ -1,8 +1,10 @@
 """Invisible browser — controls Chromium headless. NO window on screen."""
 from __future__ import annotations
+
 import threading
 import time
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)

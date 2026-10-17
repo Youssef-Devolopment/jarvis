@@ -1,6 +1,7 @@
 """Shared HTTP helper for all skills — avoids 14 duplicate copies."""
 
 from __future__ import annotations
+
 import json
 import urllib.request
 from typing import Any

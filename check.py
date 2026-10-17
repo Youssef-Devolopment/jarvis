@@ -9,9 +9,8 @@ Exit codes (what setup scripts and humans branch on):
      AI chat unlocks after Setup -> GENERAL (or .env) gets a key
 """
 from __future__ import annotations
+
 import importlib
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -122,8 +121,9 @@ def _chromium():
 
 
 def _api_key():
-    from config import get_settings
     from openai import OpenAI
+
+    from config import get_settings
     s = get_settings()
     c = OpenAI(api_key=s.api_key, base_url=s.base_url)
     r = c.models.list()

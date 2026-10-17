@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import re
 from threading import Thread
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -36,7 +38,7 @@ def clean_messages(rows) -> list[dict]:
 
 class ConversationStore:
     def messages_for(self, sid: str, user_text: str) -> list[dict]:
-        from memory import save_message, load_recent_messages, ensure_session
+        from memory import ensure_session, load_recent_messages, save_message
         ensure_session(sid)
         save_message(sid, "user", user_text)
         history = load_recent_messages(sid, limit=MAX_TURNS)

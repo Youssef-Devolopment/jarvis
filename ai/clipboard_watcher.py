@@ -1,11 +1,13 @@
 """Clipboard watcher — detects content type, logs history, suggests actions."""
 
 from __future__ import annotations
+
 import re
 import threading
 import time
 from datetime import datetime
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -83,7 +85,7 @@ def _get_clip():
 
 
 def _loop():
-    global _last_content, _last_ts
+    global _last_content, _last_ts, _suggestions
     log.info("Clipboard watcher started")
     while not _stop.is_set():
         try:

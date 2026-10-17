@@ -436,7 +436,7 @@ def _activate_skill(module_id: str, path: Path, m: dict) -> dict:
     from skills import registry
     entry = path / m["entry"]
     try:
-        code = entry.read_text(encoding="utf-8")
+        entry.read_text(encoding="utf-8")
     except Exception as exc:
         raise ModuleError(f"entry file unreadable: {exc}")
     try:

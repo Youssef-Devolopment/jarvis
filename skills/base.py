@@ -1,11 +1,13 @@
 from __future__ import annotations
+
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
+
 from logger import get_logger
 
 log = get_logger(__name__)
-Handler = Callable[[str, "re.Match"], Optional[str]]
+Handler = Callable[[str, "re.Match"], str | None]
 
 
 @dataclass
@@ -27,7 +29,7 @@ class Skill:
                 return m
         return None
 
-    def run(self, text: str, match) -> Optional[str]:
+    def run(self, text: str, match) -> str | None:
         try:
             r = self.handler(text, match)
             if r:

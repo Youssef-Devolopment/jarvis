@@ -2,8 +2,8 @@
 import tempfile
 import unittest
 
-from skills.code_mode import _cmd_safe, _FORBIDDEN
 from ai.tools_terminal import _check_command
+from skills.code_mode import _FORBIDDEN, _cmd_safe
 
 
 class ShellGuardTest(unittest.TestCase):
@@ -39,16 +39,18 @@ class ShellGuardTest(unittest.TestCase):
 
 class AdminGateTests(unittest.TestCase):
     def test_locked_without_code_mode(self):
-        from skills import code_mode as cm
         from unittest import mock
+
+        from skills import code_mode as cm
         with mock.patch.object(cm, "_code_mode_on", return_value=False):
             out = cm.s_run_admin("code run-admin whoami",
                                  _FakeMatch("whoami"))
         self.assertEqual(out, "OVERRIDE is locked.")
 
     def test_forbidden_never_elevated(self):
-        from skills import code_mode as cm
         from unittest import mock
+
+        from skills import code_mode as cm
         with mock.patch.object(cm, "_code_mode_on", return_value=True), \
              mock.patch.object(cm, "_ask_admin",
                                side_effect=AssertionError("must not ask")):
@@ -57,8 +59,9 @@ class AdminGateTests(unittest.TestCase):
         self.assertIn("never allowed", out)
 
     def test_decline_runs_nothing(self):
-        from skills import code_mode as cm
         from unittest import mock
+
+        from skills import code_mode as cm
         with mock.patch.object(cm, "_code_mode_on", return_value=True), \
              mock.patch.object(cm, "_ask_admin", return_value=False), \
              mock.patch.object(cm, "_run_elevated",
@@ -68,8 +71,9 @@ class AdminGateTests(unittest.TestCase):
         self.assertIn("not running", out)
 
     def test_approved_runs_and_returns_output(self):
-        from skills import code_mode as cm
         from unittest import mock
+
+        from skills import code_mode as cm
         with mock.patch.object(cm, "_code_mode_on", return_value=True), \
              mock.patch.object(cm, "_ask_admin", return_value=True), \
              mock.patch.object(cm, "_run_elevated",
@@ -81,8 +85,9 @@ class AdminGateTests(unittest.TestCase):
     def test_elevated_stages_bat_and_reads_output(self):
         import tempfile
         from pathlib import Path
-        from skills import code_mode as cm
         from unittest import mock
+
+        from skills import code_mode as cm
         tmp = Path(tempfile.mkdtemp())
 
         def fake_run(cmd, **kw):
@@ -102,8 +107,9 @@ class AdminGateTests(unittest.TestCase):
         self.assertEqual(list(tmp.glob("jarvis-admin-*")), [])
 
     def test_uac_denial_maps_friendly(self):
-        from skills import code_mode as cm
         from unittest import mock
+
+        from skills import code_mode as cm
         with mock.patch.object(cm.subprocess, "run",
                                side_effect=OSError("canceled by user")):
             rc, out = cm._run_elevated("whoami", tmpdir=tempfile.mkdtemp())
@@ -127,9 +133,10 @@ class AdminGateTests(unittest.TestCase):
                                  for p in pats), bad)
 
     def test_as_admin_reaches_elevated_skill_not_launcher(self):
+        from unittest import mock
+
         from skills import code_mode as cm
         from skills import dispatch
-        from unittest import mock
         with mock.patch.object(cm, "_code_mode_on", return_value=False):
             out = dispatch("run whoami as admin")
         self.assertEqual(out, "OVERRIDE is locked.")
@@ -157,6 +164,7 @@ class DeleteBackupTests(unittest.TestCase):
 
     def test_fs_delete_backs_up_dir(self):
         from unittest import mock
+
         from ai import tools_fs as tfs
         root = self._tree({"sub/a.txt": 10, "sub/b.txt": 20})
         bak = root / "backups"
@@ -172,6 +180,7 @@ class DeleteBackupTests(unittest.TestCase):
 
     def test_fs_delete_refuses_oversize_dir(self):
         from unittest import mock
+
         from ai import tools_fs as tfs
         root = self._tree({"big/f.bin": 100})
         bak = root / "backups"
@@ -185,6 +194,7 @@ class DeleteBackupTests(unittest.TestCase):
 
     def test_fs_delete_refuses_failed_backup(self):
         from unittest import mock
+
         from ai import tools_fs as tfs
         root = self._tree({"f.txt": 10})
         with mock.patch.object(tfs, "_ALLOWED_ROOTS", [root]), \
@@ -195,6 +205,7 @@ class DeleteBackupTests(unittest.TestCase):
 
     def test_code_delete_backs_up_dir(self):
         from unittest import mock
+
         from skills import code_mode as cm
         root = self._tree({"proj/main.py": 30})
         bak = root / "backups"
@@ -209,6 +220,7 @@ class DeleteBackupTests(unittest.TestCase):
 
     def test_code_delete_refuses_oversize_dir(self):
         from unittest import mock
+
         from skills import code_mode as cm
         root = self._tree({"proj/f.bin": 100})
         bak = root / "backups"

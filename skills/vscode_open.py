@@ -1,9 +1,11 @@
 """Open files and folders in VS Code via CLI."""
 from __future__ import annotations
+
 import subprocess
 from pathlib import Path
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 

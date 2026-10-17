@@ -13,14 +13,14 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Any, Dict
+from typing import Any
 
 from logger import get_logger
 
 log = get_logger("health")
 
 _lock = threading.Lock()
-_services: Dict[str, Dict[str, Any]] = {}
+_services: dict[str, dict[str, Any]] = {}
 _started_at = time.time()
 
 # Worst-status ranking: 0 healthy, 1 attention, 2 broken.
@@ -47,7 +47,7 @@ def reset() -> None:
     _started_at = time.time()
 
 
-def _services_snapshot() -> Dict[str, Any]:
+def _services_snapshot() -> dict[str, Any]:
     with _lock:
         items = {k: dict(v) for k, v in _services.items()}
     # Registry results (system.services) carry group + start timing and
@@ -74,7 +74,7 @@ def _services_snapshot() -> Dict[str, Any]:
 
 
 def _probe_config() -> dict:
-    from config import try_settings, audit_settings
+    from config import audit_settings, try_settings
     s = try_settings()
     if s is None:
         return {"status": "warn",
@@ -261,10 +261,10 @@ _PROBES = {
 }
 
 
-def snapshot() -> Dict[str, Any]:
+def snapshot() -> dict[str, Any]:
     """Full health snapshot for /api/health and the SYSTEM tab."""
     from config import VERSION
-    checks: Dict[str, Any] = {}
+    checks: dict[str, Any] = {}
     worst = 0
     for name, fn in _PROBES.items():
         try:

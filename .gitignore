@@ -11,6 +11,11 @@ __pycache__/
 .venv/
 venv/
 
+# --- coverage ---
+.coverage
+.coverage.*
+htmlcov/
+
 # --- runtime data (never commit) ---
 logs/
 docs/research/

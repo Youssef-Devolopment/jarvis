@@ -18,7 +18,7 @@ import threading
 import time
 import urllib.request
 from collections import deque
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from logger import get_logger
 from skills.registry import register
@@ -43,8 +43,8 @@ def _prefs() -> tuple[bool, str, str]:
     return enabled, token, out_url
 
 
-def ingest(payload: Dict[str, Any], token_header: Optional[str],
-           addr: Optional[str]) -> Tuple[Dict[str, Any], int]:
+def ingest(payload: dict[str, Any], token_header: str | None,
+           addr: str | None) -> tuple[dict[str, Any], int]:
     """Validate + store one inbound webhook. Returns (body, http_code)."""
     enabled, token, _ = _prefs()
     if not enabled:
@@ -72,7 +72,7 @@ def ingest(payload: Dict[str, Any], token_header: Optional[str],
                "text": text, "data": data, "ran": None, "spoke": False}
         _recent.append(rec)
 
-    reply: Dict[str, Any] = {"ok": True, "id": _id, "event": event}
+    reply: dict[str, Any] = {"ok": True, "id": _id, "event": event}
     if text and payload.get("speak"):
         rec["spoke"] = True
         try:
@@ -106,7 +106,7 @@ def recent(limit: int = 20) -> list[dict]:
     return items
 
 
-def send_now(text: str) -> Tuple[bool, str]:
+def send_now(text: str) -> tuple[bool, str]:
     """POST a line to the configured n8n webhook."""
     _, _, url = _prefs()
     if not url:

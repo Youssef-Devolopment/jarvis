@@ -29,7 +29,7 @@ else:
     print("    .env file missing!")
 
 # 2. Check config loads
-print(f"\n[2] config.get_settings()")
+print("\n[2] config.get_settings()")
 try:
     from config import get_settings
     s = get_settings()
@@ -42,7 +42,7 @@ except Exception as exc:
     print(f"    CONFIG ERROR: {exc}")
 
 # 3. Check sounddevice sees a mic
-print(f"\n[3] sounddevice input devices")
+print("\n[3] sounddevice input devices")
 try:
     import sounddevice as sd
     devices = sd.query_devices()
@@ -56,7 +56,7 @@ except Exception as exc:
     print(f"    SOUNDDEVICE ERROR: {exc}")
 
 # 4. Check groq package
-print(f"\n[4] groq package")
+print("\n[4] groq package")
 try:
     import groq
     print(f"    groq version: {groq.__version__}")
@@ -64,7 +64,7 @@ except Exception as exc:
     print(f"    GROQ IMPORT ERROR: {exc}")
 
 # 5. Test recording (2 seconds, no transcription)
-print(f"\n[5] Recording test (2 seconds — speak now)")
+print("\n[5] Recording test (2 seconds — speak now)")
 try:
     import numpy as np
     import sounddevice as sd
@@ -82,11 +82,13 @@ except Exception as exc:
     print(f"    RECORDING ERROR: {exc}")
 
 # 6. Test Groq transcription with tiny silent audio
-print(f"\n[6] Groq transcription test (5 sec silence)")
+print("\n[6] Groq transcription test (5 sec silence)")
 try:
     import tempfile
     import wave
+
     import numpy as np
+
     from config import get_settings
     s = get_settings()
     if not s.groq_api_key:

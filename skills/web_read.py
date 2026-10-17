@@ -10,8 +10,8 @@ log = get_logger(__name__)
     r"^read\s+it\s+to\s+me[\?\.\!]?$",
 ], "Summarize current page")
 def skill(text, match):
-    from skills.browser_agent import get_agent
     from ai.client import get_client
+    from skills.browser_agent import get_agent
     try:
         d = get_agent().get_text(max_chars=6000)
     except Exception as exc:

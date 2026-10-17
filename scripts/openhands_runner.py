@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Standalone OpenHands runner. Runs under Python 3.12."""
 from __future__ import annotations
+
 import os
 import sys
 import time
 
 try:
-    from pydantic import SecretStr
     from openhands.sdk import LLM, Conversation, Workspace
     from openhands.tools.preset.default import get_default_agent
+    from pydantic import SecretStr
 except ImportError as e:
     print(f"IMPORT_ERROR: {e}", file=sys.stderr)
     sys.exit(2)

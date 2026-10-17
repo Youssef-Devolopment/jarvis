@@ -1,8 +1,12 @@
 """Focus Lock — kill distracting apps for N minutes, then restore."""
 
 from __future__ import annotations
-import subprocess, threading, time
+
+import subprocess
+import threading
+import time
 from datetime import datetime, timedelta
+
 from logger import get_logger
 
 log = get_logger(__name__)

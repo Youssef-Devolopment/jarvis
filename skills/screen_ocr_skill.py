@@ -1,6 +1,7 @@
 """Screen OCR skill."""
 from skills.registry import register
 
+
 @register("screen_ocr", [
     r"^(?:read|grab|extract|copy)\s+(?:all\s+)?text\s+(?:from\s+(?:the\s+)?screen|on\s+screen)[\?\.\!]?$",
     r"^اقرأ\s+(?:النص|اللي)\s+(?:على|في)\s+(?:الشاشة)[\?\.\!]?$",

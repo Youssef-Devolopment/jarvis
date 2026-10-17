@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import sys
+
 from logger import get_logger, setup_logging
 
 setup_logging("INFO")

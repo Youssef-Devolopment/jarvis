@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 import sqlite3
 import traceback
+
 from flask import Flask, jsonify, request
 from werkzeug.exceptions import HTTPException
+
 from logger import get_logger
 
 log = get_logger(__name__)

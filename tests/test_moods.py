@@ -2,8 +2,8 @@
 import unittest
 
 import moods
-from moods.router import FAST_MODEL, pick_model
 from moods.models import featured_models
+from moods.router import FAST_MODEL, pick_model
 
 
 class MoodTest(unittest.TestCase):

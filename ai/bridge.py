@@ -1,10 +1,10 @@
 """Cross-app bridge — move content between applications via clipboard."""
 
 from __future__ import annotations
+
 import platform
-import re
 import time
-from typing import Optional
+
 from logger import get_logger
 
 log = get_logger(__name__)

@@ -1,7 +1,9 @@
 """System tray icon with context menu."""
 from __future__ import annotations
+
 import threading
 import webbrowser
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -29,9 +31,11 @@ def start_tray():
         except Exception:
             pass
 
-        import pystray
-        from pystray import MenuItem as Item, Menu
         import os
+
+        import pystray
+        from pystray import Menu
+        from pystray import MenuItem as Item
 
         def _open(icon, item):
             webbrowser.open(_URL)
@@ -62,7 +66,8 @@ def _run_launcher_menu():
     global _icon
     try:
         import pystray
-        from pystray import MenuItem as Item, Menu
+        from pystray import Menu
+        from pystray import MenuItem as Item
 
         def on_open(icon, item):
             try:

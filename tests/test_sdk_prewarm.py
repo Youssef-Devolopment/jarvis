@@ -54,7 +54,6 @@ class SdkCacheTests(unittest.TestCase):
 
     def test_local_package_intact_after_surgery(self):
         self.rt._sdk()
-        import sys
         import mcp as local
         self.assertTrue(hasattr(local, "all_servers"))
         self.assertTrue(hasattr(local, "runtime"))
@@ -62,7 +61,6 @@ class SdkCacheTests(unittest.TestCase):
         self.assertTrue(callable(all_servers))
 
     def test_failure_caches_as_import_error(self):
-        calls = []
         with mock.patch.object(
                 self.rt, "_sdk_uncached",
                 side_effect=[ImportError("no sdk"), AssertionError(

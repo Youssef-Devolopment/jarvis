@@ -1,7 +1,14 @@
-from voice.output import (speak, speak_async, stop as stop_speaking, warmup,
-                           apply_mood_voice, set_voice, current_voice,
-                           is_speaking)
-from voice.voices import all_voices, VOICES
+from voice.output import (
+    apply_mood_voice,
+    current_voice,
+    is_speaking,
+    set_voice,
+    speak,
+    speak_async,
+    warmup,
+)
+from voice.output import stop as stop_speaking
+from voice.voices import VOICES, all_voices
 
 try:
     from voice.input import listen, listen_until_silence, transcribe_audio_bytes

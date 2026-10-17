@@ -1,5 +1,6 @@
 """Secure Token module — cryptographic randomness for keys and tokens."""
 import secrets
+
 from skills.registry import register
 
 

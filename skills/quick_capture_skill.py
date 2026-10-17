@@ -1,6 +1,7 @@
 """Quick capture skill."""
 from skills.registry import register
 
+
 @register("quick_capture", [
     r"^(?:remind\s+me|فكرني|ذكرني)\s+.+",
     r"^(?:note|ملاحظة|احفظ\s+ملاحظة)\s*[:].+",

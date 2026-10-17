@@ -1,10 +1,10 @@
 """WhatsApp via WhatsApp Cloud API or pywhatkit fallback."""
 from __future__ import annotations
+
 import os
-import subprocess
-import sys
-from skills.registry import register
+
 from logger import get_logger
+from skills.registry import register
 
 log = get_logger(__name__)
 
@@ -28,7 +28,7 @@ def _whatsapp_cloud(to: str, message: str) -> str | None:
         req = urllib.request.Request(url, data=body,
             headers={"Authorization": f"Bearer {token}",
                      "Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=15) as r:
+        with urllib.request.urlopen(req, timeout=15):
             return f"WhatsApp sent to {to}."
     except Exception as exc:
         log.warning("WhatsApp Cloud failed: %s", exc)

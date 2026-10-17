@@ -1,15 +1,19 @@
 """Tool dispatcher — routes tool calls to backend modules."""
 
 from __future__ import annotations
-import json
-from logger import get_logger
 
 # Import backends as before
-from ai import search_agent, headless_browser, app_manager
-from ai import tools_fs, tools_terminal
-from ai import tool_schemas
-from ai import reality_check
-from ai import bridge
+from ai import (
+    app_manager,
+    bridge,
+    headless_browser,
+    reality_check,
+    search_agent,
+    tool_schemas,
+    tools_fs,
+    tools_terminal,
+)
+from logger import get_logger
 from memory import context as ctx_tracker
 from memory import outcomes
 
@@ -115,8 +119,8 @@ def execute_tool(name: str, args: dict) -> str:
     except Exception as exc:  # backstop; the body guards itself too
         out = f"Tool error: {exc}"
     try:
-        from system import audit as _trail
         from logger import redact as _redact
+        from system import audit as _trail
         _trail.record(str(name), _redact(str(checked or {}))[:80],
                       _audit_ok(out))
     except Exception:

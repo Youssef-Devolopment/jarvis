@@ -1,7 +1,9 @@
 """Port sentinel — see what's listening, kill what shouldn't be."""
 
 from __future__ import annotations
+
 import os
+
 from logger import get_logger
 
 log = get_logger(__name__)

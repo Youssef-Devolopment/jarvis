@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 import os
 from dataclasses import dataclass
 from pathlib import Path
+
 from dotenv import load_dotenv
+
 from errors import ConfigError, ValidationError
 from logger import get_logger
 
@@ -10,7 +13,7 @@ log = get_logger(__name__)
 load_dotenv()
 
 # Single source of truth for the app version. Bump on major releases.
-VERSION = "1.31.0"
+VERSION = "1.32.0"
 
 # Project .env file (gitignored). API keys live here, never in prefs.
 ENV_PATH = Path(__file__).resolve().parent / ".env"
@@ -64,7 +67,7 @@ class Settings:
         return bool(self.api_key and not self.api_key.startswith("sk-paste"))
 
     @classmethod
-    def load(cls, require_key: bool = True) -> "Settings":
+    def load(cls, require_key: bool = True) -> Settings:
         key = (os.getenv("DEEPSEEK_API_KEY") or "").strip()
         if require_key and (not key or key.startswith("sk-paste")):
             raise ConfigError("DEEPSEEK_API_KEY is missing or placeholder.",
@@ -282,6 +285,7 @@ def audit_settings(s: Settings) -> list[str]:
     # Say so at boot instead of leaving servers silently degraded.
     try:
         import shutil as _shutil
+
         from mcp import manager as _mcp_manager
         npx_servers = [x for x in _mcp_manager.all_servers()
                        if x.get("enabled") and

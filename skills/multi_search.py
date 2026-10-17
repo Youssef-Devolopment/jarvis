@@ -7,7 +7,6 @@ instead of you juggling tabs.
 """
 from __future__ import annotations
 
-import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from logger import get_logger

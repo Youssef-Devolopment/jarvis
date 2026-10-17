@@ -1,8 +1,10 @@
 """Autonomous multi-agent orchestration."""
 
 from __future__ import annotations
+
 import re
 import time
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -22,7 +24,7 @@ def _plan_split(question: str) -> list:
         "reply exactly: SINGLE"
     )
     try:
-        from ai.client import get_client, create_with_temp_fallback
+        from ai.client import create_with_temp_fallback, get_client
         c = get_client()
         model = getattr(c, "model", None) or c.default_model
         r = create_with_temp_fallback(
@@ -57,7 +59,7 @@ def _run_one(task: str) -> dict:
     last_err = ""
     for attempt in range(2):
         try:
-            from ai.client import get_client, create_with_temp_fallback
+            from ai.client import create_with_temp_fallback, get_client
             c = get_client()
             r = create_with_temp_fallback(
                 c._client.chat.completions.create, c.default_model,
@@ -122,7 +124,7 @@ def _merge(question: str, results: list) -> str:
             f"Sub-agent answers:\n{evidence}{note}")
 
     try:
-        from ai.client import get_client, create_with_temp_fallback
+        from ai.client import create_with_temp_fallback, get_client
         c = get_client()
         model = getattr(c, "model", None) or c.default_model
         r = create_with_temp_fallback(
@@ -136,7 +138,7 @@ def _merge(question: str, results: list) -> str:
             timeout=45,
         )
         return (r.choices[0].message.content or "").strip()
-    except Exception as exc:
+    except Exception:
         log.exception("Merge failed")
         return ok_results[0]["answer"]
 

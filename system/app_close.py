@@ -10,7 +10,9 @@ stay alive — reported, not forced), SIGKILL-style only for
 leftovers, then verified gone.
 """
 from __future__ import annotations
+
 import os
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -142,8 +144,9 @@ def resolve_close(name: str) -> dict:
 
 def _close_pids(pids: list[int]) -> tuple[int, int]:
     """Graceful terminate first, force leftovers. Returns (closed, alive)."""
-    import psutil
     import time
+
+    import psutil
     targets = []
     for pid in pids:
         try:
@@ -195,7 +198,7 @@ def close_by_name(name: str, ask_fn=None) -> dict:
     status = r["status"]
     if status == "unknown":
         return {"ok": False,
-                "output": f"Close what? I didn't catch an app name."}
+                "output": "Close what? I didn't catch an app name."}
     if status == "refused":
         return {"ok": False, "output": r["error"]}
     if status == "not_running":

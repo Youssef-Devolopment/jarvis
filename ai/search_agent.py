@@ -1,9 +1,11 @@
 """Deep search agent — multi-step research."""
 from __future__ import annotations
+
 import json
 import os
 import re
 import time
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -31,7 +33,7 @@ def _ask_llm(system: str, user: str, max_tokens: int = 300,
             temperature=temperature,
         )
         return (r.choices[0].message.content or "").strip()
-    except Exception as exc:
+    except Exception:
         log.exception("LLM call failed")
         return ""
 

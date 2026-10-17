@@ -1,15 +1,26 @@
 from __future__ import annotations
+
 import json
 import time
-from typing import Iterator
+from collections.abc import Iterator
+
 from openai import OpenAI
+
 from ai.tools import execute_tool
 from config import get_settings
 from errors import AIError
 from logger import get_logger
 from moods import current as current_mood
-from moods.models import (get_active, set_active, theme_for, label_for,
-                           build_fallback_list, is_free, speed_rank, sort_models)
+from moods.models import (
+    build_fallback_list,
+    get_active,
+    is_free,
+    label_for,
+    set_active,
+    sort_models,
+    speed_rank,
+    theme_for,
+)
 from moods.router import pick_model
 
 log = get_logger(__name__)
@@ -115,7 +126,6 @@ def create_with_temp_fallback(create_fn, model: str, messages,
 
 class AIClient:
     def __init__(self, provider=None) -> None:
-        from config import Provider
         s = get_settings()
         if provider is None:
             base_url, api_key, pname = s.base_url, s.api_key, "default"
@@ -140,8 +150,8 @@ class AIClient:
             return False
 
     def _system_prompt(self) -> str:
-        from memory import facts_block
         from memory import context as ctx_tracker
+        from memory import facts_block
         from moods import current as current_mood
         from moods import personality
         mood = current_mood()

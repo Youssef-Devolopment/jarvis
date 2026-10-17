@@ -97,6 +97,7 @@ class TidyTests(unittest.TestCase):
 
     def test_skill_patterns(self):
         import re
+
         from skills.tidy_skill import TIDY_PATTERNS
         for good in ["tidy", "tidy up", "clean temp files",
                      "clean the temp", "clear temporary files"]:

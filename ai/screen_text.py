@@ -1,8 +1,11 @@
 """Screen OCR via Vision."""
 
 from __future__ import annotations
-import base64, time
+
+import base64
+import time
 from pathlib import Path
+
 from logger import get_logger
 
 log = get_logger(__name__)
@@ -31,7 +34,7 @@ def ask_image(img, question: str) -> str:
     """
     import io
     try:
-        from ai.client import get_client, create_with_temp_fallback
+        from ai.client import create_with_temp_fallback, get_client
         if isinstance(img, (str, Path)):
             raw = Path(img).read_bytes()
         elif isinstance(img, bytes):

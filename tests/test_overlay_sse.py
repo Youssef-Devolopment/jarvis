@@ -1,10 +1,11 @@
 """Tests for the overlay's SSE stitching (the '(no reply)' fix)."""
 from __future__ import annotations
+
 import os
 import unittest
 
 import config
-from system.overlay import _base_url, _header_text, CHIPS, stitch_sse
+from system.overlay import CHIPS, _base_url, _header_text, stitch_sse
 
 
 class StitchSseTests(unittest.TestCase):
@@ -172,6 +173,7 @@ class StreamingTests(unittest.TestCase):
 
     def test_stream_from_yields_in_order_then_stops(self):
         import io
+
         from system.overlay import _stream_from
         buf = io.BytesIO(
             b'data: {"delta": "a"}\n'
@@ -188,6 +190,7 @@ class StreamingTests(unittest.TestCase):
     def test_command_stream_reads_live(self):
         import io
         from unittest import mock
+
         from system import overlay
         resp = io.BytesIO(b'data: {"delta": "live"}\ndata: [DONE]\n')
         with mock.patch("urllib.request.urlopen", return_value=resp):
@@ -198,6 +201,7 @@ class StreamingTests(unittest.TestCase):
         import io
         import urllib.error
         from unittest import mock
+
         from system import overlay
         fp = io.BytesIO(b'{"detail": "rate limited"}')
         err = urllib.error.HTTPError("http://x", 429, "slow down",
@@ -210,6 +214,7 @@ class StreamingTests(unittest.TestCase):
     def test_command_text_joins_stream(self):
         import io
         from unittest import mock
+
         from system import overlay
         resp = io.BytesIO(b'data: {"delta": "one "}\n'
                           b'data: {"delta": "two"}\n'

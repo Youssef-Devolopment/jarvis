@@ -1,5 +1,6 @@
 """Library pack: primality check with smallest factor."""
 import math
+
 from skills.registry import register
 
 
