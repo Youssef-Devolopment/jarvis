@@ -50,6 +50,23 @@ def speak_route():
     return jsonify({"ok": True})
 
 
+def _listen_hint() -> str:
+    """Actionable reason for an empty /api/listen result.
+
+    STT runs on Groq, so a missing key and a silent/muted mic look the
+    same from the outside — say which one it most likely is.
+    """
+    try:
+        from config import get_settings
+        if not get_settings().groq_api_key:
+            return ("Voice input needs GROQ_API_KEY — speech-to-text runs "
+                    "on Groq. Add it to .env and restart JARVIS.")
+    except Exception:
+        pass
+    return ("Heard nothing — make sure the mic is not muted, that Windows "
+            "microphone access is allowed, then check logs/jarvis.log.")
+
+
 @bp.post("/listen")
 def listen_route():
     try:
@@ -58,8 +75,7 @@ def listen_route():
         log.exception("Listen failed")
         return jsonify({"error": str(exc), "hint": "Check logs/jarvis.log"}), 500
     if text is None:
-        return jsonify({"text": "", "empty": True,
-                        "hint": "Whisper may not be installed. Run: pip install faster-whisper"})
+        return jsonify({"text": "", "empty": True, "hint": _listen_hint()})
     return jsonify({"text": text, "empty": not bool(text)})
 
 
