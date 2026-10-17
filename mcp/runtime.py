@@ -169,6 +169,21 @@ def _resolve_command(server: dict) -> tuple[str, list[str]] | None:
 
 # ---------- one-time setup per server ----------
 
+async def _close_quietly(*cms) -> None:
+    """Best-effort __aexit__ for half-open MCP context managers.
+
+    A failed handshake must not leave the child process (and its
+    pipes) running, so callers tear down whatever came up.
+    """
+    for cm in cms:
+        if cm is None:
+            continue
+        try:
+            await cm.__aexit__(None, None, None)
+        except Exception:
+            pass
+
+
 async def _start_server(server: dict) -> dict | None:
     """Launch an MCP server, list its tools, return a handle dict."""
     try:
@@ -188,6 +203,7 @@ async def _start_server(server: dict) -> dict | None:
         env=_build_env(server),
     )
 
+    transport_cm = session_cm = None
     try:
         # Keep the client context alive across calls
         transport_cm = stdio_client(params)
@@ -220,29 +236,84 @@ async def _start_server(server: dict) -> dict | None:
         }
     except Exception as exc:
         log.exception("Failed to start MCP '%s': %s", server.get("name"), exc)
+        # Close whatever came up so a failed handshake never leaves
+        # the child process running (and does not leak its pipes).
+        await _close_quietly(session_cm, transport_cm)
         return None
 
 
-def _start_in_loop(server: dict) -> dict | None:
-    """Run _start_server in a fresh event loop inside a thread."""
-    result: dict = {}
+def _close_handle_blocking(loop, handle: dict | None) -> None:
+    """Close a handle's context managers on the loop they came from."""
+    if not handle or loop is None or loop.is_closed():
+        return
+    try:
+        loop.run_until_complete(
+            _close_quietly(handle.get("session_cm"),
+                           handle.get("transport_cm")))
+    except Exception:
+        pass
+
+
+def _start_in_loop(server: dict, timeout: float = 45.0) -> dict | None:
+    """Run _start_server in a fresh event loop inside a thread.
+
+    The join is bounded. A server slower than `timeout` is reported
+    failed AND flagged abandoned, so when its thread eventually
+    finishes it closes its own handle — otherwise a slow-but-live
+    server would linger as an unreachable child process that nobody
+    can call and nothing ever stops (they pile up across boots).
+    """
+    box: dict = {}
+
     def run():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        handle = None
         try:
-            result["value"] = loop.run_until_complete(_start_server(server))
-            # Keep loop alive so session stays usable
-            result["loop"] = loop
+            handle = loop.run_until_complete(_start_server(server))
         except Exception as exc:
             log.exception("MCP startup thread failed: %s", exc)
+        if box.get("abandoned"):
+            _close_handle_blocking(loop, handle)
+            try:
+                loop.close()
+            except Exception:
+                pass
+            return
+        box["value"] = handle
+        if handle:
+            box["loop"] = loop       # keep loop alive so session stays usable
+        else:
+            try:
+                loop.close()
+            except Exception:
+                pass
+
     t = threading.Thread(target=run, daemon=True)
     t.start()
-    t.join(timeout=45)
-    return result.get("value")
+    t.join(timeout=timeout)
+    if t.is_alive():
+        box["abandoned"] = True
+        log.warning("MCP '%s' startup exceeded %.0fs; abandoning",
+                    server.get("name"), timeout)
+        # Race: the thread may finish between the timeout and the
+        # flag. Give it a moment, then claim and close anything it
+        # managed to store before it saw the flag.
+        t.join(timeout=3)
+        if not t.is_alive() and box.get("value"):
+            _close_handle_blocking(box.get("loop"), box["value"])
+            box.pop("value", None)
+        return None
+    return box.get("value")
 
 
-def start_server(name: str) -> bool:
-    """Start a specific MCP server by name."""
+def start_server(name: str, attempts: int = 2) -> bool:
+    """Start a specific MCP server by name.
+
+    stdio servers occasionally die during the handshake (a cold npx
+    fetch, a transient failure on a loaded box), so a failed attempt
+    is retried once before the server is reported down.
+    """
     with _lock:
         if name in _servers and _servers[name]:
             return True
@@ -251,10 +322,14 @@ def start_server(name: str) -> bool:
             return False
         if not srv.get("enabled", True):
             return False
-        handle = _start_in_loop(srv)
-        if handle:
-            _servers[name] = handle
-            return True
+        for attempt in range(1, max(1, attempts) + 1):
+            handle = _start_in_loop(srv)
+            if handle:
+                _servers[name] = handle
+                return True
+            if attempt < attempts:
+                log.warning("MCP '%s' failed to start; retrying (%d/%d)",
+                            name, attempt, attempts)
         return False
 
 
