@@ -4,6 +4,17 @@ All notable changes to JARVIS. Versioning: **vMAJOR.MINOR.PATCH** —
 bump MINOR for big feature batches, PATCH for fixes
 (`config.VERSION` is the single source of truth).
 
+## [1.32.0] — 2026-10-17
+
+Hardening and provability. The LAN token check is now constant-time
+(`hmac.compare_digest`). A curated `ruff` config and coverage
+reporting now gate CI, and the whole tree is lint-clean — which also
+uncovered a latent clipboard bug (captured suggestions never
+accumulated because the loop reassigned a global without declaring
+it). New match-only skill diagnostic: `GET /api/skills/match?text=…`
+reports which patterns a phrase hits (flagging conflicts) and which
+skill last actually answered — it never runs a handler.
+
 ## [1.31.0] — 2026-10-15
 
 Module permission diff — reinstalling a module can no longer

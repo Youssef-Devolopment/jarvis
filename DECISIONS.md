@@ -260,6 +260,27 @@ exception (supervised context + kill switch).
 
 ---
 
+## 11. Lint as a gate, not a rewrite
+
+**Decision.** The tree is gated by `ruff` (`ruff.toml`) in CI. The
+rule set is curated: real-bug families on (pyflakes, bugbear, import
+order, typing modernization), pure formatting off (`E501` line
+length, `E701`/`E702` one-line statements, `E402` deferred imports,
+`UP031`/`UP032`). The frozen voice modules and user/generated code
+(`plugins/`, `skills/auto_generated/`) are excluded by policy.
+
+**Why.** A lint gate that demands a cosmetic rewrite of a working
+codebase gets disabled. Catching unused names, shadowed globals and
+modern typing is worth it; re-wrapping 130 long lines is not. The
+gate also *found real bugs* — an undeclared global in the clipboard
+loop meant captured suggestions were silently dropped.
+
+**What it costs.** A curated ignore list is a maintenance promise —
+each ignored rule needs a reason here, and widening the set later is
+its own batch. Coverage is reported, not yet enforced by threshold.
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either
