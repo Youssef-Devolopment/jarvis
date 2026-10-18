@@ -10,6 +10,36 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.34.0] — 2026-10-18
+
+**You can finally see what a turn did — and the first honest look
+found a misroute.**
+
+- New `system/turns.py`: a bounded in-memory ring (50 turns) recording,
+  for every command, **who answered it** — a local skill or a model —
+  plus which skill, which model, how long it took, whether it failed
+  and whether you accepted or rejected the previous answer. Served by
+  `GET /api/turns` and shown as a **RECENT** strip in the sidebar
+  (`12:04:11 · SKILL · time · 3ms`), refreshed after every turn.
+- The audit trail (`system/audit.py`) already recorded tool calls,
+  consents and mission steps; it never recorded *turn routing*, which
+  is the question you actually ask while using the app. The routing
+  only ever existed as a line scrolling past in the SYSTEM LOG.
+- `ai/client.py` exposes `last_model`, so the model that actually
+  answered (including a fallback) is nameable rather than assumed.
+- **The bug the trail exposed on its first live run:** `what time is
+  it` was listed as chit-chat in `ai/self_awareness.py`. That gate
+  *skips the skill dispatcher*, so the local `time` skill — which has a
+  pattern written for exactly that phrasing — was never consulted, and
+  a full model round trip answered instead: **35,070 ms against 3 ms**.
+  `what day is it` and `what date is it` were caught the same way. The
+  pattern is removed; the same phrasing now shows `SKILL · time ·
+  10ms`. Any phrasing a local skill matches must be allowed through.
+
+17 new tests (826 → 843): the ring, the endpoint, the recording of a
+real skill turn, and the gate letting task phrasings through while
+chit-chat still skips skills. 119 `/api` route rules.
+
 ## [1.33.5] — 2026-10-18
 
 The real cause of the recurring `filesystem` MCP failure — and a

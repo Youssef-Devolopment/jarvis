@@ -32,12 +32,40 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.18.0** | **Final polish pass**: SYSTEM tab status chips (tinted pills per status), warning/error log rail, health-aware center tagline owned by the state machine, plain-English health banner, SKILLS ACTIVE badge on the first-run card, HUD cyan listening state + COPY pill + middle-dot hints + lit input well |
 | **v1.19.0** | **Module ecosystem**: `module.json` framework (skill + MCP kinds, declared capabilities/permissions, docs, examples), install from folder/zip with validation and zip-slip guards, active/inactive/failed states with rollback on crash, MODULES tab (state chips, permission chips, DOCS panel, CHECK dry-run), 9 real starter modules, author templates + `MODULES.md`, update-status catalog, 6 new API endpoints |
 | **v1.19.1** | Live-verification micro-fix: `GET /api/modules` no longer hangs behind slow MCP server spawns (one bounded running-status snapshot), boot configures module MCP servers without spawning them (the mcp service starts them right after) |
+| **v1.34.0** | **Turn routing you can see**: `GET /api/turns` + the sidebar RECENT strip (which skill or model answered, which one, how long, ok/fail). Its first live run exposed `what time is it` being treated as chit-chat, so the local `time` skill was skipped for a 35,070 ms model call — fixed |
 
-Stable today: 826 tests (in-tree + fresh-copy, no `.env`), 119 API
+*(The table is continuous in `CHANGELOG.md`; it resumes here at the
+current release so this file does not silently claim the gap.)*
+
+Stable today: 843 tests (in-tree + fresh-copy, no `.env`), 120 API
 endpoints, 142 shipped skills + 9 shipped modules, green CI on
 `windows-latest`, health visible in six layers (preflight / API /
 dashboard / banner / console / log), lifecycle controls for 15
 services, structured errors on every known failure path.
+
+---
+
+## Direction, v1.34 onward: finish it for strangers
+
+Set at v1.34.0 from a survey of how the app is actually used. The
+survey ruled *out* new capabilities and ruled *in* three things: it
+should feel finished, anyone should be able to install it, and it
+should stay easy to build on. The friction named was "feels slow or
+heavy", "can't see what it's doing", and "features are hard to find".
+
+Five batches, no new features:
+
+1. **See what it's doing** — shipped in **v1.34.0**: `/api/turns` plus
+   the sidebar RECENT strip, which found a 35-second misroute on its
+   first live run.
+2. **Find things** — group the 21 flat settings tabs into sections and
+   add one search box that finds any panel, skill or setting by name.
+3. **Install in 10 minutes** — a setup script + `INSTALL.md` (venv,
+   deps, `.env` bootstrap, health check) and the community files a
+   stranger expects to find.
+4. **Feels lighter** — measure boot phases and first-token latency
+   *first*, then trim what the numbers actually blame.
+5. **Easy to build on** — the `app.js` ES-module split (DECISIONS #13).
 
 ---
 

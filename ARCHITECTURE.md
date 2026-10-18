@@ -5,7 +5,7 @@ user text → skills.dispatch() → skill reply
               │ miss (+not conversational)
               ├→ auto_generator.propose → approval → skills/auto_generated/
               └→ AIClient.stream() + TOOL_SCHEMAS → execute_tool()
-/command (SSE) · /chat-style JSON · 119 REST endpoints (one /api
+/command (SSE) · /chat-style JSON · 120 REST endpoints (one /api
 blueprint split across routes/api_*.py, shared routes/_common.py)
 ```
 
@@ -56,6 +56,9 @@ blueprint split across routes/api_*.py, shared routes/_common.py)
   `run.py` and `system/launcher.py`.
 - **Screen context**: `ai/screen_context.py` (RAM-only loop) →
   `ai/screen_text.ask_image()` shared with on-demand OCR.
+- **Turn trail**: `system/turns.py` — what each turn actually did
+  (skill or model, which one, how long, ok/fail). Add a field there,
+  not another log line; see *The voice command path* below.
 
 ## The voice command path (end to end)
 
@@ -82,7 +85,9 @@ JARVIS's speech*, not the mic.
 **The turn — `routes/api_chat.py:/command`:**
 
 1. cheap intents, in order, *before* skills or the LLM: rejection /
-   confirmation of the previous answer, `is_conversational` chitchat,
+   confirmation of the previous answer, `is_conversational` chitchat
+   (this gate *skips the skills below* — so it must never match a
+   phrasing a local skill answers),
    tool-consent verdicts ("allow 3"/"deny 3"), auto-skill approve plus
    draft-on-miss;
 2. `dispatch_skill()` → `skills/registry.py:dispatch()` — skills run in
@@ -95,6 +100,19 @@ JARVIS's speech*, not the mic.
    `client.stream(messages, tools=…)`;
 4. on finish: `store.record_reply`, **`_speak_quiet(full)`**,
    `extract_memory_async`, `outcomes.record`.
+
+**Seeing what a turn did.** `system/turns.py` keeps a bounded
+in-memory ring of the last 50 turns — `source` (skill / llm / consent
+/ auto_skill / no_key), the skill or model that answered, `ms`, `ok`,
+and the accept/reject `verdict` when there was one. `routes/api_chat.py`
+records one entry per turn on every branch (including the failure
+paths), `ai/client.py` exposes `last_model` so a fallback is nameable,
+and `GET /api/turns` serves the newest first. The sidebar's **RECENT**
+strip polls it (`12:04:11 · SKILL · time · 3ms`), which is how
+"which skill or model answered that?" stopped being a line scrolling
+past in the SYSTEM LOG. Note the distinction from `system/audit.py`:
+audit is *what an agent action did* (tool calls, consents, missions),
+turns is *how a command was routed*.
 
 **Answering out loud.** `voice/output.py:speak_async()` splits the
 reply into sentences, synthesizes them in parallel (Piper local,

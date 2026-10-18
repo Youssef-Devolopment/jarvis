@@ -346,6 +346,37 @@ longer visible in a developer console, it lands in that file instead
 
 ---
 
+## 15. Turn routing is observable, and the chit-chat gate must not claim a turn a skill answers
+
+**Decision.** `system/turns.py` keeps a bounded in-memory ring of the
+last 50 turns (who answered: skill or model, which one, how long,
+whether it failed, and the accept/reject verdict when there was one),
+served by `GET /api/turns` and rendered as the sidebar's RECENT strip.
+Separately: `ai/self_awareness.is_conversational()` must never match a
+phrasing that a local skill has a pattern for.
+
+**Why.** The two are one decision because the second was found by the
+first. `is_conversational` does not just tag input — it *skips the
+skill dispatcher*, so anything it claims is answered by a model.
+Listing `what time is it` there meant the most natural phrasing of a
+question the local `time` skill has a pattern for
+(`\bwhat\s+time\s+is\s+it\b`) never reached that skill: 35,070 ms and
+a model round trip instead of 3 ms. Nobody noticed because turn
+routing was only ever a line scrolling past in the SYSTEM LOG — which
+is why the ring came first and the bug second, in the same batch.
+
+**What it costs.** The ring is in-memory only, so it is empty after a
+restart and is not a history (the chat store and `system/audit.py`
+already are). `is_conversational` is now a narrower gate: it answers
+"is this pure chit-chat?", not "does this look like a question?".
+
+**Watch out.** A future pattern added to `_CONV_PATTERNS` silently
+removes a capability rather than adding one. If a phrasing stops
+reaching its skill, look there first — `GET /api/turns` will show the
+turn arriving as `llm` when it should have been `skill`.
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either

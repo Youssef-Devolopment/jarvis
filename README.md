@@ -4,9 +4,9 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.33.5-blue)
+![version](https://img.shields.io/badge/version-v1.34.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-826%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-843%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 🌐 **Website:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
@@ -284,14 +284,14 @@ system/      tray, hotkey, overlay, singleton, autostart, launcher,
              entry points), startup (first-run boot messaging),
              app_learner (scan + skills), app_close (kill by name)
 routes/      one /api blueprint split across per-domain api_*.py
-             modules over a shared routes/_common.py (119 endpoints)
+             modules over a shared routes/_common.py (120 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
 assets/      brand assets: logo banner, icon mark, favicon
              (theme lockups for dark/light in docs/logo-*.svg)
 ```
 
 - `main` builds green: `ruff check` (curated config) is clean, every
-  file compiles, coverage is reported, and **826 unit tests** pass on
+  file compiles, coverage is reported, and **843 unit tests** pass on
   Windows runners (`.github/workflows/ci.yml`)
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
@@ -320,7 +320,7 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 826 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 843 tests
 ```
 
 ## Links
