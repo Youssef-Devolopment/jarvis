@@ -318,27 +318,31 @@ change gets a written update here.
 
 ---
 
-## 14. Boot-settle retry for MCP servers, not a transient verdict
+## 14. MCP children get a real stderr handle
 
-**Decision.** `mcp/runtime.py:start_all()` makes two passes: it starts
-every enabled server, and if any failed it waits for the boot burst to
-settle (20s) and tries those failures again. The `services` health row
-is a boot snapshot, so a server that died in the burst and would have
-recovered on its own must not read as `degraded` for the whole session.
+**Decision.** `mcp/runtime.py` passes `errlog=_errlog()` to the MCP
+SDK's `stdio_client()`. That resolves to the console when the process
+has one and to `logs/mcp_stderr.log` when it does not. The SDK's own
+default (`sys.stderr`) is deliberately never used, because under
+`pythonw.exe` it is `None`.
 
-**Why.** MCP stdio servers are child processes launched by `npx`/`uvx`.
-Under a cold cache, on a machine already loading modules, prewarming
-Chromium and starting the tray, one can exit mid-handshake
-("Connection closed") and then start perfectly a minute later — start
-it on demand (`POST /api/mcp/start`) and it comes up. The older code
-retried once *inside* the burst and then froze the failure:
-`GET /api/health` would show `mcp: ok` beside `services: degraded`,
-which is worse than useless to someone reading the verdict.
+**Why.** The app is launched with `pythonw.exe`, so
+`sys.stdout`/`sys.stderr` are `None`. The SDK hands `errlog` to
+`subprocess` as the child's `stderr`; `None` there means "inherit",
+and the parent has no valid stderr handle to pass on. Any stdio MCP
+server that writes to stderr at startup — startup banners are the
+norm, and `@modelcontextprotocol/server-filesystem` prints two —
+crashes on that write, and the handshake fails as "Connection
+closed". None of that points at stderr: it reads exactly like a flaky
+server, which is why one fix guessed at boot-time contention (a 20s
+settle retry, shipped in 1.33.4 and reverted in 1.33.5). The bug
+reproduces deterministically — the same command fails 3/3 under
+`pythonw` and succeeds 3/3 once the child has a valid stderr.
 
-**What it costs.** A genuinely broken server adds one 20s wait before
-the verdict lands (in a daemon thread — boot stays non-blocking and
-the check labels the gap "still starting"). The retry is bounded: one
-extra pass, no polling, no loop.
+**What it costs.** One append-mode file handle per process
+(`logs/mcp_stderr.log`) shared by all children; their output is no
+longer visible in a developer console, it lands in that file instead
+— which is where the answer to this bug turned out to be.
 
 ---
 

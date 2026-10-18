@@ -10,6 +10,29 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.33.5] — 2026-10-18
+
+The real cause of the recurring `filesystem` MCP failure — and a
+revert of 1.33.4's guess:
+
+- 1.33.4 added a 20-second boot-settle retry on the theory that the
+  server was losing a race during the boot burst. It did not help
+  (the retry failed too) and the theory was wrong. The retry is gone;
+  startup is back to the single immediate second attempt from 1.33.1.
+- Root cause: `pythonw.exe`, the app's launcher, leaves `sys.stderr`
+  as `None`. The MCP SDK forwards that to the child as its stderr, so
+  a server that logs anything at startup inherits an invalid handle,
+  crashes on the write, and surfaces as "Connection closed"
+  mid-handshake. The filesystem server prints a startup banner, which
+  is why it was the one that kept dying.
+  `mcp/runtime.py:_errlog()` now hands every child a real handle — the
+  console when there is one, otherwise `logs/mcp_stderr.log` (a
+  child's own error output is finally readable too).
+- Reproduced deterministically: the same command fails 3/3 under
+  `pythonw` and succeeds 3/3 with a valid stderr.
+
+Four tests cover the handle selection and that the runtime passes it.
+
 ## [1.33.4] — 2026-10-17
 
 An MCP server that dies during the boot burst is no longer recorded as
@@ -23,7 +46,8 @@ a permanent failure:
 - The immediate retry from 1.33.1 stays; the second pass is bounded —
   one extra attempt per failed server, no polling and no loop.
 
-See `DECISIONS.md` #14.
+Reverted in 1.33.5: the retry did not help. The failure was an
+inherited-invalid stderr, not a startup race.
 
 ## [1.33.3] — 2026-10-17
 
