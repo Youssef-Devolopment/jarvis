@@ -4,11 +4,11 @@ from __future__ import annotations
 import asyncio
 import os
 import shutil
+import sys
 import threading
-import time
 from contextlib import contextmanager as _contextmanager
 
-from logger import get_logger
+from logger import LOG_DIR, get_logger
 from mcp.manager import all_servers
 
 log = get_logger(__name__)
@@ -185,6 +185,35 @@ async def _close_quietly(*cms) -> None:
             pass
 
 
+_errlog_handle = None
+
+
+def _errlog():
+    """A real stdio handle for a child server's stderr.
+
+    The SDK defaults `errlog` to `sys.stderr`, which is None under
+    pythonw.exe — the way this app is normally launched. A child
+    spawned with an inherited-invalid stderr dies the moment it logs
+    anything: `@modelcontextprotocol/server-filesystem` prints a
+    startup banner, node's write fails, the process exits, and the
+    handshake surfaces as "Connection closed" (see DECISIONS #14).
+    Use the console when there is a real one, otherwise append to
+    logs/mcp_stderr.log so the output is still there to read.
+    """
+    global _errlog_handle
+    if _errlog_handle is None:
+        stream = sys.stderr
+        try:
+            if stream is None or stream.fileno() < 0:
+                raise OSError("no console stderr")
+        except Exception:
+            _errlog_handle = open(LOG_DIR / "mcp_stderr.log", "a",
+                                  encoding="utf-8", errors="replace")
+        else:
+            _errlog_handle = stream
+    return _errlog_handle
+
+
 async def _start_server(server: dict) -> dict | None:
     """Launch an MCP server, list its tools, return a handle dict."""
     try:
@@ -207,7 +236,7 @@ async def _start_server(server: dict) -> dict | None:
     transport_cm = session_cm = None
     try:
         # Keep the client context alive across calls
-        transport_cm = stdio_client(params)
+        transport_cm = stdio_client(params, errlog=_errlog())
         read, write = await transport_cm.__aenter__()
         session_cm = ClientSession(read, write)
         session = await session_cm.__aenter__()
@@ -334,17 +363,8 @@ def start_server(name: str, attempts: int = 2) -> bool:
         return False
 
 
-def start_all(retry_delay: float = 20.0) -> dict:
-    """Start every enabled MCP server, then retry the failures once.
-
-    A stdio server can die during the boot burst — a cold `npx` fetch
-    while the same process is also loading modules, prewarming the
-    browser and starting the tray — and then come up fine seconds
-    later (the boot verdict already calls that state "still
-    starting"). Rather than record a transient failure as the
-    session's verdict, let the burst settle and try the failures
-    again. `retry_delay=0` disables the second pass (tests).
-    """
+def start_all() -> dict:
+    """Start every enabled MCP server. Returns summary."""
     started, failed = [], []
     for srv in all_servers():
         if not srv.get("enabled", True):
@@ -354,21 +374,6 @@ def start_all(retry_delay: float = 20.0) -> dict:
             started.append(name)
         else:
             failed.append(name)
-
-    if failed and retry_delay > 0:
-        log.warning("MCP: %d server(s) down after the first pass (%s); "
-                    "retrying in %.0fs", len(failed), ", ".join(failed),
-                    retry_delay)
-        time.sleep(retry_delay)
-        still = []
-        for name in failed:
-            if start_server(name):
-                started.append(name)
-                log.info("MCP '%s' recovered on the boot-settle retry", name)
-            else:
-                still.append(name)
-        failed = still
-
     return {"started": started, "failed": failed}
 
 

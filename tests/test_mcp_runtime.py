@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import sys
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -120,7 +122,7 @@ class FailedStartCleanupTests(unittest.IsolatedAsyncioTestCase):
             async def initialize(self):
                 raise RuntimeError("handshake boom")
 
-        def fake_stdio(params):
+        def fake_stdio(params, errlog=None):
             return FakeTransport()
 
         def fake_params(**kw):
@@ -230,51 +232,65 @@ class AbandonedStartTests(unittest.TestCase):
         self.assertNotIn("x", runtime._servers)
 
 
-class StartAllHealTests(unittest.TestCase):
-    """A server that dies in the boot burst gets one settled retry."""
+class ErrlogTests(unittest.TestCase):
+    """MCP children need a REAL stderr handle.
 
-    def _srv(self, enabled=True):
-        return {"name": "s", "command": "c", "enabled": enabled}
+    pythonw.exe — how the app is normally launched — leaves
+    `sys.stderr` as None, the SDK forwards that to the child, and a
+    server that logs at startup (filesystem prints a banner) dies on
+    that write and surfaces as "Connection closed".
+    """
 
-    def test_second_pass_recovers_a_transient_failure(self):
+    def setUp(self):
         from mcp import runtime
-        calls = []
+        runtime._errlog_handle = None
 
-        def fake_start(name, attempts=2):
-            calls.append(name)
-            return len(calls) >= 2          # first pass fails, heal OK
+        def _reset():
+            handle = runtime._errlog_handle
+            runtime._errlog_handle = None
+            try:
+                if handle is not None and handle is not sys.stderr:
+                    handle.close()
+            except Exception:
+                pass
 
-        with mock.patch.object(runtime, "all_servers",
-                               return_value=[self._srv()]), \
-                mock.patch.object(runtime, "start_server",
-                                  side_effect=fake_start):
-            r = runtime.start_all(retry_delay=0.01)
+        self.addCleanup(_reset)
 
-        self.assertEqual(r["started"], ["s"])
-        self.assertEqual(r["failed"], [])
-        self.assertEqual(len(calls), 2)
-
-    def test_no_second_pass_when_everything_started(self):
+    def test_console_stderr_is_used_when_there_is_one(self):
         from mcp import runtime
-        with mock.patch.object(runtime, "all_servers",
-                               return_value=[self._srv()]), \
-                mock.patch.object(runtime, "start_server",
-                                  return_value=True) as start:
-            r = runtime.start_all(retry_delay=5)
+        with open(os.devnull, "w", encoding="utf-8") as console, \
+                mock.patch.object(runtime.sys, "stderr", console):
+            self.assertIs(runtime._errlog(), console)
 
-        self.assertEqual(r["started"], ["s"])
-        self.assertEqual(r["failed"], [])
-        self.assertEqual(start.call_count, 1)   # no settle wait, no retry
-
-    def test_disabled_servers_are_skipped(self):
+    def test_missing_stderr_falls_back_to_a_file(self):
         from mcp import runtime
-        with mock.patch.object(runtime, "all_servers",
-                               return_value=[self._srv(enabled=False)]), \
-                mock.patch.object(runtime, "start_server") as start:
-            r = runtime.start_all(retry_delay=0)
+        with mock.patch.object(runtime.sys, "stderr", None):
+            handle = runtime._errlog()
+        self.assertGreaterEqual(handle.fileno(), 0)
+        self.assertIn("mcp_stderr.log", str(handle.name))
 
-        self.assertEqual(r, {"started": [], "failed": []})
-        start.assert_not_called()
+    def test_the_handle_is_reused(self):
+        from mcp import runtime
+        with mock.patch.object(runtime.sys, "stderr", None):
+            self.assertIs(runtime._errlog(), runtime._errlog())
+
+    def test_start_server_passes_an_errlog(self):
+        from mcp import runtime
+        captured = {}
+
+        def fake_stdio_client(params, errlog=None):
+            captured["errlog"] = errlog
+            raise RuntimeError("stop before the handshake")
+
+        fake_sdk = (object(), lambda **kw: kw, fake_stdio_client, None)
+        with mock.patch.object(runtime, "_sdk", return_value=fake_sdk), \
+                mock.patch.object(runtime, "_resolve_command",
+                                  return_value=("cmd", [])), \
+                mock.patch.object(runtime, "_build_env", return_value={}):
+            self.assertIsNone(
+                asyncio.run(runtime._start_server({"name": "x"})))
+
+        self.assertIsNotNone(captured.get("errlog"))
 
 
 if __name__ == "__main__":
