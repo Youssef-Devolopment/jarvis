@@ -24,7 +24,12 @@ _CONV_PATTERNS = [
     r"^\bgoodbye\b",
     r"^\bsee you\b",
     r"^\bhow (?:was|is|are) your day\b",
-    r"^\bwhat (?:time|date|day) is it\b",
+    # NOTE: "what time/date/day is it" is deliberately NOT listed here.
+    # Those are tasks the local `time`/`date` skills answer in
+    # milliseconds, and this gate SKIPS the skill dispatcher — so
+    # listing them meant the most natural phrasing took a full model
+    # round trip (measured live: 35s vs 3ms). Anything a local skill
+    # matches must be allowed through.
     r"^\btell me a joke\b",
     r"^\bhow old are you\b",
     r"^\bwhat('?s| is) your name\b",

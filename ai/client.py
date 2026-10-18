@@ -135,6 +135,10 @@ class AIClient:
         self.provider_name = pname
         self.base_url = base_url
         self.default_model = s.model
+        # The model that actually answered the last turn — the primary
+        # or whichever fallback took over. Read by the recent-turns
+        # trail (system/turns.py) so "which model ran?" is visible.
+        self.last_model = None
         self._client = OpenAI(api_key=api_key, base_url=base_url)
         if not get_active():
             set_active("auto")
@@ -281,6 +285,8 @@ class AIClient:
         if stream is None:
             raise AIError("No working model found. Try Flash.",
                           detail="All fallback models failed.")
+
+        self.last_model = used_model
 
         try:
             from ai import approvals as _appr

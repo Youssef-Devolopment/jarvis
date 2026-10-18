@@ -359,3 +359,18 @@ def audit_tail():
     return jsonify({"entries": entries, "count": len(entries)})
 
 
+# ---------- RECENT TURNS ----------
+@bp.get("/turns")
+def turns_tail():
+    """Newest-first recent turns — which skill or model answered, how
+    long it took, and whether it failed. In-memory only; never raises —
+    worst case an empty list."""
+    from system import turns as _turns
+    try:
+        limit = int(request.args.get("limit") or 20)
+    except (TypeError, ValueError):
+        limit = 20
+    entries = _turns.recent(limit)
+    return jsonify({"entries": entries, "count": len(entries)})
+
+

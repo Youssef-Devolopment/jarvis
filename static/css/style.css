@@ -279,6 +279,29 @@ body[data-uimode="dev"] .dev-only.side-block{display:block!important}
 }
 .side-value{color:#fff;font-size:11px;font-weight:500;letter-spacing:1px;word-break:break-all}
 
+/* -- Recent turns (sidebar) --------------------------------------- */
+#recent-refresh{margin-left:auto}
+.turns{display:flex;flex-direction:column;gap:2px;max-height:132px;overflow-y:auto;scrollbar-width:thin}
+.turns::-webkit-scrollbar{width:3px}
+.turns::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
+.turn{
+  display:grid;grid-template-columns:44px 40px 1fr auto;gap:6px;align-items:center;
+  padding:2px 3px;border-radius:5px;font-size:10px;letter-spacing:.4px;color:var(--dim);
+}
+.turn:hover{background:rgba(255,255,255,.04)}
+.turn-t{opacity:.75;font-variant-numeric:tabular-nums}
+.turn-k{
+  text-align:center;font-size:8px;letter-spacing:1px;padding:1px 0;
+  border:1px solid var(--border);border-radius:3px;
+}
+.turn-k.k-skill{border-color:var(--accent-line);color:var(--accent)}
+.turn-k.k-llm{border-color:rgba(255,255,255,.22);color:#fff}
+.turn-w{color:#fff;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.turn-ms{opacity:.7;font-variant-numeric:tabular-nums}
+.turn-bad .turn-k{border-color:var(--red);color:var(--red)}
+.turn-bad .turn-w{color:var(--red)}
+.turn-empty{color:var(--dim);font-size:10px;letter-spacing:1px;opacity:.7}
+
 /* ── Model chips ─────────────────────────────────────────────── */
 .model-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;max-height:120px;overflow-y:auto;scroll-behavior:smooth;scrollbar-width:thin}
 .model-chips::-webkit-scrollbar{width:3px}

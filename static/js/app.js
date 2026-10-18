@@ -588,6 +588,36 @@ function startUptime(){
   },1000);
 }
 
+var TURN_KIND={skill:'SKILL',llm:'AI',consent:'OK',auto_skill:'AUTO',no_key:'KEY'};
+
+function turnRow(t){
+  var kind=TURN_KIND[t.source]||String(t.source||'?').toUpperCase();
+  var what=t.skill||t.model||'';
+  if(!t.skill&&t.model)what=String(t.model).split('/').pop();
+  var ms=(t.ms!=null)?(t.ms>=1000?(t.ms/1000).toFixed(1)+'s':t.ms+'ms'):'';
+  return '<div class="turn'+(t.ok===false?' turn-bad':'')+'" title="'+esc(t.text||'')+'">'
+    +'<span class="turn-t">'+esc(t.ts||'')+'</span>'
+    +'<span class="turn-k k-'+esc(t.source||'')+'">'+esc(kind)+'</span>'
+    +'<span class="turn-w">'+esc(String(what).slice(0,16))+'</span>'
+    +'<span class="turn-ms">'+esc(ms)+'</span></div>';
+}
+
+async function refreshTurns(){
+  var box=$('side-turns');if(!box)return;
+  try{
+    var r=await fetch('/api/turns?limit=6');var d=await r.json();
+    var rows=(d&&d.entries)||[];
+    if(!rows.length){box.innerHTML='<div class="turn-empty">Nothing yet.</div>';return;}
+    box.innerHTML=rows.map(turnRow).join('');
+  }catch(e){/* keep the last render rather than blanking it */}
+}
+
+function startTurnsLoop(){
+  refreshTurns();setInterval(refreshTurns,4000);
+  var b=$('recent-refresh');
+  if(b)on(b,'click',function(e){e.stopPropagation();refreshTurns();});
+}
+
 function startClock(){
   var tick=function(){
     var n=new Date();
@@ -1083,6 +1113,7 @@ async function sendCommand(text){
   finally{
     busy=false;
     finishThinking();
+    refreshTurns();
     // Only reset to IDLE if we're not currently speaking
     if(state!==STATE.SPEAKING&&state!==STATE.IDLE){
       /* success holds a brief DONE chip; errors settle straight to
@@ -2156,7 +2187,7 @@ async function boot(){
   await loadModels();
   await loadVoices();
   await loadMoods();
-  startStatsLoop();startUptime();startClock();initWaveform();
+  startStatsLoop();startUptime();startClock();startTurnsLoop();initWaveform();
   addLog('JARVIS online. Type / for commands.','system');
   maybeOnboard(bootInfo,bootPrefs||{});
   try{

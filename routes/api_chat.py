@@ -1,4 +1,6 @@
 """routes.api_chat — the /command streaming turn."""
+import time
+
 from routes._common import (
     TOOL_SCHEMAS,
     AIError,
@@ -18,6 +20,7 @@ from routes._common import (
     outcomes,
     request,
 )
+from system import turns as turn_trail
 
 
 # ---------- COMMAND ----------
@@ -31,15 +34,26 @@ def command():
     if len(text) > 4000:
         raise ValidationError("Command too long.")
 
+    started = time.time()
+    verdict = None
+
     # Check if this is a rejection of the previous answer
     if outcomes.detect_rejection(text):
         marked = outcomes.update_last(accepted=False, feedback=text)
         if marked:
+            verdict = "rejected"
             _speak_quiet("Understood. I'll avoid that approach, sir.")
 
     # Check if this is a confirmation
     elif outcomes.detect_confirmation(text):
         marked = outcomes.update_last(accepted=True, feedback=text)
+        if marked:
+            verdict = "accepted"
+
+    def _note(source, ok=True, **fields):
+        """Put this turn on the recent-turns trail. Never raises."""
+        turn_trail.record(text, source, ok=ok, verdict=verdict,
+                          ms=(time.time() - started) * 1000, **fields)
 
     # Skip skills for purely conversational input
     from ai.self_awareness import is_conversational
@@ -47,6 +61,13 @@ def command():
     if not is_conversational(text):
         skill_reply = dispatch_skill(text)
     if skill_reply:
+        try:
+            from skills.registry import last_match as _last_match
+            _hit = (_last_match() or {}).get("skill")
+        except Exception:
+            _hit = None
+        _note("skill", skill=_hit)
+
         def s():
             yield f"data: {json.dumps({'delta': skill_reply, 'source': 'skill'})}\n\n"
             yield "data: [DONE]\n\n"
@@ -64,6 +85,8 @@ def command():
         except Exception:
             _decided = None
         if _decided:
+            _note("consent")
+
             def _ca():
                 yield f"data: {json.dumps({'delta': _decided, 'source': 'consent'})}\n\n"
                 yield "data: [DONE]\n\n"
@@ -84,6 +107,8 @@ def command():
             from skills import auto_generator as _ag
             _handled = _ag.handle_approval_text(text)
             if _handled:
+                _note("auto_skill")
+
                 def _sa():
                     yield f"data: {json.dumps({'delta': _handled, 'source': 'auto_skill'})}\n\n"
                     yield "data: [DONE]\n\n"
@@ -101,6 +126,7 @@ def command():
         except Exception:
             _proposal = None
         if _proposal:
+            _note("auto_skill")
             _prompt = _ag.approval_prompt(_proposal)
             try:
                 store1 = get_store()
@@ -131,6 +157,7 @@ def command():
         def _nok():
             yield f"data: {json.dumps({'route': route, 'error': msg, 'no_key': True})}\n\n"
             yield "data: [DONE]\n\n"
+        _note("no_key", ok=False, route=route, error="no API key set")
         return Response(_nok(), mimetype="text/event-stream", headers={
             "Cache-Control": "no-cache", "X-Accel-Buffering": "no",
             "Connection": "keep-alive"})
@@ -159,6 +186,8 @@ def command():
 
     def generate():
         collected = []
+        err = None
+        used_agents = False
         yield f"data: {json.dumps({'route': route})}\n\n"
         try:
             if want_agents:
@@ -177,6 +206,7 @@ def command():
                                   f"{_ares.get('tasks', 0)} sub-tasks answered")
                         yield f"data: {json.dumps({'status': _astat})}\n\n"
                     collected.append(_aanswer)
+                    used_agents = True
                     yield f"data: {json.dumps({'delta': _aanswer, 'source': 'llm'})}\n\n"
                 else:
                     yield f"data: {json.dumps({'status': 'Sub-agents came up empty — answering directly'})}\n\n"
@@ -196,6 +226,7 @@ def command():
                         # spoken or rendered into the reply body
                         yield f"data: {json.dumps({'status': payload})}\n\n"
         except AIError as exc:
+            err = exc.public_message
             yield f"data: {json.dumps({'error': exc.public_message, 'detail': exc.detail})}\n\n"
         finally:
             full = "".join(collected).strip()
@@ -207,6 +238,10 @@ def command():
                     outcomes.record(text, full)
                 except Exception:
                     pass
+            _note("llm", ok=(err is None), route=route,
+                  model=getattr(client, "last_model", None),
+                  error=err, chars=len(full),
+                  extra={"agents": True} if used_agents else None)
             yield "data: [DONE]\n\n"
 
     return Response(generate(), mimetype="text/event-stream", headers={
