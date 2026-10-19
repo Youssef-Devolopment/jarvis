@@ -35,11 +35,13 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.34.0** | **Turn routing you can see**: `GET /api/turns` + the sidebar RECENT strip (which skill or model answered, which one, how long, ok/fail). Its first live run exposed `what time is it` being treated as chit-chat, so the local `time` skill was skipped for a 35,070 ms model call — fixed |
 | **v1.35.0** | **A real installer**: `installer/` builds a per-user `JARVIS-Setup-<version>.exe` (Inno Setup 6) — Start Menu entries, optional autostart, a real uninstaller, and a dependency bootstrap that builds `.venv` itself. The shipped file list is generated from `git ls-files`, so untracked files cannot be packaged, and CI installs the artifact on every tag to prove it. Also fixed the tray link that ignored `PORT` |
 | **v1.35.1** | **The installer's dependency step, actually working**: Windows PowerShell 5.1 rejects `Tee-Object -LiteralPath … -Append` and mangles embedded quotes and `|` in arguments to native commands, so the shipped bootstrap died at "creating the virtual environment". Fixed, and CI now runs the bootstrap against the installed artifact on every tag |
+| **v1.35.2** | **Say how it was built**: README and landing page state plainly that JARVIS was written by AI coding agents, and name the gates that make that responsible — tests, lint, CI, the installer job, the changelog's own failures. `DECISIONS.md` #17 records why the disclosure is deliberate and why it never lowers the bar |
+| **v1.35.3** | **Prove the launch mode, not just the branch**: `tests/test_pythonw_smoke.py` starts the real `pythonw.exe` with `DETACHED_PROCESS` and no inherited handles, requires `_errlog()` to give a banner-writing child a live stderr, requires the `stderr=None` child to die, and completes a real MCP handshake through `stdio_client` inside that windowless process. Removing the fix fails the test; it runs as its own CI step |
 
 *(The table is continuous in `CHANGELOG.md`; it resumes here at the
 current release so this file does not silently claim the gap.)*
 
-Stable today: 846 tests (in-tree + fresh-copy, no `.env`), 120 API
+Stable today: 851 tests (in-tree + fresh-copy, no `.env`), 120 API
 endpoints, 142 shipped skills + 9 shipped modules, a per-user Windows
 installer that installs and uninstalls cleanly, green CI on
 `windows-latest` (plus an installer job on every `v*` tag that installs

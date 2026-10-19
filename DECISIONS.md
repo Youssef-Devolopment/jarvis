@@ -344,6 +344,21 @@ reproduces deterministically — the same command fails 3/3 under
 longer visible in a developer console, it lands in that file instead
 — which is where the answer to this bug turned out to be.
 
+**How it is verified (v1.35.3).** An in-process test that patches
+`sys.stderr` to `None` proves the branch, not the condition — the
+1.33.4 mistake was exactly that gap. `tests/test_pythonw_smoke.py`
+now starts the real `pythonw.exe` beside the running interpreter with
+`DETACHED_PROCESS` and no inherited handles, so `sys.stdout` and
+`sys.stderr` really are `None`, then runs `tests/pythonw_probe.py`
+inside it. The probe asserts that state, requires a banner-writing
+child to survive with the `_errlog()` handle and to die with
+`stderr=None`, and finally runs `python -m mcp.server` through the
+real `stdio_client` path, requiring a completed handshake and a tool
+list. Removing the fix (`errlog=None`) makes that last assertion fail
+with an empty list, so the guard is known to catch the bug rather
+than merely passing beside it. It runs as its own CI step before the
+suite.
+
 ---
 
 ## 15. Turn routing is observable, and the chit-chat gate must not claim a turn a skill answers
@@ -451,7 +466,7 @@ impression.
 
 **Watch out.** This is a statement about provenance, not permission to
 lower the bar. It must never become an excuse in a bug report ("it was
-AI-written, what did you expect?"). The standard stays: 846 tests,
+AI-written, what did you expect?"). The standard stays: 851 tests,
 lint, a tagged installer that installs and uninstalls, and a changelog
 entry that names the failure. If the verification ever slips, this
 section becomes false advertising and should be deleted rather than

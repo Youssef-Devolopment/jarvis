@@ -4,9 +4,9 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.35.2-blue)
+![version](https://img.shields.io/badge/version-v1.35.3-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-846%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-851%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 🌐 **Website:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
@@ -161,8 +161,12 @@ pretending there is a team of engineers behind it.
 "Vibe coded" is not the same as "untested", and this repo does not ask
 you to take that on faith:
 
-- **846 tests**, hermetic by default — no `.env`, no network, no API
+- **851 tests**, hermetic by default — no `.env`, no network, no API
   keys, no running server — run on Windows in CI on every push.
+- **The launch mode is tested, not just the code path**: Windows CI
+  starts the real `pythonw.exe` with no console and requires an MCP
+  handshake to complete inside it — the exact condition that shipped
+  a wrong fix in 1.33.4 and was reverted a day later.
 - Lint (`ruff`), a parse check of the UI bundle and a compile check of
   every Python file are gates, not suggestions.
 - The Windows installer is built **and then actually installed** in CI
@@ -340,8 +344,9 @@ assets/      brand assets: logo banner, icon mark, favicon
 ```
 
 - `main` builds green: `ruff check` (curated config) is clean, every
-  file compiles, coverage is reported, and **846 unit tests** pass on
-  Windows runners (`.github/workflows/ci.yml`)
+  file compiles, coverage is reported, and **851 unit tests** pass on
+  Windows runners (`.github/workflows/ci.yml`), including a real
+  `pythonw` launch that must complete an MCP handshake
 - The Windows installer is built **and then actually installed and
   uninstalled** in CI on every `v*` tag
   (`.github/workflows/installer.yml`); that check fails if `.env`,
@@ -373,7 +378,7 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 846 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 851 tests
 ```
 
 ## Links

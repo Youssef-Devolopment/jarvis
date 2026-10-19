@@ -10,6 +10,39 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.35.3] - 2026-10-19
+
+**Prove the launch mode, not just the branch: the MCP stderr fix is now
+tested under a real `pythonw.exe` launch, and it fails when the fix is
+removed.**
+
+- The 1.33.4 retry that shipped, failed and was reverted (DECISIONS
+  #14) existed because nothing exercised the way the app actually
+  starts. `tests/test_pythonw_smoke.py` now starts the real
+  `pythonw.exe` beside the running interpreter with
+  `DETACHED_PROCESS` and no inherited handles - no console, no
+  `sys.stdout`, no `sys.stderr` - and runs `tests/pythonw_probe.py`
+  inside it.
+- The probe does three things in that windowless process: asserts the
+  state is genuine (if `pythonw` ever gains a console the test says so
+  instead of passing for the wrong reason), starts a child that writes
+  a startup banner with the handle from `mcp.runtime._errlog()` and
+  requires it to survive, and starts that same child with
+  `stderr=None` and requires it to die. If the second child starts
+  passing, the bug no longer reproduces and the guard is flagged
+  stale.
+- Then it goes further than the mechanism: it runs this repo's own
+  `python -m mcp.server` through the real `stdio_client` path and
+  asserts the handshake completes and tools come back. With the fix
+  removed (`errlog=None`) that assertion fails with an empty tool
+  list; with it in place the handshake takes ~2s. No network, no npx.
+- CI runs that file as its own named step before the suite, so a
+  windowless regression fails fast and visibly instead of hiding
+  inside "851 tests passed".
+
+5 new tests (846 -> 851, `tests/test_pythonw_smoke.py`). No application
+code changed.
+
 ## [1.35.2] — 2026-10-19
 
 **Say how it was built: vibe coded, and verified — both are true, so

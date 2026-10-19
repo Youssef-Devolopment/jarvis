@@ -5,7 +5,7 @@ reproduction, health checks, CI, and the manual smoke tests that only
 a human on Windows can do. Follow this and "works on my machine"
 stays a scare story instead of a bug report.
 
-**Ground truth:** 67 test files · **846 tests** · 120 API endpoints ·
+**Ground truth:** 68 test files · **851 tests** · 120 API endpoints ·
 142 shipped skills · `check.py` 11 preflight checks (exit 0 ready /
 1 fix core / 2 skills-only).
 
@@ -48,7 +48,7 @@ Expected tail:
 
 ```
 ----------------------------------------------------------------------
-Ran 846 tests in ~57s
+Ran 851 tests in ~43s
 OK
 ```
 
@@ -77,7 +77,7 @@ its verdict to stderr and a truncated pipe can hide it.
 
 ## 3. What each test group covers
 
-47 files under `tests/`, grouped by the seam they protect.
+68 files under `tests/`, grouped by the seam they protect.
 
 **Core engine & routing**
 
@@ -135,6 +135,7 @@ its verdict to stderr and a truncated pipe can hide it.
 | `test_launch.py` | Universal open resolver + URL rules |
 | `test_first_run.py` | First-run surface: boot status block, safe-mode verdicts, toasts, port probe, `check.py` buckets/exit codes/capabilities |
 | `test_app_learner.py` | App-learning engine (no real launches) |
+| `test_pythonw_smoke.py` | Real `pythonw.exe` launch: no console stdio, `_errlog()` gives children a live handle, an MCP handshake completes (skipped off Windows) |
 | `test_scaffold.py` | Boilerplate scaffolder output shape |
 
 **Skills, library & suites**
@@ -224,12 +225,20 @@ Python 3.10) — same OS family as the product:
    `voice/output.py`/`voice/voices.py` and user/generated code are
    excluded);
 5. `coverage run -m unittest discover -s tests` + `coverage report`
-   — the whole suite with a coverage summary.
+   — the whole suite with a coverage summary;
+6. before the suite, a named **`pythonw` step** runs
+   `tests/test_pythonw_smoke.py`: the real `pythonw.exe` is started
+   with `DETACHED_PROCESS` and no inherited handles, so
+   `sys.stdout`/`sys.stderr` are `None` exactly as in a Start-menu
+   launch, and an MCP handshake must complete inside it (`TESTING.md`
+   §3, `DECISIONS.md` #14). In-process patching of `sys.stderr` cannot
+   catch this class of bug, which is why 1.33.4 shipped a fix that did
+   not work.
 
 "CI green" therefore means: *every file compiles, the UI script
-parses, lint is clean, and all 846 tests pass on a machine that has
-never seen your checkout*. It does **not** mean smoke tests ran — §7
-stays manual.
+parses, lint is clean, the app's real launch mode completes an MCP
+handshake, and all 851 tests pass on a machine that has never seen your
+checkout*. It does **not** mean smoke tests ran — §7 stays manual.
 
 Check the latest run:
 `https://github.com/Youssef-Devolopment/jarvis/actions` (or via API:
@@ -390,10 +399,12 @@ API keys, no running server**:
 
 A change is done when **all** of these hold:
 
-1. full suite: `Ran 846 tests … OK` (or the new count);
+1. full suite: `Ran 851 tests … OK` (or the new count);
 2. fresh-copy suite: OK without `.env`;
 3. `check.py`: 11/11;
 4. `node --check static/js/app.js`: clean (if JS changed);
-5. CI green on the pushed commit;
-6. if a subsystem was touched: its §7 smoke test done by hand;
-7. counts in README/CHANGELOG updated if tests/routes/skills moved.
+5. `tests.test_pythonw_smoke`: OK — it runs in the suite and as its
+   own CI step, so a windowless-only regression cannot hide;
+6. CI green on the pushed commit;
+7. if a subsystem was touched: its §7 smoke test done by hand;
+8. counts in README/CHANGELOG updated if tests/routes/skills moved.
