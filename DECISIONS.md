@@ -423,6 +423,42 @@ that silently deletes user data is not thorough, it is a bug.
 
 ---
 
+## 17. Say that it was vibe coded (v1.35.2)
+
+**The decision.** The README states, in its own section, that JARVIS
+was written by AI coding agents — "vibe coded" — and immediately points
+at the evidence that it is nonetheless verified: the test suite, the
+lint and compile gates, the installer that CI installs and uninstalls,
+`check.py`, and `TESTING.md`.
+
+**Why.** The alternative is a repo that lets a reader assume a
+conventional engineering team wrote it. That assumption is not
+harmless: it changes how much a stranger trusts the code, how they read
+a bug report, and whether "this looks professional" gets mistaken for
+"this was reviewed". Disclosure costs one section and makes every other
+claim in the README easier to believe.
+
+It also sets the right expectation for contributors. The quality here
+does not come from careful human line-by-line authorship; it comes from
+a loop that runs the tests, installs the artifact, and writes down what
+broke. That loop is the thing worth imitating, and it is documented in
+`AGENTS.md` and `TESTING.md`.
+
+**What it costs.** Some readers will stop at "vibe coded" whatever
+follows. That is a real cost, and it is the honest one to pay — the
+alternative trades a stranger's informed judgement for a better first
+impression.
+
+**Watch out.** This is a statement about provenance, not permission to
+lower the bar. It must never become an excuse in a bug report ("it was
+AI-written, what did you expect?"). The standard stays: 846 tests,
+lint, a tagged installer that installs and uninstalls, and a changelog
+entry that names the failure. If the verification ever slips, this
+section becomes false advertising and should be deleted rather than
+reworded.
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either

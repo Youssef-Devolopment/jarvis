@@ -4,7 +4,7 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.35.1-blue)
+![version](https://img.shields.io/badge/version-v1.35.2-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![tests](https://img.shields.io/badge/tests-846%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
@@ -66,7 +66,7 @@ Two ways in. Both are per-user, ask for no admin rights, and end with
 JARVIS in your tray. Pick whichever suits you.
 
 **Option A — download the installer.** Get
-`JARVIS-Setup-1.35.1.exe` from
+`JARVIS-Setup-<version>.exe` from
 [Releases](https://github.com/Youssef-Devolopment/jarvis/releases) and
 run it (Windows 10/11, 64-bit). It installs to
 `%LOCALAPPDATA%\Programs\JARVIS`, adds Start Menu entries and a normal
@@ -150,6 +150,34 @@ instead of running blind. Everything it learns lives in a local
 SQLite database on your machine.
 
 Details, diagrams and data flow: [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## How it was built
+
+JARVIS was **vibe coded**: written by AI coding agents in long
+sessions, with a human deciding what to build, reviewing the result
+and choosing what shipped. Saying that plainly is better than
+pretending there is a team of engineers behind it.
+
+"Vibe coded" is not the same as "untested", and this repo does not ask
+you to take that on faith:
+
+- **846 tests**, hermetic by default — no `.env`, no network, no API
+  keys, no running server — run on Windows in CI on every push.
+- Lint (`ruff`), a parse check of the UI bundle and a compile check of
+  every Python file are gates, not suggestions.
+- The Windows installer is built **and then actually installed** in CI
+  on every tag: it asserts the package holds no secrets or local
+  models, builds the Python environment for real, and uninstalls
+  cleanly.
+- `check.py` runs 11 preflight checks on a real machine, and
+  `TESTING.md` documents the manual smoke tests and the definition of
+  done for every change.
+
+The failures are public too. `CHANGELOG.md` records what broke and why,
+including the ones this project caused: a 35-second misroute that the
+new turn trail exposed in 1.34.0, and an installer bootstrap that
+shipped broken in 1.35.0 and was fixed in 1.35.1. Speed without that
+honesty is just risk.
 
 ## Trust and safety
 

@@ -10,6 +10,28 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.35.2] — 2026-10-19
+
+**Say how it was built: vibe coded, and verified — both are true, so
+both are written down.**
+
+- New README section **"How it was built"**: JARVIS was written by AI
+  coding agents, and the section does not ask you to take the rest on
+  faith — it names the gates that make that responsible (846 hermetic
+  tests on Windows CI, lint and compile checks, an installer CI
+  installs and uninstalls on every tag, `check.py`, `TESTING.md`) and
+  the failures the changelog already made public.
+- The landing page's trust section adds the same point in one line, and
+  `DECISIONS.md` #17 records the reasoning: disclosure is one short
+  section, and it makes every other claim easier to believe. It also
+  records the rule that comes with it — this can never become an excuse
+  for a lower bar.
+- The README's installer link is now `JARVIS-Setup-<version>.exe`
+  instead of a pinned filename, so the instructions cannot go stale on
+  the next release.
+
+No code changes; 846 tests unchanged.
+
 ## [1.35.1] — 2026-10-19
 
 **The installer's dependency step did not actually work. Fixed — and CI
