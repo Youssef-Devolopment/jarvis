@@ -377,6 +377,52 @@ turn arriving as `llm` when it should have been `skill`.
 
 ---
 
+## 16. The installed artifact is part of the product (v1.35.0)
+
+**The decision.** JARVIS ships a real Windows installer
+(`installer/`, Inno Setup 6) instead of only a `setup.ps1` you paste
+into a terminal, and the list of files inside it is **generated from
+`git ls-files` at build time** rather than written by hand.
+
+**Why a real installer.** "Anyone can install it" was the stated goal.
+A one-line PowerShell script is fine for a developer and a wall for
+everyone else: no Start Menu entry, no uninstaller, no idea what it put
+where. The installer is per-user (`PrivilegesRequired=lowest`), so it
+never asks for UAC, and it registers in Add/Remove Programs, so a
+stranger can remove it the way they remove anything else.
+
+**Why the file list is generated.** The obvious way to write this is
+`Source: "..\*"; Excludes: ".env"` — a blacklist. A blacklist has a
+failure mode where being wrong leaks keys, and this repo is full of
+things that must never ship: `.env`, `mcp_servers.json`, `logs/`, the
+330 MB of local Piper voices, `memory/*.db`, `docs/research/`. Deriving
+the list from git inverts that: untracked files *cannot* be packaged,
+because they are not in the list. It also means new files ship
+automatically instead of being remembered.
+
+That is still not trusted on its own. `build.ps1` scans the generated
+list for `.env*`, `*.db`, `*.onnx`, `*.bak`, `logs/` and the other
+personal paths and **fails the build** if any appear, and
+`.github/workflows/installer.yml` installs the artifact on a runner and
+asserts none of them are in the installed tree. Reading the script is
+not verification; installing it is.
+
+**What it costs.** Building needs Inno Setup 6 and git, and the
+installer cannot bundle Python — it uses the 3.10+ already on the
+machine, which is why it checks for it and points at python.org instead
+of pretending. The dependency step needs the network (it is pip) and is
+deliberately not silent: a multi-minute download with no output looks
+like a hang, so the pip console window is the progress bar.
+
+**Watch out — the two edge cases are opposite.** `.env` is *created* by
+the install, so it is not a file the uninstaller can find by pattern:
+it is named explicitly, and must never overwrite an existing one. The
+uninstaller deletes it (keys should not linger after an uninstall) but
+**keeps `memory/`**, which holds the user's own data. An uninstaller
+that silently deletes user data is not thorough, it is a bug.
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either

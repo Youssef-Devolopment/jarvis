@@ -59,6 +59,15 @@ blueprint split across routes/api_*.py, shared routes/_common.py)
 - **Turn trail**: `system/turns.py` — what each turn actually did
   (skill or model, which one, how long, ok/fail). Add a field there,
   not another log line; see *The voice command path* below.
+- **Packaging**: `installer/` (Inno Setup 6).
+  `installer/jarvis.iss` is the installer definition and
+  `installer/install-deps.ps1` is the dependency bootstrap it runs. It
+  is a packaging seam, not a third entry point: it runs the same steps
+  as `install.bat` and then launches the same `desktop.py` / `run.py`.
+  What it ships is generated from `git ls-files` at build time, so the
+  package contains exactly the repository's tracked files — a
+  hand-written file list here would be a way to leak `.env`. See
+  `DECISIONS.md` #16.
 
 ## The voice command path (end to end)
 

@@ -10,6 +10,54 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.35.0] — 2026-10-19
+
+**A real installer — and the packaging step physically cannot ship
+your secrets.**
+
+- `installer/` now builds `JARVIS-Setup-<version>.exe` (Inno Setup 6):
+  a normal, **per-user** Windows installer — no admin prompt, no UAC.
+  It lands in `%LOCALAPPDATA%\Programs\JARVIS`, creates Start Menu
+  entries (the tray app, plus a console variant that shows the logs),
+  optionally a desktop icon and autostart on sign-in, and registers a
+  proper uninstaller in Add/Remove Programs.
+- It builds the Python environment itself: `.venv`, `pip install -r
+  requirements.txt`, open-interpreter, and optionally the Playwright
+  browser engine (untickable — it is a ~150 MB download). It then
+  proves the result by importing Flask and `config.py`, and copies
+  `.env.example` to `.env` only when no `.env` exists — it never
+  overwrites one.
+- **The file list is generated from `git ls-files`, not written by
+  hand.** Only tracked files can be packaged, so everything the project
+  keeps out of git — `.env`, `logs/`, the 330 MB of local Piper voices
+  in `voices/*.onnx`, `memory/*.db`, `docs/research/` — is structurally
+  impossible to ship. `build.ps1` does not rely on that alone: it also
+  scans the list for `.env*`, `*.db`, `*.onnx`, `*.bak` and the other
+  personal paths, and **aborts the build** if any appear. A leaked key
+  is the one mistake here that no later commit can undo.
+- **CI installs the artifact, not just the source tree.**
+  `.github/workflows/installer.yml` runs on every `v*` tag: it builds
+  the installer, installs it silently on the runner, fails if `.env`,
+  `logs/`, any `*.db` or any `*.onnx` turns up in the installed tree,
+  then uninstalls and fails if anything is left behind.
+- **Failure is survivable.** If the dependency step fails the app is
+  still installed, the installer says so in plain English and points at
+  `logs/install.log`, and `installer/install-deps.ps1` is idempotent —
+  fix the cause, run it again, and nothing needs reinstalling.
+- `README.md` leads with the installer as the fastest path, and
+  `installer/README.md` documents the build, the safety rule and the
+  uninstall behaviour (`memory/` is deliberately kept — that is user
+  data, not program files).
+- **Fixed: the tray's dashboard link ignored `PORT`.**
+  `system/tray.py` hardcoded `http://127.0.0.1:5000`, while the
+  launcher, the overlay and `config.py` all honour `PORT`. Console mode
+  runs through that path, so anyone who moved the port got a dead "Open
+  JARVIS" link. Every part of the app now resolves it the same way.
+
+3 new tests (843 → 846, `tests/test_tray_url.py`). The installer itself
+is verified by installing and uninstalling the built artifact — locally
+and on every tag in CI.
+
 ## [1.34.0] — 2026-10-18
 
 **You can finally see what a turn did — and the first honest look

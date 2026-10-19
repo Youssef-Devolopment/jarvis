@@ -5,7 +5,7 @@ reproduction, health checks, CI, and the manual smoke tests that only
 a human on Windows can do. Follow this and "works on my machine"
 stays a scare story instead of a bug report.
 
-**Ground truth:** 66 test files · **843 tests** · 120 API endpoints ·
+**Ground truth:** 67 test files · **846 tests** · 120 API endpoints ·
 142 shipped skills · `check.py` 11 preflight checks (exit 0 ready /
 1 fix core / 2 skills-only).
 
@@ -48,7 +48,7 @@ Expected tail:
 
 ```
 ----------------------------------------------------------------------
-Ran 843 tests in ~50s
+Ran 846 tests in ~57s
 OK
 ```
 
@@ -227,13 +227,19 @@ Python 3.10) — same OS family as the product:
    — the whole suite with a coverage summary.
 
 "CI green" therefore means: *every file compiles, the UI script
-parses, lint is clean, and all 843 tests pass on a machine that has
+parses, lint is clean, and all 846 tests pass on a machine that has
 never seen your checkout*. It does **not** mean smoke tests ran — §7
 stays manual.
 
 Check the latest run:
 `https://github.com/Youssef-Devolopment/jarvis/actions` (or via API:
 `GET /repos/Youssef-Devolopment/jarvis/actions/runs?per_page=1`).
+
+A second workflow, `.github/workflows/installer.yml`, runs on `v*` tags
+(and on demand). It builds the Windows installer and then **installs it
+on the runner, asserts the package carries no secrets, no local speech
+models and no database, and uninstalls it again**. So "tag is green"
+covers the artifact users actually download, not just the source tree.
 
 ---
 
@@ -295,6 +301,36 @@ Start JARVIS (`desktop.bat` or `run.py`), then:
 - Banner behaves: hidden when healthy; red + names the failed service
   when degraded; "Open SYSTEM" jumps to the dashboard.
 
+**Installer** (only when `installer/` changed; needs no keys, but does
+need a Windows box)
+
+```bat
+installer\build.ps1                       :: -> dist\JARVIS-Setup-<version>.exe
+dist\JARVIS-Setup-<version>.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART ^
+    /MERGETASKS=!deps,!playwright /DIR="%TEMP%\jarvis-install-test"
+```
+
+- **It cannot ship secrets.** The file list is generated from
+  `git ls-files`, and `build.ps1` aborts the build if `.env*`, `*.db`,
+  `*.onnx`, `*.bak`, `logs/` or the other personal paths appear in it.
+  Then confirm the installed tree has no `.env`, `logs\`,
+  `voices\*.onnx`, `memory\*.db` or `docs\research\` — the CI job
+  asserts exactly this after a **real** silent install.
+- **Shortcuts work, not just exist.** `JARVIS.lnk` must target
+  `{app}\.venv\Scripts\pythonw.exe` with `desktop.py` and the install
+  folder as its working directory; the console entry uses `python.exe`
+  + `run.py`. Both carry the app icon.
+- **The uninstaller is complete.** Confirm the install folder, the
+  shortcuts, the virtualenv and the autostart `Run` value are gone and
+  Add/Remove Programs no longer lists JARVIS — and that `memory\` (your
+  data) and any pre-existing autostart entry the install did **not**
+  create are untouched.
+- **Failure is survivable.** Untick "Set up the Python environment",
+  install, then run `installer\install-deps.ps1` by hand: it must build
+  `.venv`, install the requirements, create `.env` from `.env.example`
+  **without overwriting an existing one**, and finish with the import
+  probe. Note the `logs\install.log` path it reports.
+
 ---
 
 ## 8. When the system is degraded
@@ -352,7 +388,7 @@ API keys, no running server**:
 
 A change is done when **all** of these hold:
 
-1. full suite: `Ran 843 tests … OK` (or the new count);
+1. full suite: `Ran 846 tests … OK` (or the new count);
 2. fresh-copy suite: OK without `.env`;
 3. `check.py`: 11/11;
 4. `node --check static/js/app.js`: clean (if JS changed);

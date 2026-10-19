@@ -10,8 +10,8 @@
 ```
 run.py / server.py / desktop.py   entry (console / Flask app / tray app)
 config.py      Settings + .env helpers; VERSION is the source of truth
-routes/api.py  ~126 endpoints (chat, skills, apps, prefs, settings...)
-skills/        125 @register skills; registry.py dispatches first-match
+routes/        one /api blueprint, 120 endpoints, split per domain module
+skills/        142 @register skills; registry.py dispatches first-match
 system/        launcher, overlay (Tk HUD), app_learner, app_close, tray…
 ai/            client (stream()), tools, agents, council, screen context
 voice/         mic/speech — DO NOT EDIT output.py or voices.py
@@ -21,6 +21,7 @@ mcp/           local package (shadows real SDK — use _sdk())
 plugins/       community skills (validated, isolated loading)
 static/js/app.js + templates/index.html   dashboard (single IIFE!)
 tests/         unittest suite (must stay green + hermetic, see below)
+installer/     Windows installer (Inno Setup); file list from git ls-files
 check.py       11 preflight checks (run after install-level changes)
 ```
 
@@ -32,13 +33,18 @@ minimal chat page. No skills-only mode by design (yet).
 1. `py_compile` touched files.
 2. Full suite: `$env:PYTHONIOENCODING='utf-8'; .\.venv\Scripts\python.exe -m unittest discover -s tests > $null 2>&1; echo "X=$LASTEXITCODE"` → must be 0.
 3. JS: `node --check static/js/app.js`. PS1: `[PSParser]::Tokenize`.
-4. Live-verify the actual behavior (boot server / curl endpoint /
+4. Installer, only if `installer/` changed: `installer\build.ps1`, then
+   silent-install the artifact into a temp folder
+   (`/VERYSILENT /MERGETASKS=!deps,!playwright /DIR=%TEMP%\jv-test`),
+   confirm no `.env`, `logs\`, `*.db` or `*.onnx` landed in it, and that
+   uninstalling removes it. Reading the script is not verification.
+5. Live-verify the actual behavior (boot server / curl endpoint /
    browser `console`+`evaluate` via the `execute` tool — never
    `screenshot`). Restart desktop server after server-code changes
    (kill pythonw, drop `logs/jarvis.lock`, start `desktop.py`).
-5. Two commits: code, then docs (`CHANGELOG.md` Unreleased +
+6. Two commits: code, then docs (`CHANGELOG.md` Unreleased +
    `README.md` if user-visible). Descriptive sentences, no prefixes.
-6. `git push origin main` + confirm the Actions run goes green.
+7. `git push origin main` + confirm the Actions run goes green.
 
 ## PowerShell 5.1 rules
 

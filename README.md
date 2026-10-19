@@ -4,9 +4,9 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.34.0-blue)
+![version](https://img.shields.io/badge/version-v1.35.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-843%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-846%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 🌐 **Website:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
@@ -60,9 +60,24 @@ grows into a full AI assistant the moment you add one.
   every skill is a small Python file, every endpoint is documented,
   nothing is a black box.
 
-## Install (Windows, 3 steps)
+## Install (Windows)
 
-**Step 1 — one line.** Paste into PowerShell *or* cmd, press Enter:
+Two ways in. Both are per-user, ask for no admin rights, and end with
+JARVIS in your tray. Pick whichever suits you.
+
+**Option A — download the installer.** Get
+`JARVIS-Setup-1.35.0.exe` from
+[Releases](https://github.com/Youssef-Devolopment/jarvis/releases) and
+run it (Windows 10/11, 64-bit). It installs to
+`%LOCALAPPDATA%\Programs\JARVIS`, adds Start Menu entries and a normal
+uninstaller in Add/Remove Programs, and builds the Python environment
+for you — untick the browser engine if you don't need browsing
+skills. It uses the **Python 3.10+** you already have, and tells you
+where to get it if you don't. If a step fails it says so in plain
+English, points at the log, and the setup step is safe to run again.
+Then jump to **step 2**.
+
+**Option B — one line.** Paste into PowerShell *or* cmd, press Enter:
 
 ```bat
 powershell -c "iex (irm https://raw.githubusercontent.com/Youssef-Devolopment/jarvis/main/setup.ps1)"
@@ -81,7 +96,9 @@ your provider (any OpenAI-compatible base URL works), saved to
 `.env` with a backup, and chat unlocks immediately. Skip this if
 you like — everything below works without one.
 
-**Step 3 — launch.**
+**Step 3 — launch.** Installer users: open **JARVIS** from the Start
+Menu (**JARVIS (console)** if you want the logs in a window).
+Option B users:
 
 ```bat
 cd %USERPROFILE%\jarvis
@@ -286,13 +303,21 @@ system/      tray, hotkey, overlay, singleton, autostart, launcher,
 routes/      one /api blueprint split across per-domain api_*.py
              modules over a shared routes/_common.py (120 endpoints)
 static/ + templates/   web UI (LIFE/DEV modes, 30+ slash commands)
+installer/   Windows installer (Inno Setup): per-user install,
+             Start Menu shortcuts, uninstaller; the shipped file list
+             is generated from `git ls-files`, so only tracked files
+             can ever be packaged
 assets/      brand assets: logo banner, icon mark, favicon
              (theme lockups for dark/light in docs/logo-*.svg)
 ```
 
 - `main` builds green: `ruff check` (curated config) is clean, every
-  file compiles, coverage is reported, and **843 unit tests** pass on
+  file compiles, coverage is reported, and **846 unit tests** pass on
   Windows runners (`.github/workflows/ci.yml`)
+- The Windows installer is built **and then actually installed and
+  uninstalled** in CI on every `v*` tag
+  (`.github/workflows/installer.yml`); that check fails if `.env`,
+  `logs/` or the local speech models end up inside the package
 - One broken skill file can never kill the boot: skill modules load
   isolated (failure logged, rest continue), handler crashes fall
   through to the next skill instead of failing the request
@@ -320,7 +345,7 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 843 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 846 tests
 ```
 
 ## Links
