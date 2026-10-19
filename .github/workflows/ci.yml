@@ -49,6 +49,16 @@ jobs:
       - name: Lint (ruff)
         run: ruff check .
 
+      - name: Confirm the windowless launch works (pythonw)
+        shell: pwsh
+        run: |
+          # The app ships as pythonw.exe with no console. This starts the
+          # real pythonw, takes mcp.runtime._errlog() and completes an MCP
+          # handshake inside it - the check 1.33.4 lacked (DECISIONS #14).
+          $env:PYTHONIOENCODING = "utf-8"
+          python -m unittest tests.test_pythonw_smoke -v
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - name: Run test suite (with coverage)
         shell: pwsh
         run: |
