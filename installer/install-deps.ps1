@@ -55,7 +55,7 @@ function Invoke-Logged {
     param([string]$Exe, [string[]]$Arguments)
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    & $Exe @Arguments 2>&1 | Tee-Object -LiteralPath $log -Append | Out-Host
+    & $Exe @Arguments 2>&1 | Tee-Object -FilePath $log -Append | Out-Host
     $code = $LASTEXITCODE
     $ErrorActionPreference = $previous
     return $code
@@ -116,7 +116,7 @@ if (Test-Path -LiteralPath $venvPython) {
 } else {
     Say '  creating the virtual environment...' 'Cyan'
     & $chosen.Exe @($chosen.Prefix) -m venv $venv 2>&1 |
-        Tee-Object -LiteralPath $log -Append | Out-Host
+        Tee-Object -FilePath $log -Append | Out-Host
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $venvPython)) {
         Fail "could not create a virtual environment at $venv"
     }
@@ -129,7 +129,7 @@ if ((Invoke-Logged $venvPython @('-m', 'pip', 'install', '--upgrade', 'pip',
     Fail 'pip could not be upgraded - is there an internet connection?'
 }
 
-Say '  installing requirements (a few minutes on a cold cache)...' 'Cyan'
+Say '  installing requirements (several minutes on a cold cache)...' 'Cyan'
 if ((Invoke-Logged $venvPython @('-m', 'pip', 'install', '-r',
         (Join-Path $AppDir 'requirements.txt'), '--disable-pip-version-check')) -ne 0) {
     Fail 'dependency installation failed - the reason is in the output above'
@@ -165,7 +165,11 @@ if ((Test-Path -LiteralPath $example) -and (-not (Test-Path -LiteralPath $envFil
 
 # -- 6. Prove it imports ----------------------------------------------
 Say '  verifying the environment...' 'Cyan'
-$probe = 'import flask, config; print("flask", flask.__version__, "| jarvis", config.VERSION)'
+# Deliberately quote-free and pipe-free: Windows PowerShell 5.1 mangles
+# embedded quotes when passing arguments to a native exe, and a "|" in
+# the string gets treated as a pipeline separator. This exact probe
+# broke the first shipped build.
+$probe = 'import flask, config; print(config.VERSION)'
 if ((Invoke-Logged $venvPython @('-c', $probe)) -ne 0) {
     Fail 'the environment cannot import the app - see the log'
 }

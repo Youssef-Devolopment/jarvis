@@ -79,6 +79,40 @@ jobs:
           if (Test-Path $dir) { throw 'uninstaller left the install directory behind' }
           Write-Host 'verified: uninstall removes everything'
 
+      # The installer's promise is "it builds the environment for you", and
+      # that path is invisible to any file-content assertion. The first
+      # shipped build failed here: Windows PowerShell 5.1 rejects
+      # `Tee-Object -LiteralPath ... -Append`, so setup died the moment it
+      # tried to create the virtualenv. Run the bootstrap for real.
+      - name: Verify the dependency bootstrap
+        shell: pwsh
+        run: |
+          $exe = (Get-ChildItem dist\*.exe | Select-Object -First 1).FullName
+          $dir = Join-Path $env:RUNNER_TEMP 'jarvis-deps-test'
+          if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }
+
+          Start-Process -FilePath $exe -Wait -ArgumentList `
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', `
+            '/MERGETASKS=!deps,!playwright', "/DIR=$dir"
+
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass `
+            -File (Join-Path $dir 'installer\install-deps.ps1') `
+            -AppDir $dir -SkipPlaywright
+          if ($LASTEXITCODE -ne 0) { throw "install-deps.ps1 exited $LASTEXITCODE" }
+
+          foreach ($rel in @('.venv\Scripts\python.exe', '.env')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $dir $rel))) {
+              throw "the dependency bootstrap did not create $rel"
+            }
+          }
+          & (Join-Path $dir '.venv\Scripts\python.exe') -c 'import flask, config; print(config.VERSION)'
+          if ($LASTEXITCODE -ne 0) { throw 'the built environment cannot import the app' }
+          Write-Host 'verified: the installer builds a working environment'
+
+          Start-Process -FilePath (Join-Path $dir 'unins000.exe') -Wait `
+            -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
+          if (Test-Path $dir) { throw 'uninstaller left the install directory behind' }
+
       - name: Upload the installer
         uses: actions/upload-artifact@v4
         with:
