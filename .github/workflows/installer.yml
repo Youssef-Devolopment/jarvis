@@ -1,0 +1,88 @@
+name: Installer
+
+# Builds the Windows installer on every release tag and verifies it by
+# actually installing it. The tag is what a user downloads, so the
+# packaging path gets the same gate as the test suite.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build the installer
+        shell: pwsh
+        run: ./installer/build.ps1
+
+      - name: Report the artifact
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist\*.exe | Select-Object -First 1
+          $info = $exe.VersionInfo
+          Write-Host "artifact : $($exe.Name)"
+          Write-Host "size     : $([math]::Round($exe.Length / 1MB, 1)) MB"
+          Write-Host "version  : $($info.FileVersion)"
+          Write-Host "product  : $($info.ProductName)"
+
+      # The point of this step: a packaging mistake that leaks .env or
+      # bundles the local speech models cannot be caught by reading the
+      # script, only by installing it and looking.
+      - name: Verify the installer (silent install, then assert)
+        shell: pwsh
+        run: |
+          $exe = (Get-ChildItem dist\*.exe | Select-Object -First 1).FullName
+          $dir = Join-Path $env:RUNNER_TEMP 'jarvis-install-test'
+          if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }
+
+          $p = Start-Process -FilePath $exe -Wait -PassThru -ArgumentList `
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', `
+            '/MERGETASKS=!deps,!playwright', "/DIR=$dir"
+          if ($p.ExitCode -ne 0) { throw "installer exited $($p.ExitCode)" }
+
+          $bad = @()
+          foreach ($rel in @('.env', '.env.bak', 'logs', 'mcp_servers.json',
+                             'jarvis_config.json', 'docs\research',
+                             'library\user_catalog.json', 'modules\state.json')) {
+            if (Test-Path -LiteralPath (Join-Path $dir $rel)) { $bad += $rel }
+          }
+          if (Get-ChildItem $dir -Recurse -Filter *.onnx -ErrorAction SilentlyContinue) {
+            $bad += 'speech models (*.onnx)'
+          }
+          if (Get-ChildItem $dir -Recurse -Filter *.db -ErrorAction SilentlyContinue) {
+            $bad += 'memory database (*.db)'
+          }
+          foreach ($rel in @('config.py', 'run.py', 'desktop.py', '.env.example',
+                             'static\js\app.js', 'templates\index.html',
+                             'installer\install-deps.ps1')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $dir $rel))) {
+              $bad += "MISSING $rel"
+            }
+          }
+          if ($bad.Count -gt 0) {
+            throw "installer verification failed: $($bad -join ', ')"
+          }
+          Write-Host 'verified: no secrets, no local models, no database, app files present'
+
+          Start-Process -FilePath (Join-Path $dir 'unins000.exe') -Wait `
+            -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
+          if (Test-Path $dir) { throw 'uninstaller left the install directory behind' }
+          Write-Host 'verified: uninstall removes everything'
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-Setup
+          path: dist/*.exe
+          if-no-files-found: error
+          retention-days: 30

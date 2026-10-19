@@ -50,3 +50,7 @@ modules/state.json
 Thumbs.db
 .DS_Store
 library/user_catalog.json
+
+# --- installer build output (generated) ---
+dist/
+installer/files.iss

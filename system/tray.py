@@ -8,7 +8,15 @@ from logger import get_logger
 
 log = get_logger(__name__)
 
-_URL = "http://127.0.0.1:5000"
+
+def _dashboard_url() -> str:
+    """The dashboard URL — PORT is configurable, so never hardcode it.
+
+    Reads the same env var `system/overlay.py` does, so every part of
+    the app that builds this URL agrees.
+    """
+    import os
+    return f"http://127.0.0.1:{os.getenv('PORT', '5000')}"
 
 
 def _make_icon():
@@ -38,7 +46,7 @@ def start_tray():
         from pystray import MenuItem as Item
 
         def _open(icon, item):
-            webbrowser.open(_URL)
+            webbrowser.open(_dashboard_url())
 
         def _exit(icon, item):
             log.info("Tray: exit requested")
