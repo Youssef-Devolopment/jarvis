@@ -238,8 +238,10 @@ Check the latest run:
 A second workflow, `.github/workflows/installer.yml`, runs on `v*` tags
 (and on demand). It builds the Windows installer and then **installs it
 on the runner, asserts the package carries no secrets, no local speech
-models and no database, and uninstalls it again**. So "tag is green"
-covers the artifact users actually download, not just the source tree.
+models and no database, runs the dependency bootstrap for real
+(`install-deps.ps1`, asserting a working `.venv` and `.env`), and
+uninstalls it again**. So "tag is green" covers the artifact users
+actually download, not just the source tree.
 
 ---
 

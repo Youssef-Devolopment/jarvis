@@ -4,7 +4,7 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.35.0-blue)
+![version](https://img.shields.io/badge/version-v1.35.1-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![tests](https://img.shields.io/badge/tests-846%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
@@ -66,7 +66,7 @@ Two ways in. Both are per-user, ask for no admin rights, and end with
 JARVIS in your tray. Pick whichever suits you.
 
 **Option A — download the installer.** Get
-`JARVIS-Setup-1.35.0.exe` from
+`JARVIS-Setup-1.35.1.exe` from
 [Releases](https://github.com/Youssef-Devolopment/jarvis/releases) and
 run it (Windows 10/11, 64-bit). It installs to
 `%LOCALAPPDATA%\Programs\JARVIS`, adds Start Menu entries and a normal

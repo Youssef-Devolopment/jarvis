@@ -10,6 +10,38 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.35.1] — 2026-10-19
+
+**The installer's dependency step did not actually work. Fixed — and CI
+now runs it, so this class of bug cannot ship again.**
+
+- `installer/install-deps.ps1` died a few lines into its real work.
+  The installer runs it with `powershell.exe`, which is Windows
+  PowerShell **5.1**, and 5.1 rejects
+  `Tee-Object -LiteralPath <file> -Append`: `-Append` only exists in
+  the `-FilePath` parameter set. So the promise "the installer builds
+  the environment for you" failed at "creating the virtual
+  environment…" on every machine. It now uses `-FilePath`.
+- The environment probe at the end of the same script was broken too:
+  `python -c 'print("flask", …, "| jarvis", …)'`. PowerShell 5.1
+  strips embedded quotes when handing arguments to a native exe and
+  treats the `|` as a pipeline separator, so Python received a syntax
+  error. The probe is now quote-free and pipe-free:
+  `import flask, config; print(config.VERSION)`.
+- **Both were found by running the bootstrap for real against an
+  installed copy.** Neither is visible to a file-content assertion, and
+  neither is a syntax error that `[PSParser]::Tokenize` would catch —
+  which is exactly why the Installer workflow now installs the
+  artifact, runs `install-deps.ps1 -SkipPlaywright`, asserts
+  `.venv\Scripts\python.exe` and `.env` exist, imports Flask and
+  `config`, and uninstalls, on every `v*` tag.
+- Verified locally end to end: a cold bootstrap builds the virtualenv
+  and installs every requirement group (12 minutes here, dominated by
+  pip and the machine's memory pressure); a second run reuses it in
+  **7 seconds** and leaves an existing `.env` exactly as it was.
+
+No application code changed; 846 tests unchanged.
+
 ## [1.35.0] — 2026-10-19
 
 **A real installer — and the packaging step physically cannot ship

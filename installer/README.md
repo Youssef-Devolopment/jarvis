@@ -17,7 +17,9 @@ powershell -ExecutionPolicy Bypass -File installer\build.ps1
 `build.ps1` reads the version from `config.py` (the single source of
 truth), generates the file list, compiles with Inno Setup 6 and leaves
 `dist\JARVIS-Setup-<version>.exe` behind. In CI the same script runs on
-every `v*` tag and uploads the installer as a workflow artifact.
+every `v*` tag, which then **installs the artifact, asserts the package
+contents, runs the dependency bootstrap for real and uninstalls it**
+before uploading the installer as a workflow artifact.
 
 ## What the installer does
 

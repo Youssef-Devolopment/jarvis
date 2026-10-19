@@ -34,6 +34,7 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.19.1** | Live-verification micro-fix: `GET /api/modules` no longer hangs behind slow MCP server spawns (one bounded running-status snapshot), boot configures module MCP servers without spawning them (the mcp service starts them right after) |
 | **v1.34.0** | **Turn routing you can see**: `GET /api/turns` + the sidebar RECENT strip (which skill or model answered, which one, how long, ok/fail). Its first live run exposed `what time is it` being treated as chit-chat, so the local `time` skill was skipped for a 35,070 ms model call — fixed |
 | **v1.35.0** | **A real installer**: `installer/` builds a per-user `JARVIS-Setup-<version>.exe` (Inno Setup 6) — Start Menu entries, optional autostart, a real uninstaller, and a dependency bootstrap that builds `.venv` itself. The shipped file list is generated from `git ls-files`, so untracked files cannot be packaged, and CI installs the artifact on every tag to prove it. Also fixed the tray link that ignored `PORT` |
+| **v1.35.1** | **The installer's dependency step, actually working**: Windows PowerShell 5.1 rejects `Tee-Object -LiteralPath … -Append` and mangles embedded quotes and `|` in arguments to native commands, so the shipped bootstrap died at "creating the virtual environment". Fixed, and CI now runs the bootstrap against the installed artifact on every tag |
 
 *(The table is continuous in `CHANGELOG.md`; it resumes here at the
 current release so this file does not silently claim the gap.)*
