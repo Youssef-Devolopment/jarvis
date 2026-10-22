@@ -1123,12 +1123,95 @@ async function sendCommand(text){
   }
 }
 
-function openSettings(){addCls('modal-settings','open');loadTab('model');var _t=document.querySelector('.modal-tabs .tab.active');if(_t)_t.focus({preventScroll:true});}
+function openSettings(){
+  addCls('modal-settings','open');
+  clearSettingsSearch();
+  loadTab('model');
+  var _t=document.querySelector('.modal-tabs .tab.active');
+  if(_t)_t.focus({preventScroll:true});
+}
 function closeSettings(){rmCls('modal-settings','open');}
 
+function settingsTabs(){
+  return Array.prototype.slice.call(
+    document.querySelectorAll('#modal-tabs .tab'));
+}
+
+/* 21 tabs is too many to scan, and people look for a setting by the
+   thing it controls ("microphone") rather than by the tab that owns it
+   ("audio"). Every tab therefore carries its own keyword list, and the
+   search box matches label + keywords, leaving only the groups that
+   still have a hit. */
+function filterSettings(query){
+  var q=String(query||'').trim().toLowerCase();
+  var tabs=settingsTabs(),shown=0;
+  tabs.forEach(function(t){
+    var hay=((t.getAttribute('data-keywords')||'')+' '+
+             (t.textContent||'')).toLowerCase();
+    var hit=!q||hay.indexOf(q)!==-1;
+    t.hidden=!hit;
+    if(hit)shown++;
+  });
+  Array.prototype.forEach.call(
+    document.querySelectorAll('#modal-tabs .tab-group'),function(g){
+      var name=g.getAttribute('data-group');
+      g.hidden=!tabs.some(function(t){
+        return !t.hidden&&t.getAttribute('data-group')===name;
+      });
+    });
+  var first=tabs.filter(function(t){return !t.hidden;})[0];
+  tabs.forEach(function(t){t.classList.toggle('is-match',!!q&&t===first);});
+  var empty=$('settings-empty');if(empty)empty.hidden=!(q&&!shown);
+  var count=$('settings-search-count');
+  if(count){
+    count.textContent=!q?'':(shown
+      ?shown+(shown===1?' section':' sections'):'no match');
+  }
+  var clear=$('settings-search-clear');if(clear)clear.hidden=!q;
+  return {shown:shown,first:first};
+}
+
+function clearSettingsSearch(){
+  var box=$('settings-search');
+  if(box&&box.value){box.value='';filterSettings('');}
+}
+
+function wireSettingsSearch(){
+  var box=$('settings-search');if(!box)return;
+  box.addEventListener('input',function(){filterSettings(box.value);});
+  box.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){
+      e.preventDefault();
+      var r=filterSettings(box.value);
+      if(r.first){
+        var name=r.first.getAttribute('data-tab');
+        loadTab(name);
+        r.first.focus({preventScroll:true});
+      }
+    }else if(e.key==='Escape'&&box.value){
+      e.preventDefault();e.stopPropagation();clearSettingsSearch();
+    }
+  });
+  var clear=$('settings-search-clear');
+  if(clear)clear.addEventListener('click',function(){
+    clearSettingsSearch();box.focus();
+  });
+  document.addEventListener('keydown',function(e){
+    var modal=$('modal-settings');
+    if(!modal||!modal.classList.contains('open'))return;
+    if(e.key!=='/'||e.ctrlKey||e.metaKey||e.altKey)return;
+    var t=e.target||{};
+    if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable)return;
+    e.preventDefault();box.focus();box.select();
+  });
+}
+
 function loadTab(name){
-  document.querySelectorAll('.tab').forEach(function(t){
-    t.classList.toggle('active',t.getAttribute('data-tab')===name);
+  clearSettingsSearch();
+  settingsTabs().forEach(function(t){
+    var on=t.getAttribute('data-tab')===name;
+    t.classList.toggle('active',on);
+    t.setAttribute('aria-selected',on?'true':'false');
   });
   document.querySelectorAll('.tab-panel').forEach(function(p){
     p.classList.toggle('active',p.getAttribute('data-panel')===name);
@@ -2235,11 +2318,12 @@ document.addEventListener('DOMContentLoaded',function(){
   on('btn-settings','click',openSettings);
   on('btn-modal-close','click',closeSettings);
   on('modal-settings','click',function(e){if(e.target&&e.target.id==='modal-settings')closeSettings();});
-  document.querySelectorAll('.tab').forEach(function(tab){
+  settingsTabs().forEach(function(tab){
     tab.addEventListener('click',function(){
       var t=tab.getAttribute('data-tab');if(t)loadTab(t);
     });
   });
+  wireSettingsSearch();
   on('btn-history','click',openDrawer);
   on('btn-drawer-close','click',closeDrawer);
   on('drawer-history','click',function(e){if(e.target&&e.target.id==='drawer-history')closeDrawer();});

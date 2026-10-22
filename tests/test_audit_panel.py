@@ -6,6 +6,7 @@ endpoint, the renderer parses lines into chips (never raw HTML —
 everything through esc()), and REFRESH reloads. No new CSS: the
 panel reuses set-list/set-row/schip/dbtn.
 """
+import re
 import unittest
 from pathlib import Path
 
@@ -35,10 +36,17 @@ class AuditTemplateTests(unittest.TestCase):
         self.assertIn('id="panel-audit"', self.html)
 
     def test_audit_tab_sits_with_system_tabs(self):
-        tabrow = self.html[self.html.index("modal-tabs"):
-                           self.html.index("modal-tabs") + 3000]
-        self.assertIn('data-tab="system"', tabrow)
-        self.assertIn('data-tab="audit"', tabrow)
+        # "Next to the system tabs" is the contract. It used to be
+        # asserted as a character window over the tab row; the rail is
+        # grouped now, so the group name is the thing to check.
+        rail = self.html[self.html.index("modal-tabs"):]
+        rail = rail[:rail.index('id="settings-empty"')]
+        groups = {}
+        for tab in re.findall(r'<button class="tab[^>]*>', rail):
+            attrs = dict(re.findall(r'([\w-]+)="([^"]*)"', tab))
+            groups[attrs.get("data-tab")] = attrs.get("data-group")
+        self.assertEqual(groups.get("audit"), "system")
+        self.assertEqual(groups.get("system"), "system")
 
 
 class AuditLoaderTests(unittest.TestCase):

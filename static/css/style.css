@@ -690,31 +690,65 @@ body[data-state="thinking"] .input-wrap{border-color:rgba(255,184,77,.5);box-sha
   text-shadow:0 0 12px var(--accent-glow);
 }
 
-/* ── Modal tabs ──────────────────────────────────────────────── */
+/* ── Settings: grouped rail + search ──────────────────────────── */
+.settings-body{display:flex;gap:16px;min-height:0;flex:1}
+.settings-rail{
+  flex:0 0 186px;width:186px;display:flex;flex-direction:column;gap:8px;
+  min-height:0;max-height:calc(85vh - 200px);
+  border-right:1px solid var(--border);padding-right:12px;
+}
+.settings-search{position:relative;flex-shrink:0}
+.settings-search input{
+  width:100%;box-sizing:border-box;padding:8px 26px 8px 10px;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-family:var(--mono);
+  font-size:10px;letter-spacing:.5px;outline:none;
+  transition:border-color .2s var(--ease),box-shadow .2s var(--ease);
+}
+.settings-search input::placeholder{color:var(--dim);opacity:.8}
+.settings-search input:focus{
+  border-color:var(--accent);background:rgba(255,255,255,.05);
+  box-shadow:0 0 0 2px var(--accent-soft);
+}
+.settings-search input::-webkit-search-cancel-button{display:none}
+.search-clear{
+  position:absolute;right:4px;top:6px;width:20px;height:20px;
+  display:flex;align-items:center;justify-content:center;
+  background:transparent;border:0;border-radius:6px;color:var(--dim);
+  font-size:10px;cursor:pointer;transition:all .2s var(--ease);
+}
+.search-clear:hover{color:var(--text);background:rgba(255,255,255,.06)}
+.search-count{
+  font-family:var(--mono);font-size:8px;letter-spacing:1px;
+  color:var(--dim);padding:4px 2px 0;min-height:12px;
+}
 .modal-tabs{
-  display:flex;gap:5px;margin-bottom:16px;
-  border-bottom:1px solid var(--border);padding-bottom:10px;
-  overflow-x:auto;overflow-y:hidden;white-space:nowrap;
+  display:flex;flex-direction:column;gap:1px;
+  overflow-y:auto;overflow-x:hidden;white-space:normal;
+  margin:0;border:0;padding:0;background:none;position:static;
   scrollbar-width:thin;scrollbar-color:var(--accent) transparent;
   -webkit-overflow-scrolling:touch;
-  background:linear-gradient(180deg,hsl(var(--theme-hue) 100% 60% / .04),transparent);
-  position:sticky;top:0;z-index:5;
 }
-.modal-tabs::-webkit-scrollbar{height:3px}
+.modal-tabs::-webkit-scrollbar{width:3px}
 .modal-tabs::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
 .modal-tabs::-webkit-scrollbar-track{background:transparent}
-.modal-tabs .tab{flex-shrink:0}
+.tab-group{
+  font-family:var(--mono);font-size:8px;letter-spacing:2px;
+  color:var(--dim);opacity:.6;padding:9px 10px 3px;
+  user-select:none;flex-shrink:0;
+}
 .tab{
-  display:inline-flex;align-items:center;gap:6px;
+  display:inline-flex;align-items:center;gap:8px;width:100%;
+  box-sizing:border-box;text-align:left;
   background:transparent;border:1px solid transparent;color:var(--dim);
   font-family:var(--mono);font-size:10px;letter-spacing:1.5px;
-  padding:8px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;
+  padding:7px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;
   transition:all .22s var(--ease);position:relative;
 }
-.tab .ti{font-size:12px;opacity:.65;transition:all .22s var(--ease)}
+.tab .ti{font-size:12px;opacity:.65;width:14px;text-align:center;transition:all .22s var(--ease)}
 .tab:hover{
   color:var(--text);background:hsl(var(--theme-hue) 100% 60% / .07);
-  border-color:var(--accent-line);transform:translateY(-2px);
+  border-color:var(--accent-line);
 }
 .tab:hover .ti{opacity:1;transform:scale(1.15)}
 .tab.active{
@@ -724,11 +758,21 @@ body[data-state="thinking"] .input-wrap{border-color:rgba(255,184,77,.5);box-sha
 }
 .tab.active .ti{opacity:1;color:var(--accent-hi);text-shadow:0 0 8px var(--accent)}
 .tab.active::after{
-  content:'';position:absolute;left:18%;right:18%;bottom:-11px;height:2px;
-  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  content:'';position:absolute;left:-1px;top:7px;bottom:7px;width:2px;
+  background:linear-gradient(180deg,transparent,var(--accent),transparent);
   border-radius:2px;animation:tabUnderline .3s var(--ease);
 }
-@keyframes tabUnderline{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.tab.is-match{outline:1px dashed var(--accent-line);outline-offset:-3px}
+/* An author display rule beats the UA's [hidden]{display:none}, so the
+   filtered-out tabs would stay on screen without this line. Same rule
+   the starter chips and key banner already carry. */
+.tab[hidden],.tab-group[hidden],.settings-empty[hidden]{display:none}
+.settings-empty{
+  font-family:var(--mono);font-size:9px;line-height:1.6;
+  color:var(--dim);padding:10px;border:1px dashed var(--border);
+  border-radius:8px;
+}
+@keyframes tabUnderline{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 
 .modal-body{
   flex:1;min-height:0;overflow-y:auto;
@@ -1194,8 +1238,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .brand-ver{display:none}
   .modal-inner{min-width:auto;width:92vw;padding:20px}
   .modal-large{min-width:auto;width:92vw;max-width:92vw}
-  .modal-tabs{gap:4px;overflow-x:auto}
-  .tab{font-size:9px;padding:6px 10px;letter-spacing:1px}
+  .settings-body{flex-direction:column;gap:10px}
+  .settings-rail{
+    width:auto;flex:none;max-height:none;
+    border-right:0;border-bottom:1px solid var(--border);padding:0 0 8px;
+  }
+  .modal-tabs{flex-direction:row;gap:4px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;padding-bottom:2px}
+  .tab-group{display:none}
+  .tab{width:auto;flex-shrink:0;font-size:9px;padding:6px 10px;letter-spacing:1px}
 }
 
 /* Mobile — 500px and below */
