@@ -5,7 +5,7 @@ reproduction, health checks, CI, and the manual smoke tests that only
 a human on Windows can do. Follow this and "works on my machine"
 stays a scare story instead of a bug report.
 
-**Ground truth:** 68 test files · **851 tests** · 120 API endpoints ·
+**Ground truth:** 69 test files · **864 tests** · 120 API endpoints ·
 142 shipped skills · `check.py` 11 preflight checks (exit 0 ready /
 1 fix core / 2 skills-only).
 
@@ -48,7 +48,7 @@ Expected tail:
 
 ```
 ----------------------------------------------------------------------
-Ran 851 tests in ~43s
+Ran 864 tests in ~43s
 OK
 ```
 
@@ -77,7 +77,7 @@ its verdict to stderr and a truncated pipe can hide it.
 
 ## 3. What each test group covers
 
-68 files under `tests/`, grouped by the seam they protect.
+69 files under `tests/`, grouped by the seam they protect.
 
 **Core engine & routing**
 
@@ -135,6 +135,7 @@ its verdict to stderr and a truncated pipe can hide it.
 | `test_launch.py` | Universal open resolver + URL rules |
 | `test_first_run.py` | First-run surface: boot status block, safe-mode verdicts, toasts, port probe, `check.py` buckets/exit codes/capabilities |
 | `test_app_learner.py` | App-learning engine (no real launches) |
+| `test_settings_find.py` | Settings findability: grouped rail, per-tab keywords, search box wiring, `[hidden]` CSS contract |
 | `test_pythonw_smoke.py` | Real `pythonw.exe` launch: no console stdio, `_errlog()` gives children a live handle, an MCP handshake completes (skipped off Windows) |
 | `test_scaffold.py` | Boilerplate scaffolder output shape |
 
@@ -237,7 +238,7 @@ Python 3.10) — same OS family as the product:
 
 "CI green" therefore means: *every file compiles, the UI script
 parses, lint is clean, the app's real launch mode completes an MCP
-handshake, and all 851 tests pass on a machine that has never seen your
+handshake, and all 864 tests pass on a machine that has never seen your
 checkout*. It does **not** mean smoke tests ran — §7 stays manual.
 
 Check the latest run:
@@ -399,7 +400,7 @@ API keys, no running server**:
 
 A change is done when **all** of these hold:
 
-1. full suite: `Ran 851 tests … OK` (or the new count);
+1. full suite: `Ran 864 tests … OK` (or the new count);
 2. fresh-copy suite: OK without `.env`;
 3. `check.py`: 11/11;
 4. `node --check static/js/app.js`: clean (if JS changed);

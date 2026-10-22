@@ -474,6 +474,37 @@ reworded.
 
 ---
 
+## 18. Settings are findable by what they control (v1.36.0)
+
+**Decision.** The settings rail is grouped — ASSISTANT / WORK /
+EXTEND / SYSTEM — and carries one search box above it. The search
+matches a tab's `data-keywords` as well as its label, so "microphone"
+finds AUDIO, "api key" finds MODEL, "theme" finds APPEARANCE.
+
+**Why.** Twenty-one flat tabs is a list you read top to bottom, not
+a place you look something up in. The grouping alone helps a new
+user ("where would voice settings be?") but not the person who
+already knows what they want and only knows the *subject*, not the
+tab name. Two different questions, one control.
+
+Keywords are the contract, so they are tested: every tab declares
+them, every tab's own label is in its own haystack, and the words
+people actually search for are asserted. A tab added without keywords
+appears in the rail and silently disappears from search, which is
+worse than not having search — hence `tests/test_settings_find.py`.
+
+**What it costs.** Every tab now needs its keywords maintained by
+hand. That is a small tax paid once per tab, and the tests make the
+omission loud instead of silent.
+
+**Watch out.** `[hidden]` is not enough. An author `display:` rule
+beats the UA's `[hidden]{display:none}`, so the filter runs, counts
+correctly and changes nothing visible unless `.tab[hidden]` and
+`.tab-group[hidden]` are also declared. The starter chips and key
+banner already needed the same rule; this is the third time.
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either

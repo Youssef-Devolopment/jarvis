@@ -4,9 +4,9 @@
 
 # JARVIS — talk to your Windows PC. It actually listens.
 
-![version](https://img.shields.io/badge/version-v1.35.3-blue)
+![version](https://img.shields.io/badge/version-v1.36.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
-![tests](https://img.shields.io/badge/tests-851%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-864%20passing-brightgreen)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-lightgrey)
 
 🌐 **Website:** [youssef-devolopment.github.io/jarvis](https://youssef-devolopment.github.io/jarvis/)
@@ -161,7 +161,7 @@ pretending there is a team of engineers behind it.
 "Vibe coded" is not the same as "untested", and this repo does not ask
 you to take that on faith:
 
-- **851 tests**, hermetic by default — no `.env`, no network, no API
+- **864 tests**, hermetic by default — no `.env`, no network, no API
   keys, no running server — run on Windows in CI on every push.
 - **The launch mode is tested, not just the code path**: Windows CI
   starts the real `pythonw.exe` with no console and requires an MCP
@@ -344,7 +344,7 @@ assets/      brand assets: logo banner, icon mark, favicon
 ```
 
 - `main` builds green: `ruff check` (curated config) is clean, every
-  file compiles, coverage is reported, and **851 unit tests** pass on
+  file compiles, coverage is reported, and **864 unit tests** pass on
   Windows runners (`.github/workflows/ci.yml`), including a real
   `pythonw` launch that must complete an MCP handshake
 - The Windows installer is built **and then actually installed and
@@ -378,7 +378,7 @@ Full list with defaults: `.env.example`.
 
 ```bat
 .venv\Scripts\python.exe check.py     :: 11 preflight checks (0=ready, 1=fix core, 2=skills-only)
-.venv\Scripts\python.exe -m unittest discover -s tests   :: 851 tests
+.venv\Scripts\python.exe -m unittest discover -s tests   :: 864 tests
 ```
 
 ## Links

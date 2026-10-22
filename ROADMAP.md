@@ -37,11 +37,12 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.35.1** | **The installer's dependency step, actually working**: Windows PowerShell 5.1 rejects `Tee-Object -LiteralPath … -Append` and mangles embedded quotes and `|` in arguments to native commands, so the shipped bootstrap died at "creating the virtual environment". Fixed, and CI now runs the bootstrap against the installed artifact on every tag |
 | **v1.35.2** | **Say how it was built**: README and landing page state plainly that JARVIS was written by AI coding agents, and name the gates that make that responsible — tests, lint, CI, the installer job, the changelog's own failures. `DECISIONS.md` #17 records why the disclosure is deliberate and why it never lowers the bar |
 | **v1.35.3** | **Prove the launch mode, not just the branch**: `tests/test_pythonw_smoke.py` starts the real `pythonw.exe` with `DETACHED_PROCESS` and no inherited handles, requires `_errlog()` to give a banner-writing child a live stderr, requires the `stderr=None` child to die, and completes a real MCP handshake through `stdio_client` inside that windowless process. Removing the fix fails the test; it runs as its own CI step |
+| **v1.36.0** | **Find things**: the 21 flat settings tabs become a rail grouped into ASSISTANT / WORK / EXTEND / SYSTEM, with one search box that matches what a tab *controls* ("microphone", "api key", "theme") rather than what it is named. `/` focuses search, `Enter` opens the first hit, `Escape` clears, and the match count is announced to screen readers. `tests/test_settings_find.py` holds the wiring still |
 
 *(The table is continuous in `CHANGELOG.md`; it resumes here at the
 current release so this file does not silently claim the gap.)*
 
-Stable today: 851 tests (in-tree + fresh-copy, no `.env`), 120 API
+Stable today: 864 tests (in-tree + fresh-copy, no `.env`), 120 API
 endpoints, 142 shipped skills + 9 shipped modules, a per-user Windows
 installer that installs and uninstalls cleanly, green CI on
 `windows-latest` (plus an installer job on every `v*` tag that installs
@@ -62,11 +63,23 @@ heavy", "can't see what it's doing", and "features are hard to find".
 
 Five batches, no new features:
 
+0. **Routing stays skill-first, and AI stays a choice, not a
+   requirement** — stated by the maintainer at v1.36.0 and already
+   how the dispatch chain is built (`skills.dispatch()` before the
+   LLM; the 1.34.0 chit-chat gate is what keeps it honest). Skills
+   answer when a skill matches. The model is the fallback, and it
+   should be able to be either a **local** model (Ollama, any
+   OpenAI-compatible local base URL) or a **cloud** one, chosen in
+   settings rather than baked in. What this direction asks for is
+   that no batch, and no future "AI" work, quietly reverses the
+   order or makes a key necessary for the core loop to function.
 1. **See what it's doing** — shipped in **v1.34.0**: `/api/turns` plus
    the sidebar RECENT strip, which found a 35-second misroute on its
    first live run.
-2. **Find things** — group the 21 flat settings tabs into sections and
-   add one search box that finds any panel, skill or setting by name.
+2. **Find things** — shipped in **v1.36.0**: the 21 flat settings tabs
+   regrouped into ASSISTANT / WORK / EXTEND / SYSTEM with one search
+   box that matches what a tab controls ("microphone", "api key",
+   "theme") rather than what it is named.
 3. **Install in 10 minutes** — shipped in **v1.35.0**: a per-user
    Windows installer (`installer/`) with Start Menu entries, an
    uninstaller and a dependency bootstrap, wired into CI so the

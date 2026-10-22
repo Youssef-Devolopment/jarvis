@@ -10,6 +10,46 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.36.0] - 2026-10-22
+
+**Find things: settings stop being a row of 21 tabs you have to read
+one by one.**
+
+- The tab rail is now grouped — ASSISTANT (model, voice, audio, mood,
+  personality, council), WORK (skills, tools, workspace, capture,
+  clipboard, dream), EXTEND (library, market, modules, mcp), SYSTEM
+  (general, appearance, system, audit, about). No tab was renamed or
+  removed; the same 21 panels sit in the same order, under four
+  headers instead of one flat strip.
+- One search box above the rail. It matches what a tab *controls* as
+  well as what it is named, so "microphone" finds AUDIO, "api key"
+  finds MODEL, "theme" finds APPEARANCE. Each tab carries its own
+  keyword list (`data-keywords`) for that.
+- `/` focuses search from anywhere in the modal, `Enter` opens the
+  first match, `Escape` clears the query, the clear button is a real
+  button with an aria-label, and the match count is in an
+  `aria-live="polite"` region. With no hits, the rail explains itself
+  instead of going blank. Reopening Settings always resets the query.
+- On narrow windows the rail reverts to the horizontal strip it was,
+  without the group headers.
+- **`[hidden]` was not enough.** An author `display:` rule beats the
+  UA's `[hidden]{display:none}`, so the filter would have run, counted
+  correctly and changed nothing visible. The rail, the group headers
+  and the empty state now carry the same explicit `[hidden]` rule the
+  starter chips and key banner already had.
+- `tests/test_settings_find.py` (13 tests) holds the wiring still:
+  one tab per panel, every tab inside a declared group, no empty
+  group, keywords present and carrying the tab's own label plus the
+  words people actually search for, the search box and its
+  affordances present and wired into `app.js`, and the `[hidden]`
+  CSS rule present. `test_audit_panel.py`'s "audit sits with the
+  system tabs" guard is re-expressed against the group name instead
+  of a 3000-character window over the tab row.
+
+13 new tests (851 -> 864, `tests/test_settings_find.py`); one existing
+test rewritten to assert intent instead of character offsets. No API,
+no backend, no new capability.
+
 ## [1.35.3] - 2026-10-19
 
 **Prove the launch mode, not just the branch: the MCP stderr fix is now
@@ -38,9 +78,9 @@ removed.**
   list; with it in place the handshake takes ~2s. No network, no npx.
 - CI runs that file as its own named step before the suite, so a
   windowless regression fails fast and visibly instead of hiding
-  inside "851 tests passed".
+  inside "864 tests passed".
 
-5 new tests (846 -> 851, `tests/test_pythonw_smoke.py`). No application
+5 new tests (846 -> 864, `tests/test_pythonw_smoke.py`). No application
 code changed.
 
 ## [1.35.2] — 2026-10-19
