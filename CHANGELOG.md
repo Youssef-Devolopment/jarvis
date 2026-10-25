@@ -10,6 +10,31 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.36.1] - 2026-10-25
+
+**The installer's CI gate stops depending on whichever Python the
+runner image happens to ship.**
+
+- The v1.36.0 tag failed the "Verify the dependency bootstrap" step
+  twice — 26 s and 23 s, same step both times — which rules out a
+  flake. Nothing in the 1.36.0 diff touches that path, and running the
+  exact same step by hand against the same `git ls-files` tree passed
+  (exit 0, prints `1.36.0`).
+- `installer.yml` was the **only** place in the repo that did not pin an
+  interpreter: `ci.yml` uses `actions/setup-python` with 3.10, the
+  Installer job took whatever `python`/`py` the image had. The bootstrap
+  probes for Python and then resolves the full requirement set —
+  `torch` (via `easyocr`), `onnxruntime`, `piper-tts`, `numpy` — every
+  one of which has a Python ceiling. A fast, identical, out-of-tree
+  failure is what a resolver hitting that ceiling looks like.
+- The job now runs `actions/setup-python@v5` with **3.10** and a pip
+  cache, matching `ci.yml`, so the gate tests the installer on the
+  interpreter the project actually supports.
+- The failure is no longer silent either way: when the bootstrap fails,
+  the step prints the tail of `logs\install.log` (where `install-deps.ps1`
+  already tees every step and all of pip's output) before it throws, so
+  the reason lands in the log instead of dying with the runner.
+
 ## [1.36.0] - 2026-10-22
 
 **Find things: settings stop being a row of 21 tabs you have to read

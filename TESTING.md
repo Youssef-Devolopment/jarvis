@@ -5,7 +5,7 @@ reproduction, health checks, CI, and the manual smoke tests that only
 a human on Windows can do. Follow this and "works on my machine"
 stays a scare story instead of a bug report.
 
-**Ground truth:** 69 test files · **864 tests** · 120 API endpoints ·
+**Ground truth:** 70 test files · **868 tests** · 120 API endpoints ·
 142 shipped skills · `check.py` 11 preflight checks (exit 0 ready /
 1 fix core / 2 skills-only).
 
@@ -48,7 +48,7 @@ Expected tail:
 
 ```
 ----------------------------------------------------------------------
-Ran 864 tests in ~43s
+Ran 868 tests in ~43s
 OK
 ```
 
@@ -137,6 +137,7 @@ its verdict to stderr and a truncated pipe can hide it.
 | `test_app_learner.py` | App-learning engine (no real launches) |
 | `test_settings_find.py` | Settings findability: grouped rail, per-tab keywords, search box wiring, `[hidden]` CSS contract |
 | `test_pythonw_smoke.py` | Real `pythonw.exe` launch: no console stdio, `_errlog()` gives children a live handle, an MCP handshake completes (skipped off Windows) |
+| `test_ci_gates.py` | The two CI workflows themselves: the installer job pins the same Python `ci.yml` tests with, pins it before the build, and a failed bootstrap still prints `logs\install.log` |
 | `test_scaffold.py` | Boilerplate scaffolder output shape |
 
 **Skills, library & suites**
@@ -238,7 +239,7 @@ Python 3.10) — same OS family as the product:
 
 "CI green" therefore means: *every file compiles, the UI script
 parses, lint is clean, the app's real launch mode completes an MCP
-handshake, and all 864 tests pass on a machine that has never seen your
+handshake, and all 868 tests pass on a machine that has never seen your
 checkout*. It does **not** mean smoke tests ran — §7 stays manual.
 
 Check the latest run:
@@ -252,6 +253,14 @@ models and no database, runs the dependency bootstrap for real
 (`install-deps.ps1`, asserting a working `.venv` and `.env`), and
 uninstalls it again**. So "tag is green" covers the artifact users
 actually download, not just the source tree.
+
+That job pins **Python 3.10 via `actions/setup-python`** — the same
+interpreter `ci.yml` tests with. It used to take whatever `python` the
+runner image shipped, so the gate could fail on the image rather than on
+the installer (see `CHANGELOG.md` 1.36.1). When the bootstrap step
+fails it also prints the tail of `logs\install.log`, where
+`install-deps.ps1` tees every step and all of pip's output, so the
+reason is in the step log instead of vanishing with the runner.
 
 ---
 
@@ -400,7 +409,7 @@ API keys, no running server**:
 
 A change is done when **all** of these hold:
 
-1. full suite: `Ran 864 tests … OK` (or the new count);
+1. full suite: `Ran 868 tests … OK` (or the new count);
 2. fresh-copy suite: OK without `.env`;
 3. `check.py`: 11/11;
 4. `node --check static/js/app.js`: clean (if JS changed);

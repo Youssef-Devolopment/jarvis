@@ -505,6 +505,48 @@ banner already needed the same rule; this is the third time.
 
 ---
 
+## 19. A CI gate pins the interpreter it tests (v1.36.1)
+
+**Problem.** The v1.36.0 tag failed "Verify the dependency bootstrap"
+twice — 26 s and 23 s, same step both times. Not a flake. Nothing in
+the 1.36.0 diff touched that path, and running the same step by hand
+against the same `git ls-files` tree passed and printed `1.36.0`.
+
+`installer.yml` was the only file in the repo that did not pin a
+Python. `ci.yml` used `actions/setup-python` with 3.10; the Installer
+job probed the runner image and took whatever `python` or `py` it
+found. The bootstrap then resolves the whole requirement set against
+that interpreter — `torch` (via `easyocr`), `onnxruntime`,
+`piper-tts`, `numpy`, each with its own Python ceiling. A resolver
+hitting that ceiling dies in seconds, which is exactly the shape of
+the failure.
+
+The job log would have named the package. It needed a GitHub sign-in
+to read, so from the outside the tag was red for a reason nobody could
+see.
+
+**Decision.** The Installer job runs `actions/setup-python@v5` with
+**3.10** — the same version `ci.yml` tests with — and when the
+bootstrap fails it prints the tail of `logs\install.log` before it
+throws.
+
+**Why.** A gate that depends on the runner image is measuring the
+image. The installer's promise is about *this app* on a user's
+machine, so the gate has to hold the interpreter still. And a failure
+that dies as a bare exit code is worse than no failure: it costs the
+same red and teaches nothing.
+
+**What it costs.** One more step in the job, and the two pins can now
+drift apart instead of one not existing.
+
+**Watch out.** The drift is the real risk, so it is tested, not
+hoped for: `tests/test_ci_gates.py` fails if the two pins disagree, if
+the installer stops pinning, if the pin moves after the build step, or
+if the failure stops printing the log. It reads the workflow files as
+text, so it needs no runner and no PyYAML.
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either

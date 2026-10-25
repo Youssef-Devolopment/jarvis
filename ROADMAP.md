@@ -38,11 +38,12 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.35.2** | **Say how it was built**: README and landing page state plainly that JARVIS was written by AI coding agents, and name the gates that make that responsible — tests, lint, CI, the installer job, the changelog's own failures. `DECISIONS.md` #17 records why the disclosure is deliberate and why it never lowers the bar |
 | **v1.35.3** | **Prove the launch mode, not just the branch**: `tests/test_pythonw_smoke.py` starts the real `pythonw.exe` with `DETACHED_PROCESS` and no inherited handles, requires `_errlog()` to give a banner-writing child a live stderr, requires the `stderr=None` child to die, and completes a real MCP handshake through `stdio_client` inside that windowless process. Removing the fix fails the test; it runs as its own CI step |
 | **v1.36.0** | **Find things**: the 21 flat settings tabs become a rail grouped into ASSISTANT / WORK / EXTEND / SYSTEM, with one search box that matches what a tab *controls* ("microphone", "api key", "theme") rather than what it is named. `/` focuses search, `Enter` opens the first hit, `Escape` clears, and the match count is announced to screen readers. `tests/test_settings_find.py` holds the wiring still |
+| **v1.36.1** | **The installer gate stops trusting the runner image**: the v1.36.0 tag failed "Verify the dependency bootstrap" twice at ~23 s, identically, and nothing in that diff touched the path — `installer.yml` was the one place in the repo that did not pin an interpreter. It now runs `setup-python` 3.10 like `ci.yml`, and on failure prints the tail of `logs\install.log` so the next failure explains itself |
 
 *(The table is continuous in `CHANGELOG.md`; it resumes here at the
 current release so this file does not silently claim the gap.)*
 
-Stable today: 864 tests (in-tree + fresh-copy, no `.env`), 120 API
+Stable today: 868 tests (in-tree + fresh-copy, no `.env`), 120 API
 endpoints, 142 shipped skills + 9 shipped modules, a per-user Windows
 installer that installs and uninstalls cleanly, green CI on
 `windows-latest` (plus an installer job on every `v*` tag that installs
