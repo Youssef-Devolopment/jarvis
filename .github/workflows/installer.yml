@@ -1,4 +1,4 @@
-name: Installer
+﻿name: Installer
 
 # Builds the Windows installer on every release tag and verifies it by
 # actually installing it. The tag is what a user downloads, so the
@@ -17,6 +17,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # The bootstrap finds Python by probing the runner image, and the
+      # image's default interpreter moves without notice. CI tests 3.10;
+      # the installer has to bootstrap the interpreter it is tested with,
+      # or this gate fails for reasons that have nothing to do with the
+      # installer. Pin it, exactly as ci.yml does.
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
@@ -98,7 +109,20 @@ jobs:
           & powershell.exe -NoProfile -ExecutionPolicy Bypass `
             -File (Join-Path $dir 'installer\install-deps.ps1') `
             -AppDir $dir -SkipPlaywright
-          if ($LASTEXITCODE -ne 0) { throw "install-deps.ps1 exited $LASTEXITCODE" }
+          if ($LASTEXITCODE -ne 0) {
+            # install-deps tees every step and all of pip's output into
+            # logs\install.log. Without this, a failure here is a bare
+            # exit code and the real reason dies with the runner.
+            $log = Join-Path $dir 'logs\install.log'
+            if (Test-Path -LiteralPath $log) {
+              Write-Host '--- install-deps.ps1 log (tail) ---'
+              Get-Content -LiteralPath $log -Tail 120
+              Write-Host '--- end of log ---'
+            } else {
+              Write-Host "no install log was written at $log"
+            }
+            throw "install-deps.ps1 exited $LASTEXITCODE"
+          }
 
           foreach ($rel in @('.venv\Scripts\python.exe', '.env')) {
             if (-not (Test-Path -LiteralPath (Join-Path $dir $rel))) {
