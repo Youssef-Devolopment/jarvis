@@ -10,6 +10,78 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.37.0] - 2026-11-07
+
+**Batch 4 — "feels lighter". Measured first, fixed second, and every
+fix guarded so it cannot quietly stop working.**
+
+- **`/api/stats` stopped sleeping inside the request.** It called
+  `psutil.cpu_percent(interval=0.1)`, which *blocks for 100 ms* to take
+  a sample — every 3 seconds, for a number the sidebar already refreshes
+  every 3 seconds. Measured side by side: **108.80 ms/call → 0.55
+  ms/call** with `interval=None`, the non-blocking form (it reports the
+  utilization since the previous call). At a 3 s poll that is ~3,151 s/day
+  of request thread spent, against ~3.9 s. The endpoint's second cost,
+  `net_io_counters()` (~23 ms of Windows perf-counter query), now sits
+  behind a 1 s TTL — the value is cumulative and rendered as whole MB,
+  so a 3 s poll loses nothing.
+- **The page ships 76.9% fewer bytes.** HTML + CSS + JS was 212,941
+  bytes uncompressed on the wire; gzip takes it to **49,171**, with the
+  bodies **byte-identical** (asserted, both directions). Compression
+  deliberately leaves `text/event-stream` alone: buffering the
+  `/api/command` stream until it finished would defeat the point of a
+  stream. Static files arrive from Werkzeug as `direct_passthrough`,
+  which blocks `get_data()` — that flag is cleared immediately before
+  the read, and only because the file wrapper is being replaced with
+  bytes anyway.
+- **Versioned static is `immutable` instead of `no-cache`.** Every
+  static link already carried `?v=<config.VERSION>` as its cache-buster,
+  so the browser was revalidating assets it had no reason to
+  revalidate. Conditional requests still return **304** (asserted —
+  gzip runs before Werkzeug's conditional pass and must not eat it).
+- **The CDN font stylesheet is off the render-blocking path.** First
+  paint no longer waits on `fonts.googleapis.com`. The `font-family`
+  stacks keep their system fallbacks, so an offline boot still renders
+  correctly. Self-hosting the three faces is the follow-up; this removes
+  the blocking without changing what the page looks like.
+- **`start.bat` is the console README says it is.** It ran `pythonw` —
+  windowless, no output — while advertising "console server". It now
+  runs `python` in that window.
+- **The suite stops writing into the production log.**
+  `tests/__init__.py` points `JARVIS_LOG_DIR` at a scratch directory.
+  That needs `python -m unittest discover -s tests -t .`: without a
+  top-level directory unittest imports the test files as *top-level*
+  modules, so `tests/` is never treated as a package and the override
+  never runs. Measured: **399 stray lines without `-t .`, 0 with it.**
+  The command is now what CI, README, TESTING and CONTRIBUTING all say.
+- **The installer workflow attaches its artifact to the release.**
+  README Option A tells users to get `JARVIS-Setup-<version>.exe` from
+  Releases — and both published releases had **zero assets**, so the
+  primary install path landed on an empty page. The job now carries
+  `contents: write` and uses the runner's preinstalled `gh` (no
+  third-party action) to create the tag's release if it does not exist
+  yet and upload the `.exe` to it. Tag pushes only: a `workflow_dispatch`
+  run would otherwise try to release a branch name.
+  **The tags published so far still carry no assets** — v1.36.1 needs
+  its release published by hand once, or re-tagged.
+- **`test_models.py` moved to `scripts/`.** It is a live-API utility
+  that makes real DeepSeek/OpenRouter calls, not a unit test; sitting at
+  the repo root under a `test_` name it read as part of the suite.
+- New **`tests/test_web_perf.py`** — 16 tests covering gzip coverage and
+  byte-identity, stream safety, immutable caching with working 304s, the
+  font link, and the `/api/stats` contracts. **884 tests / 71 test
+  files.** Every contract in it was mutation-checked: putting the sleep
+  back, muting the gzip call, making the font link render-blocking, or
+  dropping the `?v=` each fail the suite.
+- **Not fixed in this release — boot time.** Across 20 measured launches
+  the interval from launch to spoken welcome runs **6–45 s** (median
+  ~14 s; the two most recent were 30 s and 45 s), and the seven MCP
+  servers start **serially at 22–38 s each**, about three minutes before
+  every tool is ready. Serial startup is load-bearing — the project's
+  own `mcp/` package shadows the SDK, which is *why* spawning was
+  serialized — so parallelising it is a change with a real race to
+  reason about. It needs its own batch, not a one-line edit.
+
 ## [1.36.1] - 2026-10-25
 
 **The installer's CI gate stops depending on whichever Python the

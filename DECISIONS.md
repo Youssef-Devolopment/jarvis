@@ -547,6 +547,65 @@ text, so it needs no runner and no PyYAML.
 
 ---
 
+## 20. Make it lighter without changing what it delivers (v1.37.0)
+
+**Problem.** "Feels slow or heavy" was one of the four frictions, and
+nobody had measured where the weight actually was. So: measure first.
+The numbers came back with three clear culprits — `/api/stats` slept
+**108.80 ms** inside a request polled every 3 s (the blocking form of
+`cpu_percent`; the non-blocking one costs 0.55 ms), the page went over
+the wire as **212,941 bytes** uncompressed, and static was served
+`Cache-Control: no-cache` even though every link already carries
+`?v=<config.VERSION>` as its cache-buster.
+
+A fourth finding was not performance at all: README Option A tells users
+to download the installer from Releases, and **both published releases
+had zero assets** — the primary install path landed on an empty page.
+
+**Decision.** Three rules for this batch:
+
+1. **Change only what was measured.** Each fix points at its own
+   number, not a hunch.
+2. **A speedup that changes what the user receives is a bug.** gzip
+   must produce byte-identical bodies; `text/event-stream` must never be
+   buffered; versioned static must still answer 304; the page must look
+   the same with the CDN unreachable.
+3. **Distribution is part of the product.** The workflow that builds the
+   installer also attaches it to the release, so a tag cannot end up
+   with notes and no file.
+
+**Why.** The first two rules exist because compression and caching break
+invisibly: a buffered SSE reply stalls a stream that exists to be
+incremental, a stale `immutable` header outlives its own cache-buster,
+and neither failure shows up as an error — they show up as a worse app.
+The third exists because a green build that ships nothing is a worse
+state than a red one: at least red gets noticed.
+
+**What it costs.** gzip costs CPU on every response (bounded by a 512
+byte floor and skipped for streams); the net-counter cache trades 1 s of
+freshness on a cumulative MB figure; the release step needs
+`contents: write` and runs only on tag pushes.
+
+**Watch out.** The rules are tested, not trusted: `tests/test_web_perf.py`
+guards all of them, and every contract in it was mutation-checked —
+restoring the sleep, muting the gzip call, making the font link
+render-blocking, or dropping the `?v=` each fail the suite. Two traps
+worth remembering: static arrives `direct_passthrough`, which blocks
+`get_data()` until the flag is cleared; and `unittest discover -s tests`
+imports test files as *top-level* modules, so `tests/__init__.py` (which
+points `JARVIS_LOG_DIR` at scratch) never runs without `-t .` — that one
+cost 399 stray lines in the production log before it was pinned down.
+
+**Deliberately not done.** Boot time: 20 measured launches run 6–45 s to
+the spoken welcome, and the seven MCP servers start serially at 22–38 s
+each (~3 min until every tool is ready). Serial startup is *load-bearing*
+— the project's own `mcp/` package shadows the SDK, which is why
+spawning was serialized in the first place — so parallelising it is a
+change with a real race to reason about, not a one-liner. It gets its
+own batch.
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either

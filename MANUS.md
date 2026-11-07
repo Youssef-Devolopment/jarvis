@@ -20,7 +20,7 @@ Anything they miss falls through to the LLM with 31 built-in tools
 plus live MCP servers, up to 15 rounds per request. The model acts
 through tools; the loop verifies, gates, truncates, and audits every
 step. Every behavior below is tested — `python -m unittest discover
--s tests` is the proof.
+-s tests -t .` is the proof.
 
 ## 2. Operating principles
 

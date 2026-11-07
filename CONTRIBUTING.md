@@ -19,7 +19,7 @@ They load on boot, are safety-validated, and never touch core.
 .venv\Scripts\python.exe -m py_compile <the files you touched>
 node --check static/js/app.js            :: if the UI changed
 .venv\Scripts\ruff.exe check .           :: lint (curated ruff.toml)
-.venv\Scripts\python.exe -m unittest discover -s tests
+.venv\Scripts\python.exe -m unittest discover -s tests -t .
 ```
 
 `Ran N tests ... OK` **and** `$LASTEXITCODE` = 0 is the pass line —

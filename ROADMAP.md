@@ -39,11 +39,12 @@ SQLite memory, web UI with LIFE/DEV modes, installers, docs set.
 | **v1.35.3** | **Prove the launch mode, not just the branch**: `tests/test_pythonw_smoke.py` starts the real `pythonw.exe` with `DETACHED_PROCESS` and no inherited handles, requires `_errlog()` to give a banner-writing child a live stderr, requires the `stderr=None` child to die, and completes a real MCP handshake through `stdio_client` inside that windowless process. Removing the fix fails the test; it runs as its own CI step |
 | **v1.36.0** | **Find things**: the 21 flat settings tabs become a rail grouped into ASSISTANT / WORK / EXTEND / SYSTEM, with one search box that matches what a tab *controls* ("microphone", "api key", "theme") rather than what it is named. `/` focuses search, `Enter` opens the first hit, `Escape` clears, and the match count is announced to screen readers. `tests/test_settings_find.py` holds the wiring still |
 | **v1.36.1** | **The installer gate stops trusting the runner image**: the v1.36.0 tag failed "Verify the dependency bootstrap" twice at ~23 s, identically, and nothing in that diff touched the path — `installer.yml` was the one place in the repo that did not pin an interpreter. It now runs `setup-python` 3.10 like `ci.yml`, and on failure prints the tail of `logs\install.log` so the next failure explains itself |
+| **v1.37.0** | **Feels lighter — measured first, then fixed**: `/api/stats` no longer sleeps inside the request (`cpu_percent(interval=0.1)` → `None`, 108.80 ms → 0.55 ms measured) and caches its ~23 ms `net_io_counters()` query behind a 1 s TTL; the page drops from 212,941 bytes to 49,171 with gzip (76.9% smaller, bodies byte-identical, `text/event-stream` deliberately left unbuffered); versioned static is served `immutable` instead of `no-cache` and 304s still work; the CDN font stylesheet is off the render-blocking path with an offline fallback; `start.bat` runs `python` so it is the console README calls it; the suite is hermetic (`tests/__init__.py` points `JARVIS_LOG_DIR` at scratch — which needs `-t .`, documented); and the installer workflow now attaches its artifact to the release, so README Option A stops landing on an empty page |
 
 *(The table is continuous in `CHANGELOG.md`; it resumes here at the
 current release so this file does not silently claim the gap.)*
 
-Stable today: 868 tests (in-tree + fresh-copy, no `.env`), 120 API
+Stable today: 884 tests (in-tree + fresh-copy, no `.env`), 120 API
 endpoints, 142 shipped skills + 9 shipped modules, a per-user Windows
 installer that installs and uninstalls cleanly, green CI on
 `windows-latest` (plus an installer job on every `v*` tag that installs

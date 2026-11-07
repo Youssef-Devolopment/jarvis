@@ -5,7 +5,7 @@ reproduction, health checks, CI, and the manual smoke tests that only
 a human on Windows can do. Follow this and "works on my machine"
 stays a scare story instead of a bug report.
 
-**Ground truth:** 70 test files · **868 tests** · 120 API endpoints ·
+**Ground truth:** 71 test files · **884 tests** · 120 API endpoints ·
 142 shipped skills · `check.py` 11 preflight checks (exit 0 ready /
 1 fix core / 2 skills-only).
 
@@ -41,14 +41,22 @@ python -m venv .venv
 ```powershell
 cd "C:\path\to\jarvis"
 $env:PYTHONIOENCODING="utf-8"
-& ".\.venv\Scripts\python.exe" -m unittest discover -s tests
+& ".\.venv\Scripts\python.exe" -m unittest discover -s tests -t .
 ```
+
+> **`-t .` is load-bearing, not decoration.** Without a top-level
+> directory, unittest imports the test files as *top-level* modules
+> (`test_foo`, not `tests.test_foo`), so `tests/__init__.py` never runs.
+> That file points `JARVIS_LOG_DIR` at a scratch directory — with it
+> skipped, the suite writes its own fixtures into `logs/jarvis.log`, the
+> log you would open when something actually breaks. Measured: 399 stray
+> lines without `-t .`, 0 with it.
 
 Expected tail:
 
 ```
 ----------------------------------------------------------------------
-Ran 868 tests in ~43s
+Ran 884 tests in ~45s
 OK
 ```
 
@@ -138,6 +146,7 @@ its verdict to stderr and a truncated pipe can hide it.
 | `test_settings_find.py` | Settings findability: grouped rail, per-tab keywords, search box wiring, `[hidden]` CSS contract |
 | `test_pythonw_smoke.py` | Real `pythonw.exe` launch: no console stdio, `_errlog()` gives children a live handle, an MCP handshake completes (skipped off Windows) |
 | `test_ci_gates.py` | The two CI workflows themselves: the installer job pins the same Python `ci.yml` tests with, pins it before the build, and a failed bootstrap still prints `logs\install.log` |
+| `test_web_perf.py` | Delivery cost of the page itself: gzip on the HTML/CSS/JS (bodies byte-identical), SSE streams never buffered, `?v=` immutable caching with 304s still working, the CDN font link off the render-blocking path, `/api/stats` sampling without sleeping |
 | `test_scaffold.py` | Boilerplate scaffolder output shape |
 
 **Skills, library & suites**
@@ -169,7 +178,7 @@ $dst = "$env:TEMP\jarvis_fresh"
 if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }
 robocopy $src $dst /E /XD .git logs .venv /XF .env .agent-state.md | Out-Null
 Push-Location $dst
-& "$src\.venv\Scripts\python.exe" -m unittest discover -s tests
+& "$src\.venv\Scripts\python.exe" -m unittest discover -s tests -t .
 $code = $LASTEXITCODE
 Pop-Location
 $code    # 0 = clean
@@ -226,7 +235,7 @@ Python 3.10) — same OS family as the product:
 4. `ruff check .` — lint gate (curated `ruff.toml`; the frozen
    `voice/output.py`/`voice/voices.py` and user/generated code are
    excluded);
-5. `coverage run -m unittest discover -s tests` + `coverage report`
+5. `coverage run -m unittest discover -s tests -t .` + `coverage report`
    — the whole suite with a coverage summary;
 6. before the suite, a named **`pythonw` step** runs
    `tests/test_pythonw_smoke.py`: the real `pythonw.exe` is started
@@ -239,7 +248,7 @@ Python 3.10) — same OS family as the product:
 
 "CI green" therefore means: *every file compiles, the UI script
 parses, lint is clean, the app's real launch mode completes an MCP
-handshake, and all 868 tests pass on a machine that has never seen your
+handshake, and all 884 tests pass on a machine that has never seen your
 checkout*. It does **not** mean smoke tests ran — §7 stays manual.
 
 Check the latest run:
@@ -409,7 +418,7 @@ API keys, no running server**:
 
 A change is done when **all** of these hold:
 
-1. full suite: `Ran 868 tests … OK` (or the new count);
+1. full suite: `Ran 884 tests … OK` (or the new count);
 2. fresh-copy suite: OK without `.env`;
 3. `check.py`: 11/11;
 4. `node --check static/js/app.js`: clean (if JS changed);

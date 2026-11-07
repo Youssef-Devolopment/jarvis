@@ -31,7 +31,7 @@ minimal chat page. No skills-only mode by design (yet).
 ## The dev loop (do this every unit)
 
 1. `py_compile` touched files.
-2. Full suite: `$env:PYTHONIOENCODING='utf-8'; .\.venv\Scripts\python.exe -m unittest discover -s tests > $null 2>&1; echo "X=$LASTEXITCODE"` → must be 0.
+2. Full suite: `$env:PYTHONIOENCODING='utf-8'; .\.venv\Scripts\python.exe -m unittest discover -s tests -t . > $null 2>&1; echo "X=$LASTEXITCODE"` → must be 0.
 3. JS: `node --check static/js/app.js`. PS1: `[PSParser]::Tokenize`.
 4. Installer, only if `installer/` changed: `installer\build.ps1`, then
    silent-install the artifact into a temp folder
