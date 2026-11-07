@@ -1,10 +1,19 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JARVIS</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<!-- Fonts are fetched from a CDN, so they must never gate first paint:
+     preload starts the download immediately and media="print" keeps the
+     link out of the critical rendering path until it has arrived. The
+     font-family stacks in style.css fall back to system faces, so an
+     offline boot still renders correctly. -->
+<link rel="preload" as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Orbitron:wght@400;700;900&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Orbitron:wght@400;700;900&display=swap"
+      rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"></noscript>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ version }}">
 </head>
 <body data-state="boot">
@@ -32,7 +41,7 @@
   </div>
   <div class="topbar-center">
     <span class="status-pill" id="status-pill" role="button" tabindex="0"
-          title="System status — click for details">
+          title="System status â€” click for details">
       <span class="dot" id="status-dot"></span>
       <span id="status-text">BOOTING</span>
     </span>
@@ -108,7 +117,7 @@
     </div>
   </div>
   <div class="side-block dev-only" id="block-ports">
-    <div class="side-label">PORTS <button id="ports-refresh" class="mini-btn" title="refresh">↻</button></div>
+    <div class="side-label">PORTS <button id="ports-refresh" class="mini-btn" title="refresh">â†»</button></div>
     <div id="side-ports"><div class="side-value">&ndash;</div></div>
   </div>
 </aside>
@@ -189,7 +198,7 @@
       <button id="term-run" class="dbtn">RUN</button>
       <button id="term-clear" class="dbtn">CLEAR</button>
     </div>
-    <pre id="term-out">Sandboxed to project root. Destructive commands are blocked server-side. ↑↓ recalls history.</pre>
+    <pre id="term-out">Sandboxed to project root. Destructive commands are blocked server-side. â†‘â†“ recalls history.</pre>
   </div>
   <div class="dev-panel hidden" data-devpanel="call">    <div class="dev-row">
       <select id="dev-method"><option>GET</option><option>POST</option></select>
@@ -230,55 +239,55 @@
         <div class="modal-tabs" id="modal-tabs" role="tablist" aria-label="Settings sections">
           <div class="tab-group" data-group="assistant">ASSISTANT</div>
           <button class="tab active" role="tab" aria-selected="true" data-tab="model"
-                  data-group="assistant" data-keywords="model api key provider openai anthropic gemini ollama local cloud temperature tokens streaming fallback"><span class="ti">◈</span>MODEL</button>
+                  data-group="assistant" data-keywords="model api key provider openai anthropic gemini ollama local cloud temperature tokens streaming fallback"><span class="ti">â—ˆ</span>MODEL</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="voice"
-                  data-group="assistant" data-keywords="voice speech tts engine piper elevenlabs narrator"><span class="ti">◉</span>VOICE</button>
+                  data-group="assistant" data-keywords="voice speech tts engine piper elevenlabs narrator"><span class="ti">â—‰</span>VOICE</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="audio"
-                  data-group="assistant" data-keywords="audio microphone mic volume mute devices input output ducking"><span class="ti">♪</span>AUDIO</button>
+                  data-group="assistant" data-keywords="audio microphone mic volume mute devices input output ducking"><span class="ti">â™ª</span>AUDIO</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="mood"
-                  data-group="assistant" data-keywords="mood emotion tone feeling vibe"><span class="ti">◐</span>MOOD</button>
+                  data-group="assistant" data-keywords="mood emotion tone feeling vibe"><span class="ti">â—</span>MOOD</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="personality"
-                  data-group="assistant" data-keywords="personality character prompt behaviour style"><span class="ti">◑</span>PERSONALITY</button>
+                  data-group="assistant" data-keywords="personality character prompt behaviour style"><span class="ti">â—‘</span>PERSONALITY</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="council"
-                  data-group="assistant" data-keywords="council autonomy tier approval levels permissions"><span class="ti">✦</span>COUNCIL</button>
+                  data-group="assistant" data-keywords="council autonomy tier approval levels permissions"><span class="ti">âœ¦</span>COUNCIL</button>
 
           <div class="tab-group" data-group="work">WORK</div>
           <button class="tab" role="tab" aria-selected="false" data-tab="skills"
-                  data-group="work" data-keywords="skills create edit enable disable reload"><span class="ti">✦</span>SKILLS</button>
+                  data-group="work" data-keywords="skills create edit enable disable reload"><span class="ti">âœ¦</span>SKILLS</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="tools"
-                  data-group="work" data-keywords="tools terminal shell command browser automation"><span class="ti">⚙</span>TOOLS</button>
+                  data-group="work" data-keywords="tools terminal shell command browser automation"><span class="ti">âš™</span>TOOLS</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="workspace"
-                  data-group="work" data-keywords="workspace layout windows snap workspaces"><span class="ti">▣</span>WORKSPACE</button>
+                  data-group="work" data-keywords="workspace layout windows snap workspaces"><span class="ti">â–£</span>WORKSPACE</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="capture"
-                  data-group="work" data-keywords="capture screenshot screen ocr vision contacts"><span class="ti">＋</span>CAPTURE</button>
+                  data-group="work" data-keywords="capture screenshot screen ocr vision contacts"><span class="ti">ï¼‹</span>CAPTURE</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="clipboard"
-                  data-group="work" data-keywords="clipboard history copy paste"><span class="ti">▤</span>CLIPBOARD</button>
+                  data-group="work" data-keywords="clipboard history copy paste"><span class="ti">â–¤</span>CLIPBOARD</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="dream"
-                  data-group="work" data-keywords="dream sleep memory consolidation idle night"><span class="ti">☾</span>DREAM</button>
+                  data-group="work" data-keywords="dream sleep memory consolidation idle night"><span class="ti">â˜¾</span>DREAM</button>
 
           <div class="tab-group" data-group="extend">EXTEND</div>
           <button class="tab" role="tab" aria-selected="false" data-tab="library"
-                  data-group="extend" data-keywords="library catalog presets one click install"><span class="ti">❖</span>LIBRARY</button>
+                  data-group="extend" data-keywords="library catalog presets one click install"><span class="ti">â–</span>LIBRARY</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="market"
-                  data-group="extend" data-keywords="market marketplace catalog community unpin"><span class="ti">▦</span>MARKET</button>
+                  data-group="extend" data-keywords="market marketplace catalog community unpin"><span class="ti">â–¦</span>MARKET</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="modules"
-                  data-group="extend" data-keywords="modules plugins extensions module json"><span class="ti">⬢</span>MODULES</button>
+                  data-group="extend" data-keywords="modules plugins extensions module json"><span class="ti">â¬¢</span>MODULES</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="mcp"
-                  data-group="extend" data-keywords="mcp servers model context protocol npx external tools"><span class="ti">⬡</span>MCP</button>
+                  data-group="extend" data-keywords="mcp servers model context protocol npx external tools"><span class="ti">â¬¡</span>MCP</button>
 
           <div class="tab-group" data-group="system">SYSTEM</div>
           <button class="tab" role="tab" aria-selected="false" data-tab="general"
-                  data-group="system" data-keywords="general startup autostart first run onboarding api keys"><span class="ti">≡</span>GENERAL</button>
+                  data-group="system" data-keywords="general startup autostart first run onboarding api keys"><span class="ti">â‰¡</span>GENERAL</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="appearance"
-                  data-group="system" data-keywords="appearance theme accent colour color font wallpaper look"><span class="ti">◆</span>APPEARANCE</button>
+                  data-group="system" data-keywords="appearance theme accent colour color font wallpaper look"><span class="ti">â—†</span>APPEARANCE</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="system"
-                  data-group="system" data-keywords="system health services ports logs diagnostics status"><span class="ti">✚</span>SYSTEM</button>
+                  data-group="system" data-keywords="system health services ports logs diagnostics status"><span class="ti">âœš</span>SYSTEM</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="audit"
-                  data-group="system" data-keywords="audit log events history security"><span class="ti">≣</span>AUDIT</button>
+                  data-group="system" data-keywords="audit log events history security"><span class="ti">â‰£</span>AUDIT</button>
           <button class="tab" role="tab" aria-selected="false" data-tab="about"
-                  data-group="system" data-keywords="about version update licence license links credits"><span class="ti">ⓘ</span>ABOUT</button>
+                  data-group="system" data-keywords="about version update licence license links credits"><span class="ti">â“˜</span>ABOUT</button>
         </div>
-        <div class="settings-empty" id="settings-empty" hidden>No setting matches that — try “voice”, “api key”, or “theme”.</div>
+        <div class="settings-empty" id="settings-empty" hidden>No setting matches that â€” try â€œvoiceâ€, â€œapi keyâ€, or â€œthemeâ€.</div>
       </div>
       <div class="modal-body" id="modal-body">
         <div class="tab-panel active" data-panel="model"><div id="panel-model">Loading&hellip;</div></div>

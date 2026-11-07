@@ -63,5 +63,8 @@ jobs:
         shell: pwsh
         run: |
           $env:PYTHONIOENCODING = "utf-8"
-          coverage run -m unittest discover -s tests
+          # -t . matters: without it unittest imports the test files as
+          # top-level modules, so tests/__init__.py never runs and the
+          # suite writes its fixtures into the real logs/jarvis.log.
+          coverage run -m unittest discover -s tests -t .
           coverage report -m

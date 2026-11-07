@@ -1,4 +1,8 @@
-"""Test which models actually respond. Run: python test_models.py"""
+"""Probe which models actually respond. Run: python scripts/test_models.py
+
+Not a unit test - it makes real calls to the provider. Kept out of the
+suite on purpose, hence its home in scripts/ rather than tests/.
+"""
 from __future__ import annotations
 
 import os

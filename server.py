@@ -1,5 +1,6 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
+import gzip
 import hmac
 import os
 import time
@@ -69,7 +70,7 @@ def _log_health_summary(delay: float = HEALTH_LOG_DELAY_S,
     Waits for `delay` seconds so async services (MCP, voice warmup)
     have landed, then logs overall + degraded check names + config
     warning count. `on_summary` (optional) receives the same snapshot
-    afterwards so console/toast verdicts derive from ONE source —
+    afterwards so console/toast verdicts derive from ONE source â€”
     failures there are logged, never raised.
     """
     try:
@@ -84,19 +85,19 @@ def _log_health_summary(delay: float = HEALTH_LOG_DELAY_S,
                      if isinstance(v, dict) and v.get("status") == "degraded"
                      and k != "services")
         if bad:
-            line += " — degraded: " + ", ".join(bad)
+            line += " â€” degraded: " + ", ".join(bad)
         svc = checks.get("services") or {}
         if svc.get("status") == "degraded":
-            line += " — " + str(svc.get("detail") or "boot services degraded")
+            line += " â€” " + str(svc.get("detail") or "boot services degraded")
         warns = (checks.get("config") or {}).get("warnings") or []
         if warns:
-            line += f" — {len(warns)} config warning(s)"
+            line += f" â€” {len(warns)} config warning(s)"
         pending = sorted(
             k for k, v in ((checks.get("services") or {}).get("items")
                            or {}).items()
             if (v or {}).get("detail") == "starting")
         if pending:
-            line += " — still starting: " + ", ".join(pending)
+            line += " â€” still starting: " + ", ".join(pending)
         if overall == "ok" and not warns:
             log.info(line)
         else:
@@ -118,18 +119,85 @@ def schedule_health_log(on_summary=None) -> None:
                      name="health-log", daemon=True).start()
 
 
+# ---------- response optimisation -----------------------------------------
+# Measured on a live boot: 212,237 bytes of HTML+CSS+JS went over the wire
+# uncompressed (gzip: 48,948 â€” 76.9% smaller), and static carried
+# Cache-Control: no-cache so the browser revalidated every asset on every
+# load. Both are fixed here, in one place, without a dependency.
+_COMPRESSIBLE = ("text/html", "text/css", "text/javascript",
+                 "application/javascript", "application/json",
+                 "text/plain", "image/svg+xml", "application/xml")
+_COMPRESS_MIN = 512  # below this the gzip header costs more than it saves
+
+
+def _gzip_response(resp) -> None:
+    """Gzip a finished response in place. Never raises.
+
+    Three shapes have to be told apart here, and getting it wrong either
+    breaks streaming or silently drops the biggest win (app.js is 134KB):
+
+    * SSE replies -- flushed as they are produced, so buffering one would
+      hold every event until the stream ended. Left completely alone.
+    * Other live streams -- also left alone, defensively.
+    * Static files -- Werkzeug reports these as streamed too, but they
+      arrive as a *file wrapper* (direct_passthrough), which is finite and
+      safe to read whole. That flag also blocks get_data(), so it is
+      cleared immediately before the read: we are replacing the wrapper
+      with bytes anyway.
+    """
+    try:
+        ctype = ((resp.headers.get("Content-Type") or "")
+                 .split(";")[0].strip().lower())
+        if ctype == "text/event-stream":
+            return
+        if resp.is_streamed and not resp.direct_passthrough:
+            return
+        if resp.headers.get("Content-Encoding"):
+            return
+        if "gzip" not in request.headers.get("Accept-Encoding", "").lower():
+            return
+        if not ctype.startswith(_COMPRESSIBLE):
+            return  # binary payloads are not worth it
+        resp.direct_passthrough = False
+        data = resp.get_data()
+        if len(data) < _COMPRESS_MIN:
+            return  # the gzip header would cost more than it saves
+        resp.set_data(gzip.compress(data, 6))
+        resp.headers["Content-Encoding"] = "gzip"
+        resp.headers["Vary"] = "Accept-Encoding"
+    except Exception as exc:  # never break a response over a speedup
+        log.debug("gzip skipped: %s", exc)
+
+
+def _cache_static(resp) -> None:
+    """Long-cache versioned static assets. Never raises.
+
+    Every static link in index.html already carries ?v=<config.VERSION>,
+    which is the cache-buster â€” so the browser can keep the copy and skip
+    the revalidation round trip entirely.
+    """
+    try:
+        if not request.path.startswith("/static/"):
+            return
+        if "v" not in request.args:
+            return
+        resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    except Exception as exc:
+        log.debug("cache header skipped: %s", exc)
+
+
 def create_app() -> Flask:
     try:
         s = get_settings()
     except ConfigError:
         s = Settings.load(require_key=False)
-        log.warning("No API key — skills-only mode. Local skills work; "
+        log.warning("No API key â€” skills-only mode. Local skills work; "
                     "LLM chat needs DEEPSEEK_API_KEY in .env.")
     setup_logging(s.log_level)
     app = Flask(__name__, static_folder="static", template_folder="templates")
     app.config["SECRET_KEY"] = ensure_flask_secret()
     if s.host not in ("127.0.0.1", "localhost", "::1"):
-        log.warning("Listening on %s — mutating API calls from off-machine "
+        log.warning("Listening on %s â€” mutating API calls from off-machine "
                     "clients need the X-Jarvis-Token header matching "
                     "JARVIS_TOKEN in .env. Prefer 127.0.0.1 unless you know "
                     "what you are doing.", s.host)
@@ -154,13 +222,20 @@ def create_app() -> Flask:
                         request.method, request.path, dt)
         return resp
 
-    try:  # static config-drift audit — warnings only, never blocks boot
+    @app.after_request
+    def _req_optimise(resp):
+        """Shrink it, then let it be cached â€” see the notes on each."""
+        _gzip_response(resp)
+        _cache_static(resp)
+        return resp
+
+    try:  # static config-drift audit â€” warnings only, never blocks boot
         from config import audit_settings
         warns = audit_settings(s)
         for w in warns:
             log.warning("Config audit: %s", w)
         if warns:
-            log.warning("Config audit: %d warning(s) — full list in "
+            log.warning("Config audit: %d warning(s) â€” full list in "
                         "Settings > SYSTEM.", len(warns))
     except Exception as exc:
         log.debug("Config audit skipped: %s", exc)

@@ -15,6 +15,12 @@ jobs:
   build-installer:
     runs-on: windows-latest
 
+    # The release step below writes to the repository (creating the release
+    # and attaching the .exe). The workflow default is read-only, so it has
+    # to be widened for this job alone.
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -144,3 +150,31 @@ jobs:
           path: dist/*.exe
           if-no-files-found: error
           retention-days: 30
+
+      # A release with no asset is a release nobody can install from, and
+      # README Option A sends users straight to Releases. CI already holds
+      # the file, so put it where the link points. Creates the release first
+      # when the maintainer has not published one for this tag yet (they can
+      # rewrite the title and notes afterwards). `gh` ships with the runner,
+      # so this needs no third-party action. Tags only — a workflow_dispatch
+      # run would otherwise try to release a branch name.
+      - name: Attach the installer to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag  = "${{ github.ref_name }}"
+          $repo = "${{ github.repository }}"
+          $exe  = (Get-ChildItem dist\*.exe | Select-Object -First 1).FullName
+
+          gh release view $tag --repo $repo *> $null
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "no release for $tag yet - creating one"
+            gh release create $tag --repo $repo --title $tag --generate-notes
+            if ($LASTEXITCODE -ne 0) { throw "could not create release $tag" }
+          }
+
+          gh release upload $tag $exe --repo $repo --clobber
+          if ($LASTEXITCODE -ne 0) { throw "could not attach $exe to $tag" }
+          Write-Host "attached $((Get-Item $exe).Name) to release $tag"

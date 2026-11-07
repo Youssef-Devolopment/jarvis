@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-LOG_DIR = Path(__file__).resolve().parent / "logs"
-LOG_DIR.mkdir(exist_ok=True)
+# JARVIS_LOG_DIR overrides where the log lands. tests/__init__.py sets it to
+# a scratch directory: importing the app attaches a file handler, so without
+# this the test suite writes its own fixtures ("boom", "pid 99999") into the
+# log a user opens when something actually breaks.
+LOG_DIR = Path(os.environ.get("JARVIS_LOG_DIR")
+               or Path(__file__).resolve().parent / "logs")
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOG_DIR / "jarvis.log"
 _FMT = "%(asctime)s | %(levelname)-8s | %(name)-22s | %(filename)s:%(lineno)d | %(message)s"
 _DATE = "%Y-%m-%d %H:%M:%S"
