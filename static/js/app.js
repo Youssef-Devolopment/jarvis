@@ -61,30 +61,39 @@ function addStreamingLog(cls){
 }
 
 /* ---- add-action feedback -------------------------------------------
-   The MARKET handlers used to fire-and-forget: they dropped the
+   The action handlers used to fire-and-forget: they dropped the
    response body and swallowed every error, so installing a preset and
    a request that never arrived looked identical — and loadTab() wipes
    innerHTML, so even the one message that existed (plugin install)
-   was erased the moment it was written. One notice, rendered at the
-   top of the panel by renderTab('market'), survives the re-render. */
-var mktNotice='';
-function setNotice(text, ok){
-  mktNotice={text:String(text||''), ok:!!ok!==false};
-  paintNotice();
+   was erased the moment it was written. One notice, redrawn at the
+   top of whichever panel set it, survives the re-render. */
+var uiNotice={text:'', ok:true, tab:''};
+/* The panel the user is looking at right now — that is where a notice
+   belongs unless a handler says otherwise. */
+function activeTabName(){
+  var t=document.querySelector('.tab.active');
+  return t?t.getAttribute('data-tab'):'';
 }
-/* Repaint the notice in place. Handlers that reload the panel let
-   renderTab draw it; the one that must not reload — an empty install
-   form would lose whatever the user already typed — paints it here. */
-function paintNotice(){
+function setNotice(text, ok, tab){
+  uiNotice={text:String(text||''), ok:!!ok!==false, tab:tab||activeTabName()};
+  paintNotice(uiNotice.tab);
+}
+/* Repaint the notice in place, into the panel that owns it. Handlers
+   that reload the panel call paintNotice(name) once renderTab has run;
+   the one that must not reload — an empty install form would lose
+   whatever the user already typed — paints it here, immediately. */
+function paintNotice(tab){
   try{
-    var inner=$('panel-market');if(!inner)return;
-    var n=mktNotice,row=inner.querySelector('[data-mkt-notice]');
-    if(!n||!n.text){if(row&&row.parentNode)row.parentNode.removeChild(row);return;}
+    tab=tab||uiNotice.tab;
+    if(!tab||tab!==uiNotice.tab)return;
+    var inner=$('panel-'+tab);if(!inner)return;
+    var n=uiNotice,row=inner.querySelector('[data-notice]');
+    if(!n.text){if(row&&row.parentNode)row.parentNode.removeChild(row);return;}
     var col=n.ok?'var(--green)':'var(--red)';
     if(!row){
       row=document.createElement('div');
       row.className='set-row';
-      row.setAttribute('data-mkt-notice','1');
+      row.setAttribute('data-notice','1');
       var anchor=inner.firstElementChild;
       if(anchor)inner.insertBefore(row,anchor);else inner.appendChild(row);
     }
@@ -1277,7 +1286,7 @@ function loadTab(name){
     clipboard:'/api/clipboard/recent',dream:'/api/dream/status'};
   fetch(endpoints[name]||'/api/info')
     .then(function(r){return r.json();})
-    .then(function(data){inner.innerHTML=renderTab(name,data);if(name==='general')refreshKeyStatus();if(name==='about')runUpdateCheck();})
+    .then(function(data){inner.innerHTML=renderTab(name,data);if(uiNotice.tab===name)paintNotice(name);if(name==='general')refreshKeyStatus();if(name==='about')runUpdateCheck();})
     .catch(function(){inner.innerHTML='<div style="color:var(--red)">Failed to load</div>';});
 }
 
@@ -1375,11 +1384,6 @@ function renderTab(name,data){
   }
   if(name==='market'){
     var html='';
-    if(mktNotice&&mktNotice.text){
-      var ncol=mktNotice.ok?'var(--green)':'var(--red)';
-      html+='<div class="set-row" data-mkt-notice="1" style="border-left:2px solid '+ncol+';background:rgba(0,0,0,.35)">'+
-        '<div class="label" style="color:'+ncol+'">'+esc(mktNotice.text)+'</div></div>';
-    }
     var pend=data.pending||[];
     if(pend.length){
       html+='<div style="margin:4px 0 8px;color:var(--amber);font-size:9px;letter-spacing:2px">PENDING APPROVAL ('+pend.length+')</div><div class="set-list" style="margin-bottom:12px">';
@@ -2403,20 +2407,28 @@ document.addEventListener('DOMContentLoaded',function(){
     if(target.getAttribute&&target.getAttribute('data-action')==='select-voice'){
       var key=target.getAttribute('data-key');
       fetch('/api/voice',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({key:key})}).then(function(r){return r.json();}).then(function(d){
-        if(d.ok&&d.voice){setText('side-voice',d.voice.label||key);addLog('Voice: '+key,'system');}
-      }).catch(function(){});
+        body:JSON.stringify({key:key})}).then(readJson).then(function(r){
+        if(r.ok&&r.data.voice){setText('side-voice',r.data.voice.label||key);setNotice('Voice: '+(r.data.voice.label||key),true,'voice');}
+        else setNotice('Voice not changed: '+(reason(r.data)||'request failed.'),false,'voice');
+      }).catch(function(){setNotice('Voice request failed.',false,'voice');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='toggle-skill'){
       var sname=target.getAttribute('data-name');
       var senabled=target.getAttribute('data-enabled')==='true';
       fetch('/api/skill',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:sname,enabled:senabled})}).then(function(){loadTab('skills');}).catch(function(){});
+        body:JSON.stringify({name:sname,enabled:senabled})}).then(readJson).then(function(r){
+        setNotice(r.ok?(senabled?'Skill enabled: ':'Skill disabled: ')+sname:
+          (reason(r.data)||'Could not change that skill.'),r.ok);
+        loadTab('skills');
+      }).catch(function(){setNotice('Skill change request failed.',false);loadTab('skills');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='select-personality'){
       var pname=target.getAttribute('data-name');
       fetch('/api/personality/preset',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:pname})}).then(function(){loadTab('personality');}).catch(function(){});
+        body:JSON.stringify({name:pname})}).then(readJson).then(function(r){
+        setNotice(r.ok?('Personality: '+pname):(reason(r.data)||'Could not select that personality.'),r.ok);
+        loadTab('personality');
+      }).catch(function(){setNotice('Personality request failed.',false);loadTab('personality');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='set-pref'){
       var pkey=target.getAttribute('data-key');
@@ -2426,7 +2438,10 @@ document.addEventListener('DOMContentLoaded',function(){
         var t=document.querySelector('.tab.active');
         var tab=t?t.getAttribute('data-tab'):'general';
         fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({key:pkey,value:val})}).then(function(){loadTab(tab);}).catch(function(){});
+          body:JSON.stringify({key:pkey,value:val})}).then(readJson).then(function(r){
+            setNotice(r.ok?('Saved: '+pkey):(reason(r.data)||'Could not save that setting.'),r.ok,tab);
+            loadTab(tab);
+          }).catch(function(){setNotice('Settings request failed.',false,tab);loadTab(tab);});
       })();
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='update-check'){
@@ -2472,7 +2487,10 @@ document.addEventListener('DOMContentLoaded',function(){
       var next=levels[0];
       for(var i=0;i<levels.length;i++){if(levels[i]>cur+0.001){next=levels[i];break;}}
       fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({key:'duck_level',value:next})}).then(function(){loadTab('audio');}).catch(function(){});
+        body:JSON.stringify({key:'duck_level',value:next})}).then(readJson).then(function(r){
+          setNotice(r.ok?('Duck level: '+next):(reason(r.data)||'Could not change the duck level.'),r.ok);
+          loadTab('audio');
+        }).catch(function(){setNotice('Duck level request failed.',false);loadTab('audio');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='save-key'){
       var kinp=document.getElementById('input-api-key');
@@ -2627,22 +2645,23 @@ document.addEventListener('DOMContentLoaded',function(){
       var lid=target.getAttribute('data-id');
       target.textContent='\u2026';
       fetch('/api/library/skill',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({id:lid})}).then(function(r){return r.json();}).then(function(d){
-        addLog(d.ok?('Installed pack: '+(d.skill||lid)):('Install failed: '+(d.detail||d.error||'unknown')),d.ok?'system':'error');
+        body:JSON.stringify({id:lid})}).then(readJson).then(function(r){
+        setNotice(r.ok?('Installed pack: '+(r.data.skill||lid)):
+          (reason(r.data)||'Install failed.'),r.ok,'library');
         loadTab('library');
-      }).catch(function(){addLog('Install request failed.','error');loadTab('library');});
+      }).catch(function(){setNotice('Install request failed.',false,'library');loadTab('library');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='lib-add-mcp'){
       var mid=target.getAttribute('data-id');
       target.textContent='\u2026';
       fetch('/api/library/mcp',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({id:mid})}).then(function(r){return r.json();}).then(function(d){
-        var msg=d.ok?('Added MCP server: '+mid):('MCP add failed: '+(d.detail||d.error||'unknown'));
-        if(d.ok&&d.note)msg+=' \u2014 '+d.note;
-        if(d.ok&&d.started)msg+=' (running)';
-        addLog(msg,d.ok?'system':'error');
+        body:JSON.stringify({id:mid})}).then(readJson).then(function(r){
+        var msg=r.ok?('Added MCP server: '+mid):(reason(r.data)||'MCP add failed.');
+        if(r.ok&&r.data.note)msg+=' \u2014 '+r.data.note;
+        if(r.ok&&r.data.started)msg+=' (running)';
+        setNotice(msg,r.ok,'library');
         loadTab('library');
-      }).catch(function(){addLog('MCP add request failed.','error');loadTab('library');});
+      }).catch(function(){setNotice('MCP add request failed.',false,'library');loadTab('library');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='lib-remove'){
       var rid=target.getAttribute('data-id');
@@ -2658,9 +2677,9 @@ document.addEventListener('DOMContentLoaded',function(){
           msg=d.ok?('Removed pack: '+rid+' \u2014 '+((d.unregistered||[]).length)+' skills unregistered'+(d.file_deleted?', file deleted':''))
                   :('Remove failed: '+(d.detail||d.error||'unknown'));
         }
-        addLog(msg,d.ok?'system':'error');
+        setNotice(msg,d.ok,'library');
         loadTab('library');
-      }).catch(function(){addLog('Remove request failed.','error');loadTab('library');});
+      }).catch(function(){setNotice('Remove request failed.',false,'library');loadTab('library');});
     }
     if(target.getAttribute&&(target.getAttribute('data-action')==='lib-start-mcp'
         ||target.getAttribute('data-action')==='lib-stop-mcp')){
@@ -2669,26 +2688,26 @@ document.addEventListener('DOMContentLoaded',function(){
       target.textContent='\u2026';
       fetch(sstart?'/api/mcp/start':'/api/mcp/stop',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify(sstart?{name:sname}:{name:sname})}).then(function(r){return r.json();}).then(function(d){
-        addLog((sstart?'Started: ':'Stopped: ')+sname+(d.ok?'':' \u2014 '+(d.error||'failed')),d.ok?'system':'error');
+        setNotice((sstart?'Started: ':'Stopped: ')+sname+(d.ok?'':' \u2014 '+(reason(d)||'failed')),d.ok,'library');
         loadTab('library');
-      }).catch(function(){addLog('Server request failed.','error');loadTab('library');});
+      }).catch(function(){setNotice('Server request failed.',false,'library');loadTab('library');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='lib-import'){
       var lfile=document.getElementById('lib-import-file');
-      if(!lfile||!lfile.files||!lfile.files[0]){addLog('Pick a pack .json file first.','error');return;}
+      if(!lfile||!lfile.files||!lfile.files[0]){setNotice('Pick a pack .json file first.',false,'library');return;}
       var lr=new FileReader();
       lr.onload=function(){
         var parsed=null;
-        try{parsed=JSON.parse(lr.result);}catch(e){addLog('Not valid JSON: '+e.message,'error');return;}
+        try{parsed=JSON.parse(lr.result);}catch(e){setNotice('Not valid JSON: '+e.message,false,'library');return;}
         fetch('/api/library/import',{method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify(parsed)}).then(function(r){return r.json();}).then(function(d){
           var okN=d.imported||0;
           var errs=(d.results||[]).filter(function(x){return x.error;})
             .map(function(x){return (x.id||'?')+': '+x.error;});
           var msg='Imported '+okN+' pack(s).'+(errs.length?' Rejected \u2014 '+errs.join('; '):' (hit INSTALL to add)');
-          addLog(msg,okN?'system':'error');
+          setNotice(msg,!!okN,'library');
           loadTab('library');
-        }).catch(function(){addLog('Import request failed.','error');loadTab('library');});
+        }).catch(function(){setNotice('Import request failed.',false,'library');loadTab('library');});
       };
       lr.readAsText(lfile.files[0]);
     }
@@ -2701,13 +2720,13 @@ document.addEventListener('DOMContentLoaded',function(){
         var msg=(mten?'Activated: ':'Deactivated: ')+mtid;
         if(d.ok&&d.note)msg+=' \u2014 '+d.note;
         if(!d.ok)msg='Module '+(mten?'activation':'deactivation')+' failed: '+(d.detail||d.error||'unknown');
-        addLog(msg,d.ok?'system':'error');
+        setNotice(msg,d.ok,'modules');
         loadTab('modules');
-      }).catch(function(){addLog('Module toggle request failed.','error');loadTab('modules');});
+      }).catch(function(){setNotice('Module toggle request failed.',false,'modules');loadTab('modules');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mod-install'){
       var mpath=((document.getElementById('mod-install-path')||{}).value||'').trim();
-      if(!mpath){addLog('Type the path to a module folder or .zip first.','error');return;}
+      if(!mpath){setNotice('Type the path to a module folder or .zip first.',false,'modules');return;}
       target.textContent='\u2026';
       fetch('/api/modules/install',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({path:mpath})}).then(function(r){return r.json();}).then(function(d){
@@ -2720,13 +2739,13 @@ document.addEventListener('DOMContentLoaded',function(){
         }else{
           msg='Install rejected: '+(d.detail||d.error||'unknown');
         }
-        addLog(msg,(d.ok&&d.state!=='failed')?'system':'error');
+        setNotice(msg,(d.ok&&d.state!=='failed'),'modules');
         loadTab('modules');
-      }).catch(function(){addLog('Install request failed.','error');loadTab('modules');});
+      }).catch(function(){setNotice('Install request failed.',false,'modules');loadTab('modules');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mod-validate'){
       var vpath=((document.getElementById('mod-install-path')||{}).value||'').trim();
-      if(!vpath){addLog('Type the path to a module folder or .zip first.','error');return;}
+      if(!vpath){setNotice('Type the path to a module folder or .zip first.',false,'modules');return;}
       target.textContent='\u2026';
       fetch('/api/modules/validate',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({path:vpath})}).then(function(r){return r.json();}).then(function(d){
@@ -2743,21 +2762,21 @@ document.addEventListener('DOMContentLoaded',function(){
               vmsg+=' \u2014 permissions unchanged vs installed';
             }
           }
-          addLog(vmsg,(pd&&pd.available&&(pd.added||[]).length)?'warn':'system');
+          setNotice(vmsg,true,'modules');
         }else{
-          addLog('Rejected: '+(d.error||'invalid'),'error');
+          setNotice('Rejected: '+(reason(d)||'invalid'),false,'modules');
         }
         loadTab('modules');
-      }).catch(function(){addLog('Validate request failed.','error');loadTab('modules');});
+      }).catch(function(){setNotice('Validate request failed.',false,'modules');loadTab('modules');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mod-uninstall'){
       var muid=target.getAttribute('data-id');
       target.textContent='\u2026';
       fetch('/api/modules/uninstall',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({id:muid})}).then(function(r){return r.json();}).then(function(d){
-        addLog(d.ok?('Uninstalled module: '+muid):('Uninstall failed: '+(d.detail||d.error||'unknown')),d.ok?'system':'error');
+        setNotice(d.ok?('Uninstalled module: '+muid):(reason(d)||'Uninstall failed.'),d.ok,'modules');
         loadTab('modules');
-      }).catch(function(){addLog('Uninstall request failed.','error');loadTab('modules');});
+      }).catch(function(){setNotice('Uninstall request failed.',false,'modules');loadTab('modules');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mod-docs'){
       var mdid=target.getAttribute('data-id');
@@ -2773,10 +2792,15 @@ document.addEventListener('DOMContentLoaded',function(){
       var h=inp?parseInt(inp.value,10):8;
       if(isNaN(h))h=8;h=Math.max(0,Math.min(23,h));
       fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({key:'briefing_hour',value:h})}).then(function(){
+        body:JSON.stringify({key:'briefing_hour',value:h})}).then(readJson).then(function(r1){
+          if(!r1.ok){setNotice('Briefing not saved: '+(reason(r1.data)||'could not save that hour.'),false);loadTab('general');return;}
           fetch('/api/prefs',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({key:'briefings_enabled',value:true})}).then(function(){loadTab('general');}).catch(function(){});
-        }).catch(function(){});
+            body:JSON.stringify({key:'briefings_enabled',value:true})}).then(readJson).then(function(r2){
+              setNotice(r2.ok?('Briefing at '+h+':00, on'):
+                (reason(r2.data)||'Hour saved, but briefings could not be turned on.'),r2.ok);
+              loadTab('general');
+            }).catch(function(){setNotice('Hour saved, but the briefing request failed.',false);loadTab('general');});
+        }).catch(function(){setNotice('Briefing request failed.',false);loadTab('general');});
     }
   });
 
