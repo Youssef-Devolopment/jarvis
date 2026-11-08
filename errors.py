@@ -14,9 +14,16 @@ log = get_logger(__name__)
 class JarvisError(Exception):
     status_code = 500
     public_message = "Internal system error."
+
     def __init__(self, message: str = "", *, detail: str = ""):
+        # `message` is the human reason the caller wants shown ("Missing
+        # 'name'.", "unknown preset: x"). It used to land only in
+        # Exception.args, i.e. the server log, while clients received the
+        # class-level public_message — so every failure read "Invalid
+        # request.". Promote it to detail (the channel the UI renders)
+        # unless the caller supplied their own.
         super().__init__(message or self.public_message)
-        self.detail = detail
+        self.detail = detail or message
 
 
 class ConfigError(JarvisError):

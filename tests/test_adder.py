@@ -92,7 +92,14 @@ class EngineTests(unittest.TestCase):
         fake = mock.MagicMock()
         fake.list_presets.return_value = [{"id": "filesystem"},
                                           {"id": "fetch"}]
-        with mock.patch.dict("sys.modules", {"mcp.presets": fake}):
+        # Patch the package attribute rather than sys.modules: `from mcp
+        # import presets` resolves through the attribute, so swapping
+        # sys.modules stops working the moment anything imports
+        # mcp.presets first — and discovery imports every test module
+        # before the first test runs. create=True also covers running
+        # this file alone, where the submodule is not yet bound and the
+        # attribute does not exist yet.
+        with mock.patch("mcp.presets", fake, create=True):
             out = adder.add("add mcp nosuch")
         self.assertIn("Unknown preset", out)
         self.assertIn("filesystem", out)
@@ -101,7 +108,14 @@ class EngineTests(unittest.TestCase):
         fake = mock.MagicMock()
         fake.list_presets.return_value = [{"id": "fetch"}]
         fake.install_preset.return_value = {"ok": True, "needs": "npx"}
-        with mock.patch.dict("sys.modules", {"mcp.presets": fake}):
+        # Patch the package attribute rather than sys.modules: `from mcp
+        # import presets` resolves through the attribute, so swapping
+        # sys.modules stops working the moment anything imports
+        # mcp.presets first — and discovery imports every test module
+        # before the first test runs. create=True also covers running
+        # this file alone, where the submodule is not yet bound and the
+        # attribute does not exist yet.
+        with mock.patch("mcp.presets", fake, create=True):
             out = adder.add("install mcp fetch")
         self.assertIn("installed", out)
         fake.install_preset.assert_called_with("fetch")

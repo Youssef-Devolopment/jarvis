@@ -60,6 +60,55 @@ function addStreamingLog(cls){
   }catch(e){return null;}
 }
 
+/* ---- add-action feedback -------------------------------------------
+   The MARKET handlers used to fire-and-forget: they dropped the
+   response body and swallowed every error, so installing a preset and
+   a request that never arrived looked identical — and loadTab() wipes
+   innerHTML, so even the one message that existed (plugin install)
+   was erased the moment it was written. One notice, rendered at the
+   top of the panel by renderTab('market'), survives the re-render. */
+var mktNotice='';
+function setNotice(text, ok){
+  mktNotice={text:String(text||''), ok:!!ok!==false};
+  paintNotice();
+}
+/* Repaint the notice in place. Handlers that reload the panel let
+   renderTab draw it; the one that must not reload — an empty install
+   form would lose whatever the user already typed — paints it here. */
+function paintNotice(){
+  try{
+    var inner=$('panel-market');if(!inner)return;
+    var n=mktNotice,row=inner.querySelector('[data-mkt-notice]');
+    if(!n||!n.text){if(row&&row.parentNode)row.parentNode.removeChild(row);return;}
+    var col=n.ok?'var(--green)':'var(--red)';
+    if(!row){
+      row=document.createElement('div');
+      row.className='set-row';
+      row.setAttribute('data-mkt-notice','1');
+      var anchor=inner.firstElementChild;
+      if(anchor)inner.insertBefore(row,anchor);else inner.appendChild(row);
+    }
+    row.style.borderLeft='2px solid '+col;
+    row.style.background='rgba(0,0,0,.35)';
+    var label=document.createElement('div');
+    label.className='label';
+    label.style.color=col;
+    label.textContent=n.text;   /* never innerHTML — the reason is server text */
+    row.innerHTML='';
+    row.appendChild(label);
+  }catch(e){}
+}
+/* Parse a response into {ok, data}, never throwing. */
+function readJson(r){
+  return r.json().then(function(d){return {ok:r.ok, data:d||{}};},
+                       function(){return {ok:false, data:{}};});
+}
+/* First useful sentence the server gave us. */
+function reason(d){
+  d=d||{};
+  return d.detail||d.error||d.reason||d.needs||'';
+}
+
 /* Health-aware status pill: whenever idle, the pill shows the product
    verdict from /api/health (READY / ATTENTION / SAFE MODE) instead of
    a static "ONLINE" — one glance tells the user if things are fine.
@@ -1326,6 +1375,11 @@ function renderTab(name,data){
   }
   if(name==='market'){
     var html='';
+    if(mktNotice&&mktNotice.text){
+      var ncol=mktNotice.ok?'var(--green)':'var(--red)';
+      html+='<div class="set-row" data-mkt-notice="1" style="border-left:2px solid '+ncol+';background:rgba(0,0,0,.35)">'+
+        '<div class="label" style="color:'+ncol+'">'+esc(mktNotice.text)+'</div></div>';
+    }
     var pend=data.pending||[];
     if(pend.length){
       html+='<div style="margin:4px 0 8px;color:var(--amber);font-size:9px;letter-spacing:2px">PENDING APPROVAL ('+pend.length+')</div><div class="set-list" style="margin-bottom:12px">';
@@ -2440,64 +2494,131 @@ document.addEventListener('DOMContentLoaded',function(){
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-toggle-skill'){
       var sk=target.getAttribute('data-name'),se=target.getAttribute('data-enabled')==='true';
       fetch('/api/skill',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:sk,enabled:se})}).then(function(){loadTab('market');}).catch(function(){});
+        body:JSON.stringify({name:sk,enabled:se})}).then(readJson).then(function(x){
+          var d=x.data||{};
+          setNotice(x.ok&&d.ok?(sk+(d.enabled?' enabled':' disabled'))
+                     :('Could not change '+sk+(reason(d)?': '+reason(d):'')),
+                    !!(x.ok&&d.ok));
+          loadTab('market');
+        }).catch(function(){setNotice('Request failed \u2014 server unreachable.',false);loadTab('market');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-approve'){
+      var apName=target.getAttribute('data-name');
       fetch('/api/auto_skills/approve',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:target.getAttribute('data-name')})}).then(function(){loadTab('market');}).catch(function(){});
+        body:JSON.stringify({name:apName})}).then(readJson).then(function(x){
+          var d=x.data||{};
+          setNotice(x.ok&&d.ok?('Skill approved and registered: '+(d.name||apName))
+                     :('Could not approve '+(apName||'skill')+(reason(d)?': '+reason(d):'')),
+                    !!(x.ok&&d.ok));
+          loadTab('market');
+        }).catch(function(){setNotice('Approve request failed \u2014 server unreachable.',false);loadTab('market');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-reject'){
+      var rjName=target.getAttribute('data-name');
       fetch('/api/auto_skills/reject',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:target.getAttribute('data-name')})}).then(function(){loadTab('market');}).catch(function(){});
+        body:JSON.stringify({name:rjName})}).then(readJson).then(function(x){
+          var d=x.data||{};
+          setNotice(x.ok&&d.ok?('Rejected draft: '+(d.name||rjName))
+                     :('Could not reject '+(rjName||'draft')+(reason(d)?': '+reason(d):'')),
+                    !!(x.ok&&d.ok));
+          loadTab('market');
+        }).catch(function(){setNotice('Reject request failed \u2014 server unreachable.',false);loadTab('market');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-preset'){
+      var preId=target.getAttribute('data-id');
       fetch('/api/mcp/preset',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({preset:target.getAttribute('data-id')})}).then(function(){loadTab('market');}).catch(function(){});
+        body:JSON.stringify({preset:preId})}).then(readJson).then(function(x){
+          var d=x.data||{};
+          if(x.ok&&d.ok){
+            var nm=(d.server&&d.server.name)||preId, m='Installed MCP server: '+nm;
+            if(d.needs&&d.needs!=='nothing')m+=' \u2014 set args ('+d.needs+')';
+            setNotice(m,true);
+          }else{
+            setNotice('Install failed: '+(reason(d)||'no reason returned'),false);
+          }
+          loadTab('market');
+        }).catch(function(){setNotice('Install request failed \u2014 server unreachable.',false);loadTab('market');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-server-start'){
+      var stName=target.getAttribute('data-name')||'';
       fetch('/api/mcp/start',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:target.getAttribute('data-name')||''})}).then(function(){loadTab('market');}).catch(function(){});
+        body:JSON.stringify({name:stName})}).then(readJson).then(function(x){
+          var d=x.data||{};
+          setNotice(d.ok?('Started: '+stName)
+                     :('Could not start '+stName+(reason(d)?': '+reason(d):'')),!!d.ok);
+          loadTab('market');
+        }).catch(function(){setNotice('Start request failed \u2014 server unreachable.',false);loadTab('market');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-server-stop'){
-      fetch('/api/mcp/stop',{method:'POST'}).then(function(){loadTab('market');}).catch(function(){});
+      fetch('/api/mcp/stop',{method:'POST'}).then(readJson).then(function(x){
+        setNotice(x.ok?'Stopped all MCP servers.':'Stop request failed.',x.ok);
+        loadTab('market');
+      }).catch(function(){setNotice('Stop request failed \u2014 server unreachable.',false);loadTab('market');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-unpin'){
+      var upName=target.getAttribute('data-name');
       fetch('/api/sites/unpin',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:target.getAttribute('data-name')})}).then(function(){loadTab('market');}).catch(function(){});
+        body:JSON.stringify({name:upName})}).then(readJson).then(function(x){
+          var d=x.data||{};
+          setNotice(x.ok&&d.ok?('Removed pinned site: '+upName)
+                     :('Could not remove '+upName+(reason(d)?': '+reason(d):'')),
+                    !!(x.ok&&d.ok));
+          loadTab('market');
+        }).catch(function(){setNotice('Remove request failed \u2014 server unreachable.',false);loadTab('market');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-backup-now'){
       fetch('/api/backup',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:'{}'}).then(function(r){return r.json();}).then(function(d){
-        addLog(d.ok?('Backup ok: '+(d.files||[]).length+' files, '+(d.kb||0)+' KB'):('Backup failed: '+(d.error||'unknown')),'system');
-        loadTab('market');
-      }).catch(function(){addLog('Backup request failed.','error');});
+        body:'{}'}).then(readJson).then(function(x){
+          var d=x.data||{};
+          setNotice(x.ok&&d.ok?('Backup ok: '+(d.files||[]).length+' files, '+(d.kb||0)+' KB')
+                     :('Backup failed: '+(reason(d)||'no reason returned')),
+                    !!(x.ok&&d.ok));
+          loadTab('market');
+        }).catch(function(){setNotice('Backup request failed \u2014 server unreachable.',false);loadTab('market');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-restore'){
       var bfile=target.getAttribute('data-name')||'';
       if(bfile&&window.confirm('Restore '+bfile+'?\n\nCurrent memory and keys are snapshotted first, so nothing is lost.')){
         fetch('/api/backup/restore',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({file:bfile,confirm:true})}).then(function(r){return r.json();}).then(function(d){
-          addLog(d.ok?('Restored '+(d.restored||[]).join(', ')+' from '+bfile):('Restore failed: '+(d.error||'unknown')),'system');
-          loadTab('market');
-        }).catch(function(){addLog('Restore request failed.','error');});
+          body:JSON.stringify({file:bfile,confirm:true})}).then(readJson).then(function(x){
+            var d=x.data||{};
+            setNotice(x.ok&&d.ok?('Restored '+(d.restored||[]).join(', ')+' from '+bfile)
+                       :('Restore failed: '+(reason(d)||'no reason returned')),
+                      !!(x.ok&&d.ok));
+            loadTab('market');
+          }).catch(function(){setNotice('Restore request failed \u2014 server unreachable.',false);loadTab('market');});
       }
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-plugins-reload'){
-      fetch('/api/plugins/reload',{method:'POST'}).then(function(){loadTab('market');}).catch(function(){});
+      fetch('/api/plugins/reload',{method:'POST'}).then(readJson).then(function(x){
+        var d=x.data||{},ld=(d.loaded||[]),fl=(d.failed||[]),m;
+        if(!x.ok)m='Plugin reload failed: '+(reason(d)||'no reason returned');
+        else if(fl.length)m='Reloaded '+ld.length+' plugins \u2014 '+fl.length+' failed: '+
+          ((fl[0]&&(fl[0].error||fl[0].file))||'');
+        else m='Reloaded '+ld.length+' plugins \u2014 all loaded.';
+        setNotice(m,x.ok&&!fl.length);
+        loadTab('market');
+      }).catch(function(){setNotice('Reload request failed \u2014 server unreachable.',false);loadTab('market');});
     }
     if(target.getAttribute&&target.getAttribute('data-action')==='mkt-plugin-install'){
-      var pn=document.getElementById('mkt-plugin-name'),pf=document.getElementById('mkt-plugin-file'),pm=document.getElementById('mkt-plugin-msg');
+      var pn=document.getElementById('mkt-plugin-name'),pf=document.getElementById('mkt-plugin-file');
       var pname=pn?(pn.value||'').trim().toLowerCase():'';
-      if(!pname||!pf||!pf.files||!pf.files[0]){if(pm)pm.textContent='Name + .py file required.';}
-      else{
-        if(pm)pm.textContent='Installing...';
+      if(!pname||!pf||!pf.files||!pf.files[0]){
+        /* Never leave the box: the notice is the only thing loadTab won't wipe. */
+        setNotice('Name + .py file required.',false);
+        var pm0=document.getElementById('mkt-plugin-msg');
+        if(pm0)pm0.textContent='Name + .py file required.';
+      }else{
         var fr=new FileReader();
         fr.onload=function(){
           fetch('/api/plugins/install',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({name:pname,code:String(fr.result||'')})}).then(function(r){return r.json();}).then(function(d){
-            if(pm)pm.textContent=d.ok?('Installed: '+(d.skill||pname)):('✗ '+(d.detail||d.error||'failed'));
-            loadTab('market');
-          }).catch(function(){if(pm)pm.textContent='Request failed.';});
+            body:JSON.stringify({name:pname,code:String(fr.result||'')})}).then(readJson).then(function(x){
+              var d=x.data||{};
+              setNotice(x.ok&&d.ok?('Installed plugin \u2014 skill: '+(d.skill||pname))
+                         :('Plugin rejected: '+(reason(d)||'no reason returned')),
+                        !!(x.ok&&d.ok));
+              loadTab('market');
+            }).catch(function(){setNotice('Install request failed \u2014 server unreachable.',false);loadTab('market');});
         };
         fr.readAsText(pf.files[0]);
       }
