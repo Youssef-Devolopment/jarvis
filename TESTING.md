@@ -5,7 +5,7 @@ reproduction, health checks, CI, and the manual smoke tests that only
 a human on Windows can do. Follow this and "works on my machine"
 stays a scare story instead of a bug report.
 
-**Ground truth:** 71 test files · **884 tests** · 120 API endpoints ·
+**Ground truth:** 74 test files · **938 tests** · 120 API endpoints ·
 142 shipped skills · `check.py` 11 preflight checks (exit 0 ready /
 1 fix core / 2 skills-only).
 
@@ -56,7 +56,7 @@ Expected tail:
 
 ```
 ----------------------------------------------------------------------
-Ran 884 tests in ~45s
+Ran 938 tests in ~50s
 OK
 ```
 
@@ -248,7 +248,7 @@ Python 3.10) — same OS family as the product:
 
 "CI green" therefore means: *every file compiles, the UI script
 parses, lint is clean, the app's real launch mode completes an MCP
-handshake, and all 884 tests pass on a machine that has never seen your
+handshake, and all 938 tests pass on a machine that has never seen your
 checkout*. It does **not** mean smoke tests ran — §7 stays manual.
 
 Check the latest run:
@@ -418,7 +418,7 @@ API keys, no running server**:
 
 A change is done when **all** of these hold:
 
-1. full suite: `Ran 884 tests … OK` (or the new count);
+1. full suite: `Ran 938 tests … OK` (or the new count);
 2. fresh-copy suite: OK without `.env`;
 3. `check.py`: 11/11;
 4. `node --check static/js/app.js`: clean (if JS changed);

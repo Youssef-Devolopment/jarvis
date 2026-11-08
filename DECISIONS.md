@@ -606,6 +606,74 @@ own batch.
 
 ---
 
+## 21. Tell the user what happened, every time (v1.38.0)
+
+**Problem.** "Can't see what it's doing" was the first friction, and the
+batch that was supposed to fix it left three add flows looking broken
+while all three were working:
+
+- `JarvisError` put the caller's message in `Exception.args`, which the
+  handler only *logged*, and answered with the class-level
+  `public_message`. So a missing name, an unknown preset and a rejected
+  plugin all returned `{"detail":"","error":"Invalid request."}` — 68 of
+  85 `ValidationError` sites affected, no test asserting the empty string.
+- Nine of the eleven MARKET handlers were
+  `.then(reload).catch(function(){})`: body discarded, error swallowed.
+  The other two (backup, restore) did report, but into the main chat
+  log, which the open Settings modal covers — and the reload's
+  `innerHTML` rewrite erased the one message that did exist.
+- `mcp_servers.json` is personal, gitignored, and never created by
+  anything, so a fresh install shipped with an empty MCP system and
+  eight undiscovered presets.
+
+**Decision.**
+
+1. **The reason travels on the channel the UI reads.** `detail` falls
+   back to the positional message unless the caller passes its own. The
+   log keeps everything it had; only the response changes.
+2. **One notice, rendered where it survives.** Handlers read their
+   response body, `setNotice()` holds it, and `renderTab()` emits it at
+   the top of the panel so a re-render preserves it. The install handler
+   is the exception: it must *not* re-render, because re-rendering would
+   discard the name the user just typed — `paintNotice()` updates the
+   existing row in place instead.
+3. **Seed only what works unattended.** First read seeds `fetch`,
+   `memory`, `sequential-thinking` — all `needs == "nothing"`. An
+   existing file, even an empty one, means the user decided, so it is
+   never re-seeded.
+
+**Why.** Every failure here had the same shape: the system *knew* the
+answer and didn't send it. A reason that only reaches the log is
+indistinguishable from no reason at all for anyone using the app. And a
+first run that shows "None yet" teaches the user the feature is absent,
+when it is only unconfigured.
+
+**What it costs.** Responses carry a few more bytes; the seed writes a
+file the user did not ask for (on first run only, with three servers
+that need no key and no argument); `setNotice` keeps one small piece of
+module state that persists until the next action.
+
+**Watch out.** Three traps from this batch. First, `start_server()` must
+keep returning `bool` — tests pin the signature — so the failure reason
+is attached at the route level, not by widening the return type. Second,
+`mock.patch.dict("sys.modules", ...)` silently stops working once
+`mcp.presets` is bound as an attribute, and `discover()` imports every
+test module before the first test runs; the fix is
+`mock.patch("mcp.presets", fake, create=True)`, which holds in both
+orders. Third: static is served `immutable` at `?v=<VERSION>`, so any
+JS/CSS change is invisible to an open browser until `config.VERSION`
+bumps — verify UI work against a fresh cache key, not a hard reload.
+
+**Deliberately not done.** The three "dead skills" this batch set out to
+hide — `web_search`, `routine_news`, `todoist_api` — are not dead.
+`web_search` has six backends (DDG lib/lite/html, Brave, Bing, Searx)
+and Tavily is only an optional accelerator; `routine_news` says "News
+API key not set. Add NEWS_API_KEY to .env."; `todoist_api` checks
+`_key()` first and says so. Hiding them would have been a regression, so
+nothing was hidden. The premise was wrong, not the skills.
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either

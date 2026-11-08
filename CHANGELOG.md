@@ -10,6 +10,67 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.38.0] - 2026-11-08
+
+**Batch 5 — "easy to build on". All three add flows worked and all
+three looked completely broken; the fix was to stop hiding the answer.**
+
+- **A rejection now says why.** `JarvisError.__init__` stored the
+  caller's message in `Exception.args` — which the handler only wrote
+  to the log — and returned the class-level `public_message`. Every
+  failure therefore came back as `{"detail":"","error":"Invalid
+  request."}` no matter what actually went wrong: 68 of the 85
+  `raise ValidationError(...)` sites were affected, and the UI rendered
+  "✗ Invalid request." for a missing name, an unknown skill, an unknown
+  preset and a rejected plugin alike. `detail` now falls back to the
+  positional message unless the caller passed its own, so the 17 sites
+  that already supplied `detail=` behave exactly as before. Verified on
+  the live endpoints: `{"detail":"Missing 'name'."}`,
+  `{"detail":"unknown preset: not_a_real_preset"}`,
+  `{"detail":"validation failed: blocked import: subprocess"}`. No test
+  asserted the old empty string, which is how it stayed broken.
+- **The MARKET panel reports what it did.** Nine of its eleven handlers
+  ran `.then(function(){loadTab('market');}).catch(function(){});` —
+  response body dropped, error swallowed, so installing a preset and a
+  request that never arrived looked identical. The other two (backup,
+  restore) did report, but into the main chat log, which the open
+  Settings modal covers. Worse, `loadTab()` rewrites `innerHTML`
+  wholesale, which erased the one message that did exist: the
+  plugin-install line was written and then immediately destroyed by the
+  reload that followed it. All eleven now read their response and set a
+  single notice at the top of the panel, which survives that re-render —
+  and it is painted in place for the one handler that must *not* reload,
+  because re-rendering would discard the name the user just typed.
+  Server-supplied text goes in with `textContent`, never `innerHTML`.
+- **A fresh install gets MCP servers.** `mcp/manager.py` returned `[]`
+  when `mcp_servers.json` was absent, and nothing ever created that
+  file: it is personal, gitignored, and the installer ships none. Every
+  new user's MCP panel therefore said "None yet" while eight presets
+  went undiscovered. First read now seeds three that need neither an
+  API key nor an argument — Fetch, Memory, Sequential thinking — since
+  a preset requiring a folder path would fail on the very first start
+  and look worse than shipping none. An existing file, even an empty
+  one, means the user decided, so it is never re-seeded; seeding takes
+  the lock itself instead of re-entering it from `all_servers()`.
+- **The plugin sandbox is tested.** No test imported `plugins` at all —
+  a `git grep` for it under `tests/` came back empty — so the
+  validator's rules were enforced but entirely unverified.
+  `tests/test_plugin_sandbox.py` pins the
+  allowed imports, the blocked imports (`subprocess`, `os`, `socket`),
+  the blocked calls (`eval`, `exec`, `open`), the name / pattern-count
+  / regex rules, that nothing is written when validation fails, and
+  that a refused file is reported *with the rule that fired* and never
+  imported. The tests point the plugins package at a scratch directory,
+  so the suite never writes into `plugins/`.
+- **`test_adder` stops depending on import order.** It swapped
+  `sys.modules["mcp.presets"]` for a mock, which only works while the
+  submodule is unbound — and `discover()` imports every test module
+  before the first test runs, so any new module-level import of
+  `mcp.presets` silently broke it. It now patches the package attribute
+  with `create=True`, which holds in both orders.
+- **938 tests / 74 test files**, +54 across three new files
+  (`test_error_reasons`, `test_mcp_first_run`, `test_plugin_sandbox`).
+
 ## [1.37.0] - 2026-11-07
 
 **Batch 4 — "feels lighter". Measured first, fixed second, and every
