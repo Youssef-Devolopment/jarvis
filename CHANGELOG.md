@@ -10,6 +10,39 @@ bump MINOR for big feature batches, PATCH for fixes
   now; a real split needs an ES-module conversion (see `DECISIONS.md`
   #13). Recorded here so the decision is visible in the release log.
 
+## [1.38.1] - 2026-11-08
+
+**1.38.0 promised "tell the user what happened" and then only kept it
+on the MARKET tab. This finishes the promise for every other tab.**
+
+- **The notice stopped being a market feature.** `setNotice()` and
+  `paintNotice()` hardcoded `#panel-market`, so 1.38.0's fix could not
+  be reused anywhere else — a message for the skills tab would have
+  painted onto the market panel. The notice now carries the tab it was
+  raised in, paints only into that panel, and `loadTab()` redraws it
+  after the `innerHTML` rewrite that used to erase it. One mechanism
+  for every tab, instead of a second one invented per tab.
+- **15 handlers stopped hiding their answer.** Skills, personality,
+  voice, prefs, the duck level and the briefing clock discarded their
+  response body — `.then(function(){loadTab(...)})` — so success and
+  failure were byte-identical on screen. LIBRARY (install, remove,
+  import, add-MCP, start, stop) and the whole MODULES tab reported
+  through `addLog()`, which writes to the main log *behind* the open
+  modal: the same defect backup and restore had in 1.38.0. Every one
+  now reports in the panel the user is looking at, and quotes the
+  server's own reason when it fails.
+- **`data-mkt-notice` became `data-notice`.** It stopped being a
+  market detail, and a name that lies about what it covers is how the
+  next reader wastes an hour.
+- **`tests/test_action_feedback.py` (7 tests)** pins the two
+  regressions this release exists to prevent: no handler may discard
+  its response body, and none may swallow an error. It also checks
+  every panel a notice names actually exists — a missing id makes
+  `paintNotice()` return without drawing, which loses the message with
+  no error anywhere.
+
+**945 tests / 75 test files**, +7 across one new file.
+
 ## [1.38.0] - 2026-11-08
 
 **Batch 5 — "easy to build on". All three add flows worked and all

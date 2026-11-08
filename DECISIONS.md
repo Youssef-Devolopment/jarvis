@@ -674,6 +674,66 @@ nothing was hidden. The premise was wrong, not the skills.
 
 ---
 
+## 22. A fix that only reaches one tab is not a fix (v1.38.1)
+
+**Problem.** DECISIONS #21 said "tell the user what happened, every
+time" and then did it only for the MARKET tab. The mechanism it added —
+`setNotice()` / `paintNotice()` — hardcoded `#panel-market`, so it could
+not be reused anywhere else without inventing a second one. The same
+defect was therefore still live in 15 settings handlers:
+
+- Skills, personality, voice, prefs, duck level and the briefing clock
+  were `.then(function(){loadTab(...)}).catch(function(){})` — the
+  response body was thrown away, so a rejected save and an accepted one
+  produced identical pixels.
+- LIBRARY (install, remove, import, add-MCP, start, stop) and the whole
+  MODULES tab *did* read the body, but reported through `addLog()` — the
+  main chat log, which the open Settings modal covers. That is exactly
+  the backup/restore defect #21 fixed, one tab over, still unfixed.
+
+**Decision.**
+
+1. **The notice belongs to a tab, not to a panel id.** `setNotice(text,
+   ok, tab)` records where it was raised; `paintNotice(tab)` draws only
+   into `#panel-<tab>` and returns unless that is the notice's own tab.
+   Handlers that know their tab pass it; the rest fall back to the
+   active settings tab, which is where the click happened anyway.
+2. **`loadTab()` repaints after it renders.** #21 had `renderTab()`
+   emit the notice, which only ever worked for the one branch that knew
+   about it. Now `renderTab()` emits nothing and `loadTab()` calls
+   `paintNotice(name)` right after the `innerHTML` rewrite — one
+   insertion point for every tab instead of one per tab.
+3. **`addLog` is not a channel for modal actions.** It is right for
+   things that happen outside the modal and wrong for anything the
+   modal covers. The sidebar voice picker looked like the first case;
+   it renders inside the voice panel, so it moved too.
+4. **Dedicated widgets keep their own channels.** `#key-msg`, the
+   service button's `FAILED` + `title`, `mod-docs`'s box and
+   `runUpdateCheck()` already reported in place, in view, with a
+   reason. They were left alone — a notice stacked on a working message
+   is noise.
+
+**Why.** #21's lesson was never "MARKET needs notices". It was that a
+system which knows the answer and does not send it is indistinguishable
+from one that failed for no reason. Shipping that promise to a single
+tab and calling the friction fixed is how the same bug report reopens
+next batch. And because the mechanism was market-specific, the next
+person to fix a silent handler would have copied it — which is how a
+second, divergent notice appears.
+
+**What it costs.** `static/js/app.js` +84/−60 (net +24 lines), one new
+test file with 7 tests, and a longer `setNotice` signature. No server
+change, no new endpoint.
+
+**Watch out.** Two things. First, `paintNotice()` returns silently when
+the panel id does not exist — no error, the message just vanishes — so
+`tests/test_action_feedback.py` asserts every tab a notice can name has
+a matching `id="panel-*"` and `data-tab="*"`. Second, the attribute is
+now `data-notice`; anything still looking for `data-mkt-notice` finds
+nothing. Nothing outside `app.js` referenced it.
+
+---
+
 ## How to use this document
 
 - **Proposing a change?** If it contradicts a decision here, either
